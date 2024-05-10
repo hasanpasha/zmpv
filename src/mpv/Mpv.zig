@@ -75,7 +75,7 @@ pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     }
 }
 
-pub fn get_property_string(self: Self, name: [*c]const u8) ![]u8 {
+pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {
     const returned_value = c.mpv_get_property_string(self.handle, name);
     if (returned_value == null) {
         return GenericError.NullValue;
@@ -87,7 +87,7 @@ pub fn get_property_string(self: Self, name: [*c]const u8) ![]u8 {
     return string;
 }
 
-pub fn set_property_string(self: Self, name: [*c]const u8, value: [*c]const u8) MpvError!void {
+pub fn set_property_string(self: Self, name: [*:0]const u8, value: [*:0]const u8) MpvError!void {
     const ret = c.mpv_set_property_string(self.handle, name, value);
     const err = mpv_error.from_mpv_c_error(ret);
 
@@ -96,7 +96,7 @@ pub fn set_property_string(self: Self, name: [*c]const u8, value: [*c]const u8) 
     }
 }
 
-pub fn observe_property(self: Self, reply_userdata: u64, name: [*c]const u8, format: MpvFormat) MpvError!void {
+pub fn observe_property(self: Self, reply_userdata: u64, name: [*:0]const u8, format: MpvFormat) MpvError!void {
     const ret = c.mpv_observe_property(self.handle, reply_userdata, name, format.to());
     const err = mpv_error.from_mpv_c_error(ret);
 
