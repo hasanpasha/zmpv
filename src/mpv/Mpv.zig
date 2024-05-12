@@ -7,6 +7,7 @@ const c = @import("./c.zig");
 
 const MpvEvent = mpv_event.MpvEvent;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
+const MpvLogLevel = @import("./mpv_event/MpvEventLogMessage.zig").MpvLogLevel;
 
 const MpvError = mpv_error.MpvError;
 const GenericError = generic_error.GenericError;
@@ -98,6 +99,15 @@ pub fn set_property_string(self: Self, name: [*:0]const u8, value: [*:0]const u8
 
 pub fn observe_property(self: Self, reply_userdata: u64, name: [*:0]const u8, format: MpvFormat) MpvError!void {
     const ret = c.mpv_observe_property(self.handle, reply_userdata, name, format.to());
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
+pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
+    const ret = c.mpv_request_log_messages(self.handle, level.to_c_string());
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {

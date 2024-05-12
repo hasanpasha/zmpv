@@ -35,6 +35,8 @@ pub fn main() !void {
     // try mpv.command_string("cycle pause");
     // try mpv.command_string("cycle mute");
 
+    try mpv.request_log_messages(.None);
+
     try mpv.observe_property(0, "fullscreen", .Flag);
     // try mpv.observe_property(0, "time-pos", .Node);
     // try mpv.observe_property(0, "screenshot-raw", .ByteArray);
@@ -49,21 +51,29 @@ pub fn main() !void {
         const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
-            .PropertyChange => {
-                const optional_data = event.data;
-                if (optional_data) |data| {
-                    switch (data) {
-                        .EndFile => |end_file| {
-                            std.debug.print("[event] {?}\n", .{end_file});
-                        },
-                        .StartFile => |start_file| {
-                            std.debug.print("[event] {?}\n", .{start_file});
-                        },
-                        .PropertyChange => |property_change| {
-                            std.debug.print("[event] name={s}, {?}\n", .{ property_change.name, property_change });
-                        },
-                    }
-                }
+            // .PropertyChange => {
+            //     const optional_data = event.data;
+            //     if (optional_data) |data| {
+            //         switch (data) {
+            //             .EndFile => |end_file| {
+            //                 std.debug.print("[event] {?}\n", .{end_file});
+            //             },
+            //             .StartFile => |start_file| {
+            //                 // std.debug.print("[event] {?}\n", .{start_file});
+            //             },
+            //             .PropertyChange => |property_change| {
+            //                 // std.debug.print("[event] name={s}, {?}\n", .{ property_change.name, property_change });
+            //             },
+            //             .LogMessage => |log_message| {
+            //                 // std.debug.print("[event] log_level = {s}\n", .{log_message.level});
+            //             },
+            //             .None => {},
+            //         }
+            //     }
+            // },
+            .LogMessage => {
+                const log = event.data.?.LogMessage;
+                std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
             },
             else => {},
         }

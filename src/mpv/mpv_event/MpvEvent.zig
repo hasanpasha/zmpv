@@ -3,6 +3,7 @@ const MpvError = mpv_error.MpvError;
 const MpvEventEndFile = @import("./MpvEventEndFile.zig");
 const MpvEventStartFile = @import("./MpvEventStartFile.zig");
 const MpvEventProperty = @import("./MpvEventProperty.zig");
+const MpvEventLogMessage = @import("./MpvEventLogMessage.zig");
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("../c.zig");
 const std = @import("std");
@@ -31,29 +32,22 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
             .PropertyChange => MpvEventData{
                 .PropertyChange = try MpvEventProperty.from(event.data, allocator),
             },
-            else => null,
+            .LogMessage => MpvEventData{
+                .LogMessage = MpvEventLogMessage.from(event.data),
+            },
+            else => MpvEventData{ .None = {} },
         },
     };
 }
 
 pub const MpvEventData = union(enum) {
-    // None: void,
-    // Shutdown: void,
-    // LogMessage: void,
+    None: void,
+    LogMessage: MpvEventLogMessage,
     // GetPropertyReply: void,
-    // SetPropertyReply: void,
     // CommandReply: void,
     StartFile: MpvEventStartFile,
     EndFile: MpvEventEndFile,
-    // FileLoaded: void,
-    // Idle: void,
-    // Tick: void,
     // ClientMessage: void,
-    // VideoReconfig: void,
-    // AudioReconfig: void,
-    // Seek: void,
-    // PlaybackRestart: void,
     PropertyChange: MpvEventProperty,
-    // QueueOverflow: void,
     // Hook: void,
 };
