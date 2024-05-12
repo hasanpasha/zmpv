@@ -105,10 +105,10 @@ pub fn observe_property(self: Self, reply_userdata: u64, name: [*:0]const u8, fo
     }
 }
 
-pub fn wait_event(self: Self, timeout: f64) MpvEvent {
+pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 
-    return MpvEvent.from(event);
+    return try MpvEvent.from(event, self.allocator);
 }
 
 pub fn terminate_destroy(self: Self) void {

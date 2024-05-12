@@ -31,11 +31,14 @@ pub fn main() !void {
     // var loadcmd = [_][*:0]const u8{ "loadfile", "sample.mp4" };
     // try mpv.command(&loadcmd);
 
-    // try mpv.command_string("loadfile sample.mp4");
+    try mpv.command_string("loadfile sample.mp4");
     // try mpv.command_string("cycle pause");
     // try mpv.command_string("cycle mute");
 
     try mpv.observe_property(0, "fullscreen", .Flag);
+    // try mpv.observe_property(0, "time-pos", .Node);
+    // try mpv.observe_property(0, "screenshot-raw", .ByteArray);
+    try mpv.observe_property(0, "playlist", .Node);
 
     try mpv.set_property_string("fullscreen", "yes");
 
@@ -43,10 +46,25 @@ pub fn main() !void {
     std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
 
     while (true) {
-        const event = mpv.wait_event(10000);
+        const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
-            .PropertyChange => std.debug.print("[event] {?}\n", .{event.data}),
+            .PropertyChange => {
+                const optional_data = event.data;
+                if (optional_data) |data| {
+                    switch (data) {
+                        .EndFile => |end_file| {
+                            std.debug.print("[event] {?}\n", .{end_file});
+                        },
+                        .StartFile => |start_file| {
+                            std.debug.print("[event] {?}\n", .{start_file});
+                        },
+                        .PropertyChange => |property_change| {
+                            std.debug.print("[event] name={s}, {?}\n", .{ property_change.name, property_change });
+                        },
+                    }
+                }
+            },
             else => {},
         }
     }

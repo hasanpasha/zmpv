@@ -5,6 +5,7 @@ const MpvEventStartFile = @import("./MpvEventStartFile.zig");
 const MpvEventProperty = @import("./MpvEventProperty.zig");
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("../c.zig");
+const std = @import("std");
 
 const Self = @This();
 
@@ -12,7 +13,7 @@ event_id: MpvEventId,
 event_error: MpvError,
 data: ?MpvEventData,
 
-pub fn from(c_event: [*c]c.struct_mpv_event) Self {
+pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self {
     const event: *c.mpv_event = @ptrCast(c_event);
 
     const event_id: MpvEventId = @enumFromInt(event.event_id);
@@ -28,7 +29,7 @@ pub fn from(c_event: [*c]c.struct_mpv_event) Self {
                 .StartFile = MpvEventStartFile.from(event.data),
             },
             .PropertyChange => MpvEventData{
-                .PropertyChange = MpvEventProperty.from(event.data),
+                .PropertyChange = try MpvEventProperty.from(event.data, allocator),
             },
             else => null,
         },
