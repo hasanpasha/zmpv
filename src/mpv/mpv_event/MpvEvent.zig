@@ -4,6 +4,7 @@ const MpvEventEndFile = @import("./MpvEventEndFile.zig");
 const MpvEventStartFile = @import("./MpvEventStartFile.zig");
 const MpvEventProperty = @import("./MpvEventProperty.zig");
 const MpvEventLogMessage = @import("./MpvEventLogMessage.zig");
+const MpvEventClientMessage = @import("./MpvEventClientMessage.zig");
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("../c.zig");
 const std = @import("std");
@@ -35,6 +36,9 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
             .LogMessage => MpvEventData{
                 .LogMessage = MpvEventLogMessage.from(event.data),
             },
+            .ClientMessage => MpvEventData{
+                .ClientMessage = try MpvEventClientMessage.from(event.data, allocator),
+            },
             else => MpvEventData{ .None = {} },
         },
     };
@@ -47,7 +51,7 @@ pub const MpvEventData = union(enum) {
     // CommandReply: void,
     StartFile: MpvEventStartFile,
     EndFile: MpvEventEndFile,
-    // ClientMessage: void,
+    ClientMessage: MpvEventClientMessage,
     PropertyChange: MpvEventProperty,
     // Hook: void,
 };
