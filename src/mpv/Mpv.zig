@@ -3,7 +3,7 @@ const mpv_error = @import("./errors/mpv_error.zig");
 const generic_error = @import("./errors/generic_error.zig");
 const mpv_event = @import("./mpv_event.zig");
 const utils = @import("./utils.zig");
-
+const MpvPropertyData = @import("./mpv_event/MpvEventProperty.zig").MpvPropertyData;
 const c = @import("./c.zig");
 
 const MpvEvent = mpv_event.MpvEvent;
@@ -105,6 +105,20 @@ pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     if (err != MpvError.Success) {
         return err;
     }
+}
+
+// TODO: mpv_frre allocated memory
+pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat) !MpvPropertyData {
+    var output_mem: format.CDataType() = undefined;
+    const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
+    const ret = c.mpv_get_property(self.handle, name, format.to(), data_ptr);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+
+    return try MpvPropertyData.from(format, data_ptr, self.allocator);
 }
 
 pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {

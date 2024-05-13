@@ -42,25 +42,33 @@ pub fn main() !void {
 
     try mpv.set_property_string("fullscreen", "yes");
 
-    const fullscreen_status = try mpv.get_property_string("fullscreen");
-    std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
+    // const fullscreen_status = try mpv.get_property_string("fullscreen");
+    // std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
+    const fullscreen_status = try mpv.get_property("fullscreen", .Node);
+    std.log.debug("[fullscreen]: {}", .{fullscreen_status.Node});
 
     while (true) {
         const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
+            .PlaybackRestart => {
+                const filename = try mpv.get_property("filename", .Node);
+                std.debug.print("\n[filename]: {s}\n", .{filename.Node.String});
+            },
             .PropertyChange => {
-                const property_change = event.data.?.PropertyChange;
-                std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
+                // const property_change = event.data.?.PropertyChange;
+                // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
+                const playlist = try mpv.get_property("playlist", .Node);
+                std.log.debug("[playlist]: {any}", .{playlist.Node});
             },
-            .LogMessage => {
-                const log = event.data.?.LogMessage;
-                std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
-            },
-            .EndFile => {
-                const endfile = event.data.?.EndFile;
-                std.debug.print("[endfile] {any}\n", .{endfile});
-            },
+            // .LogMessage => {
+            //     const log = event.data.?.LogMessage;
+            //     std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
+            // },
+            // .EndFile => {
+            //     const endfile = event.data.?.EndFile;
+            //     std.debug.print("[endfile] {any}\n", .{endfile});
+            // },
             else => {},
         }
     }
