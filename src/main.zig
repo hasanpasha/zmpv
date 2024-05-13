@@ -49,29 +49,17 @@ pub fn main() !void {
         const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
-            // .PropertyChange => {
-            //     const optional_data = event.data;
-            //     if (optional_data) |data| {
-            //         switch (data) {
-            //             .EndFile => |end_file| {
-            //                 std.debug.print("[event] {?}\n", .{end_file});
-            //             },
-            //             .StartFile => |start_file| {
-            //                 // std.debug.print("[event] {?}\n", .{start_file});
-            //             },
-            //             .PropertyChange => |property_change| {
-            //                 // std.debug.print("[event] name={s}, {?}\n", .{ property_change.name, property_change });
-            //             },
-            //             .LogMessage => |log_message| {
-            //                 // std.debug.print("[event] log_level = {s}\n", .{log_message.level});
-            //             },
-            //             .None => {},
-            //         }
-            //     }
-            // },
+            .PropertyChange => {
+                const property_change = event.data.?.PropertyChange;
+                std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
+            },
             .LogMessage => {
                 const log = event.data.?.LogMessage;
                 std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
+            },
+            .EndFile => {
+                const endfile = event.data.?.EndFile;
+                std.debug.print("[endfile] {any}\n", .{endfile});
             },
             else => {},
         }
