@@ -9,27 +9,22 @@ const c = @cImport({
 
 pub fn main() !void {
     //_ = c.mpv_set_option(ctx, "osc", c.MPV_FORMAT_FLAG, &val);
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer {
-    //     const deinit_status = gpa.deinit();
-    //     if (deinit_status == .leak) @panic("detected leakage");
-    // }
-    // const allocator = gpa.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) @panic("detected leakage");
+    }
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer arena.deinit();
     const allocator = arena.allocator();
 
     const mpv = try Mpv.new(allocator);
-    // const mpv = try Mpv.new(std.heap.page_allocator);
 
     try mpv.set_option_string("input-default-bindings", "yes");
     try mpv.set_option_string("input-vo-keyboard", "yes");
     try mpv.initialize();
     defer mpv.terminate_destroy();
-
-    // var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    // try mpv.command(&args);
 
     try mpv.loadfile("sample.mp4", .{});
 
