@@ -2,6 +2,7 @@ const std = @import("std");
 const mpv_error = @import("./errors/mpv_error.zig");
 const generic_error = @import("./errors/generic_error.zig");
 const mpv_event = @import("./mpv_event.zig");
+const utils = @import("./utils.zig");
 
 const c = @import("./c.zig");
 
@@ -51,20 +52,16 @@ pub fn initialize(self: Self) MpvError!void {
     }
 }
 
-/// args is a null terminal list of strings
-/// e.g. [_][*c]const u8{"loadfile", "video.mp4", null}
-/// TODO: Fix this function
-pub fn command(self: Self, args: [][*:0]const u8) MpvError!void {
-    const a: [*c][*c]const u8 = @ptrCast(args);
-    std.debug.print("\n[type of command]: {}", .{@TypeOf(a)});
-    // const ret = c.mpv_command(self.handle, @ptrCast(args));
-    // const ret = c.mpv_command(self.handle, args);
-    // const err = mpv_error.from_mpv_c_error(ret);
+pub fn command(self: Self, args: [][]const u8) !void {
+    const c_args = try utils.create_cstring_array(args, self.allocator);
+    defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
-    // if (err != MpvError.Success) {
-    // return err;
-    // }
-    _ = self;
+    const ret = c.mpv_command(self.handle, @ptrCast(c_args));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
 }
 
 pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
