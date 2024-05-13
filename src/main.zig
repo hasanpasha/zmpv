@@ -28,8 +28,10 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    try mpv.command(&args);
+    // var args = [_][]const u8{ "loadfile", "sample.mp4" };
+    // try mpv.command(&args);
+
+    try mpv.loadfile("sample.mp4", .{});
 
     try mpv.request_log_messages(.None);
 

@@ -64,6 +64,40 @@ pub fn command(self: Self, args: [][]const u8) !void {
     }
 }
 
+pub const LoadfileFlag = enum {
+    Replace,
+    Append,
+    AppendPlay,
+    InsertNext,
+    InsertNextPlay,
+    InsertAt,
+    InsertAtPlay,
+
+    pub fn to_string(self: LoadfileFlag) []const u8 {
+        return switch (self) {
+            .Replace => "replace",
+            .Append => "append",
+            .AppendPlay => "append-play",
+            .InsertNext => "insert-next",
+            .InsertNextPlay => "insert-next-play",
+            .InsertAt => "insert-at",
+            .InsertAtPlay => "insert-at-play",
+        };
+    }
+};
+
+pub fn loadfile(self: Self, filename: []const u8, args: struct {
+    flag: LoadfileFlag = .Replace,
+    index: usize = 0,
+    options: []const u8 = "",
+}) !void {
+    const flag_str = args.flag.to_string();
+    const index_str = try std.fmt.allocPrint(self.allocator, "{}", .{args.index});
+    var cmd_args = [_][]const u8{ "loadfile", filename, flag_str, index_str, args.options };
+
+    return self.command(&cmd_args);
+}
+
 pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     const ret = c.mpv_command_string(self.handle, @ptrCast(args));
     const err = mpv_error.from_mpv_c_error(ret);
