@@ -17,4 +17,17 @@ pub const MpvFormat = enum(u8) {
     pub fn to(self: Self) c.mpv_format {
         return @as(c.mpv_format, @intFromEnum(self));
     }
+
+    pub inline fn CDataType(comptime self: Self) type {
+        return switch (self) {
+            .String, .OSDString => [*c]u8,
+            .Flag => c_int,
+            .INT64 => i64,
+            .Double => f64,
+            .Node => c.mpv_node,
+            .NodeArray, .NodeMap => c.mpv_node_list,
+            .ByteArray => c.mpv_byte_array,
+            .None => @panic("WTH ARE YOU DOING!!"),
+        };
+    }
 };
