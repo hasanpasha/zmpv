@@ -20,6 +20,7 @@ pub const MpvNode = union(enum) {
         const node_format: MpvFormat = @enumFromInt(node_value.format);
         return switch (node_format) {
             .None => Self{ .None = {} },
+            .Flag => Self{ .Flag = (node_value.u.int64 == 1) },
             .String => Self{ .String = std.mem.span(node_value.u.string) },
             .INT64 => Self{ .INT64 = node_value.u.int64 },
             .Double => Self{ .Double = node_value.u.double_ },
@@ -48,19 +49,11 @@ pub const MpvNode = union(enum) {
             try hash_map.put(key, value);
         }
         return hash_map;
-        // std.debug.print("\n\nNodeMap: len={}\n", .{hash_map.count()});
-        // var iterator = hash_map.iterator();
-        // while (iterator.next()) |entry| {
-        //     const key = entry.key_ptr.*;
-        //     const val = entry.value_ptr.*;
-        //     std.debug.print("{s}={}\n", .{ key, val });
-        // }
     }
 
     pub fn from_byte_array(bytes: c.struct_mpv_byte_array, allocator: std.mem.Allocator) std.mem.Allocator.Error![]const u8 {
         const casted_bytes_data: [*c]const u8 = @ptrCast(bytes.data);
         const zig_bytes = try allocator.dupe(u8, std.mem.span(casted_bytes_data));
-        // std.debug.print("\nbytes {any}", .{zig_bytes});
         return zig_bytes;
     }
 };
