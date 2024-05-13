@@ -68,3 +68,33 @@ pub fn main() !void {
         }
     }
 }
+
+test "simple test" {
+    const mpv = try Mpv.new(std.testing.allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+}
+
+test "memory leak" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const mpv = try Mpv.new(allocator);
+    try mpv.initialize();
+
+    try mpv.loadfile("sample.mp4", .{});
+
+    while (true) {
+        const event = try mpv.wait_event(10000);
+        switch (event.event_id) {
+            .Shutdown => break,
+            .PlaybackRestart => break,
+            else => {},
+        }
+    }
+
+    mpv.terminate_destroy();
+
+    const status = gpa.deinit();
+    try std.testing.expect(status == .ok);
+}
