@@ -47,7 +47,7 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
 pub const MpvEventData = union(enum) {
     None: void,
     LogMessage: MpvEventLogMessage,
-    // GetPropertyReply: void,
+    GetPropertyReply: MpvEventProperty,
     // CommandReply: void,
     StartFile: MpvEventStartFile,
     EndFile: MpvEventEndFile,
