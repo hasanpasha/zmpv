@@ -34,8 +34,8 @@ pub fn new(allocator: std.mem.Allocator) GenericError!Self {
     };
 }
 
-pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
-    const ret = c.mpv_set_option_string(self.handle, @ptrCast(key), @ptrCast(value));
+pub fn initialize(self: Self) MpvError!void {
+    const ret = c.mpv_initialize(self.handle);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -43,8 +43,8 @@ pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvErro
     }
 }
 
-pub fn initialize(self: Self) MpvError!void {
-    const ret = c.mpv_initialize(self.handle);
+pub fn set_option_string(self: Self, key: [:0]const u8, value: [:0]const u8) MpvError!void {
+    const ret = c.mpv_set_option_string(self.handle, key, value);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
