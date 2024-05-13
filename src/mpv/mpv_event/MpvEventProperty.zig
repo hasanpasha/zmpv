@@ -20,7 +20,7 @@ pub fn from(data_ptr: ?*anyopaque, allocator: std.mem.Allocator) !Self {
     return Self{
         .name = std.mem.span(data.name),
         .format = format,
-        .data = try MpvPropertyData.extract_value(format, data.data, allocator),
+        .data = try MpvPropertyData.from(format, data.data, allocator),
     };
 }
 
@@ -36,17 +36,16 @@ pub const MpvPropertyData = union(MpvFormat) {
     NodeMap: MpvNodehashMap,
     ByteArray: []const u8,
 
-    fn extract_value(format: MpvFormat, data: ?*anyopaque, allocator: std.mem.Allocator) !MpvPropertyData {
+    pub fn from(format: MpvFormat, data: ?*anyopaque, allocator: std.mem.Allocator) !MpvPropertyData {
         return switch (format) {
             .None => MpvPropertyData{ .None = {} },
-            .String => value: {
+            .String, .OSDString => value: {
                 const string: [*c]const u8 = @ptrCast(data);
                 const zig_string = std.mem.span(string);
                 break :value MpvPropertyData{
                     .String = zig_string,
                 };
             },
-            .OSDString => MpvPropertyData{ .None = {} },
             .Flag => value: {
                 const ret_value_ptr: *c_int = @ptrCast(@alignCast(data));
                 const ret_value = ret_value_ptr.*;
