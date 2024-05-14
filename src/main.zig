@@ -21,8 +21,13 @@ pub fn main() !void {
 
     const mpv = try Mpv.new(allocator);
 
-    try mpv.set_option_string("input-default-bindings", "yes");
-    try mpv.set_option_string("input-vo-keyboard", "yes");
+    try mpv.set_option("osc", .Flag, .{ .Flag = true });
+    try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
+    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+
+    // try mpv.set_option_string("input-default-bindings", "yes");
+    // try mpv.set_option_string("input-vo-keyboard", "yes");
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -48,13 +53,15 @@ pub fn main() !void {
             .Shutdown => break,
             .PlaybackRestart => {
                 const filename = try mpv.get_property("filename", .Node);
-                std.debug.print("\n[filename]: {s}\n", .{filename.Node.String});
+                std.log.debug("[filename]: {s}", .{filename.Node.String});
             },
             .PropertyChange => {
                 // const property_change = event.data.?.PropertyChange;
                 // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
                 const playlist = try mpv.get_property("playlist", .Node);
                 std.log.debug("[playlist]: {any}", .{playlist.Node});
+                // const title_osd = try mpv.get_property("title", .String);
+                // std.log.debug("[title_osd] {}\n", .{title_osd});
             },
             // .LogMessage => {
             //     const log = event.data.?.LogMessage;

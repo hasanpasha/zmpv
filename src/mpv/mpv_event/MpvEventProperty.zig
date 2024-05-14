@@ -79,4 +79,23 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
         };
     }
+
+    pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) !*anyopaque {
+        return switch (self) {
+            .Flag => |flag| ptr: {
+                const value: c_int = if (flag) 1 else 0;
+                const cflag_ptr = try allocator.alloc(c_int, 1);
+                cflag_ptr[0] = value;
+                break :ptr @ptrCast(cflag_ptr);
+            },
+            .String, .OSDString => |str| ptr: {
+                var cstr_ptr = try allocator.alloc([*c]u8, 1);
+                cstr_ptr[0] = try allocator.dupeZ(u8, str);
+                break :ptr @ptrCast(cstr_ptr);
+            },
+            else => {
+                @panic("Unsupported MpvFormat enum. only supported are { .Flag, .String, .OSDString }");
+            },
+        };
+    }
 };
