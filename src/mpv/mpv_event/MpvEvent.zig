@@ -13,7 +13,7 @@ const Self = @This();
 
 event_id: MpvEventId,
 event_error: MpvError,
-data: ?MpvEventData,
+data: MpvEventData,
 
 pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self {
     const event: *c.mpv_event = @ptrCast(c_event);
