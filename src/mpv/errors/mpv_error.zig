@@ -1,6 +1,7 @@
 const c = @cImport({
     @cInclude("mpv/client.h");
 });
+const std = @import("std");
 
 pub const MpvError = error{
     Success,
@@ -28,7 +29,7 @@ pub const MpvError = error{
 
 pub fn from_mpv_c_error(errorCode: c_int) MpvError {
     return switch (errorCode) {
-        c.MPV_ERROR_SUCCESS => MpvError.Success,
+        c.MPV_ERROR_SUCCESS...std.math.maxInt(c_int) => MpvError.Success,
         c.MPV_ERROR_EVENT_QUEUE_FULL => MpvError.EventQueueFull,
         c.MPV_ERROR_NOMEM => MpvError.NoMem,
         c.MPV_ERROR_UNINITIALIZED => MpvError.Uninitialized,
