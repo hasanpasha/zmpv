@@ -120,14 +120,14 @@ pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     }
 }
 
-// TODO: mpv_free allocated memory
-// TODO: empty string on MpvFormat.String
+// TODO mpv_free allocated memory
+// TODO empty string on MpvFormat.String
 pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
     const ret = c.mpv_get_property(self.handle, name, format.to(), data_ptr);
     defer {
-        // TODO: better way to free memory
+        // TODO better way to free memory
         // IDEA: store a c data reference in the zig equivlent struct and free both together when user requests..
         // Freeing memory here
         // switch (format) {

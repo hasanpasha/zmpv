@@ -39,7 +39,7 @@ pub const MpvPropertyData = union(MpvFormat) {
     pub fn from(format: MpvFormat, data: ?*anyopaque, allocator: std.mem.Allocator) !MpvPropertyData {
         return switch (format) {
             .None => MpvPropertyData{ .None = {} },
-            // TODO: mv .OSDString to its own branch to fix Mpv.set_option error on .OSDString format.
+            // TODO mv .OSDString to its own branch to fix Mpv.set_option error on .OSDString format.
             .String, .OSDString => value: {
                 const string: [*c]const u8 = @ptrCast(data);
                 const zig_string = std.mem.span(string);
