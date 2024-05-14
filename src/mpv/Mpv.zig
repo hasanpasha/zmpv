@@ -120,6 +120,18 @@ pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     }
 }
 
+pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void {
+    const c_args = try utils.create_cstring_array(args, self.allocator);
+    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+
+    const ret = c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 // TODO mpv_free allocated memory
 // TODO empty string on MpvFormat.String
 pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat) !MpvPropertyData {

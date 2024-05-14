@@ -30,7 +30,10 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.loadfile("sample.mp4", .{});
+    // try mpv.loadfile("sample.mp4", .{});
+
+    var args = [_][]const u8{ "loadfile", "sample.mp4" };
+    try mpv.command_async(0, &args);
 
     try mpv.request_log_messages(.None);
 
@@ -50,18 +53,21 @@ pub fn main() !void {
         const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
-            .PlaybackRestart => {
-                const filename = try mpv.get_property("filename", .Node);
-                std.log.debug("[filename]: {s}", .{filename.Node.String});
-            },
-            .PropertyChange => {
-                // const property_change = event.data.?.PropertyChange;
-                // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
-                const playlist = try mpv.get_property("playlist", .Node);
-                std.log.debug("[playlist]: {any}", .{playlist.Node});
-                // const title_osd = try mpv.get_property("title", .String);
-                // std.log.debug("[title_osd] {}\n", .{title_osd});
-            },
+            // .CommandReply => {
+            //     std.log.debug("[event] {}", .{event});
+            // },
+            // .PlaybackRestart => {
+            //     const filename = try mpv.get_property("filename", .Node);
+            //     std.log.debug("[filename]: {s}", .{filename.Node.String});
+            // },
+            // .PropertyChange => {
+            // const property_change = event.data.?.PropertyChange;
+            // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
+            //     const playlist = try mpv.get_property("playlist", .Node);
+            //     std.log.debug("[playlist]: {any}", .{playlist.Node});
+            //     // const title_osd = try mpv.get_property("title", .String);
+            //     // std.log.debug("[title_osd] {}\n", .{title_osd});
+            // },
             // .LogMessage => {
             //     const log = event.data.?.LogMessage;
             //     std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
