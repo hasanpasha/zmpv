@@ -34,6 +34,10 @@ pub fn main() !void {
 
     try mpv.loadfile("sample.mp4", .{});
 
+    var args = [_][]const u8{ "cycle", "fullscreen" };
+    const result = try mpv.command_ret(&args);
+    std.log.debug("[cycle command result] {}", .{result});
+
     // var args = [_][]const u8{ "cycle", "pause" };
     // try mpv.command_async(0, &args);
 

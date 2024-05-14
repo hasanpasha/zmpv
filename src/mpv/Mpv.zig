@@ -9,6 +9,7 @@ const c = @import("./c.zig");
 const MpvEvent = mpv_event.MpvEvent;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event/MpvEventLogMessage.zig").MpvLogLevel;
+const MpvNode = @import("./mpv_node.zig").MpvNode;
 
 const MpvError = mpv_error.MpvError;
 const GenericError = generic_error.GenericError;
@@ -117,6 +118,22 @@ pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
     if (err != MpvError.Success) {
         return err;
     }
+}
+
+pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
+    const c_args = try utils.create_cstring_array(args, self.allocator);
+    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+
+    var output: c.mpv_node = undefined;
+
+    const ret = c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+
+    return try MpvNode.from(output, self.allocator);
 }
 
 pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void {
