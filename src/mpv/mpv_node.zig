@@ -53,7 +53,11 @@ pub const MpvNode = union(enum) {
 
     pub fn from_byte_array(bytes: c.struct_mpv_byte_array, allocator: std.mem.Allocator) std.mem.Allocator.Error![]const u8 {
         const casted_bytes_data: [*c]const u8 = @ptrCast(bytes.data);
-        const zig_bytes = try allocator.dupe(u8, std.mem.span(casted_bytes_data));
+        const zig_bytes = try allocator.alloc(u8, bytes.size + 1);
+        for (0..bytes.size) |index| {
+            zig_bytes[index] = casted_bytes_data[index];
+        }
+        zig_bytes[bytes.size] = 0;
         return zig_bytes;
     }
 
