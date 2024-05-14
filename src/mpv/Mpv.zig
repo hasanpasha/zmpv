@@ -46,7 +46,6 @@ pub fn initialize(self: Self) MpvError!void {
 // TODO: Fix option `title` error on OSDString format
 pub fn set_option(self: Self, key: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
     const data_ptr = try value.to_c(self.allocator);
-    std.log.debug("[c_data]: format:{}", .{format});
 
     const ret = c.mpv_set_option(self.handle, key, format.to(), data_ptr);
     const err = mpv_error.from_mpv_c_error(ret);
