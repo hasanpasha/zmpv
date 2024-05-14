@@ -8,4 +8,4 @@ jobs:
       - name: "TODO to Issue"
         uses: "alstr/todo-to-issue-action@v4"
         with:
-          LANGUAGES: "./lang.json"
+          LANGUAGES: "lang.json"
