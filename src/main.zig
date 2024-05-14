@@ -8,7 +8,6 @@ const c = @cImport({
 });
 
 pub fn main() !void {
-    //_ = c.mpv_set_option(ctx, "osc", c.MPV_FORMAT_FLAG, &val);
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {
         const deinit_status = gpa.deinit();
@@ -44,8 +43,8 @@ pub fn main() !void {
 
     // const fullscreen_status = try mpv.get_property_string("fullscreen");
     // std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
-    const fullscreen_status = try mpv.get_property("fullscreen", .Node);
-    std.log.debug("[fullscreen]: {}", .{fullscreen_status.Node});
+    // const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
 
     while (true) {
         const event = try mpv.wait_event(10000);
