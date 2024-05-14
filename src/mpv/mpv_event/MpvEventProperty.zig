@@ -108,9 +108,7 @@ pub const MpvPropertyData = union(MpvFormat) {
                 const cnode_ptr = try MpvNode.to_c(node, allocator);
                 break :ptr @ptrCast(cnode_ptr);
             },
-            else => {
-                @panic("Unimplemented");
-            },
+            else => @panic("MpvFormat not supported."),
         };
     }
 };
