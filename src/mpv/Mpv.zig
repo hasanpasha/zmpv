@@ -148,6 +148,10 @@ pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void 
     }
 }
 
+pub fn abort_async_command(self: Self, reply_userdata: u64) void {
+    c.mpv_abort_async_command(self.handle, reply_userdata);
+}
+
 // TODO mpv_free allocated memory
 // TODO empty string on MpvFormat.String
 pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat) !MpvPropertyData {
