@@ -1,0 +1,14 @@
+[
+  {
+    "language": "Zig",
+    "extensions": [
+      ".zig"
+    ],
+    "markers": [
+      {
+        "type": "line",
+        "pattern": "//"
+      }
+    ]
+  }
+]
