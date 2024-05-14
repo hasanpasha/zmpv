@@ -173,6 +173,18 @@ pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {
     return string;
 }
 
+pub fn set_property(self: Self, name: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
+    const data_ptr = try value.to_c(self.allocator);
+    std.log.debug("[c_data]: format:{}", .{format});
+
+    const ret = c.mpv_set_property(self.handle, name, format.to(), data_ptr);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn set_property_string(self: Self, name: [*:0]const u8, value: [*:0]const u8) MpvError!void {
     const ret = c.mpv_set_property_string(self.handle, name, value);
     const err = mpv_error.from_mpv_c_error(ret);

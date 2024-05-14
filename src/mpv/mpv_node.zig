@@ -56,4 +56,19 @@ pub const MpvNode = union(enum) {
         const zig_bytes = try allocator.dupe(u8, std.mem.span(casted_bytes_data));
         return zig_bytes;
     }
+
+    pub fn to_c(self: MpvNode, allocator: std.mem.Allocator) !*anyopaque {
+        const node_ptr = try allocator.create(c.mpv_node);
+        switch (self) {
+            .None => {
+                node_ptr.format = @intFromEnum(MpvFormat.None);
+            },
+            .Flag => |flag| {
+                node_ptr.format = @intFromEnum(MpvFormat.Flag);
+                node_ptr.u.flag = if (flag) 1 else 0;
+            },
+            else => @panic("I don't know"),
+        }
+        return @ptrCast(node_ptr);
+    }
 };

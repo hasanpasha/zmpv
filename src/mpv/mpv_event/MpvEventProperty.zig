@@ -83,19 +83,33 @@ pub const MpvPropertyData = union(MpvFormat) {
 
     pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) !*anyopaque {
         return switch (self) {
+            .String, .OSDString => |str| ptr: {
+                var cstr_ptr = try allocator.alloc([*c]u8, 1);
+                cstr_ptr[0] = try allocator.dupeZ(u8, str);
+                break :ptr @ptrCast(cstr_ptr);
+            },
             .Flag => |flag| ptr: {
                 const value: c_int = if (flag) 1 else 0;
                 const cflag_ptr = try allocator.alloc(c_int, 1);
                 cflag_ptr[0] = value;
                 break :ptr @ptrCast(cflag_ptr);
             },
-            .String, .OSDString => |str| ptr: {
-                var cstr_ptr = try allocator.alloc([*c]u8, 1);
-                cstr_ptr[0] = try allocator.dupeZ(u8, str);
-                break :ptr @ptrCast(cstr_ptr);
+            .INT64 => |num| ptr: {
+                const cint_ptr = try allocator.alloc(i64, 1);
+                cint_ptr[0] = num;
+                break :ptr @ptrCast(cint_ptr);
+            },
+            .Double => |num| ptr: {
+                const cdouble_ptr = try allocator.alloc(f64, 1);
+                cdouble_ptr[0] = num;
+                break :ptr @ptrCast(cdouble_ptr);
+            },
+            .Node => |node| ptr: {
+                const cnode_ptr = try MpvNode.to_c(node, allocator);
+                break :ptr @ptrCast(cnode_ptr);
             },
             else => {
-                @panic("Unsupported MpvFormat enum. only supported are { .Flag, .String, .OSDString }");
+                @panic("Unimplemented");
             },
         };
     }
