@@ -84,24 +84,24 @@ pub const MpvPropertyData = union(MpvFormat) {
     pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) !*anyopaque {
         return switch (self) {
             .String, .OSDString => |str| ptr: {
-                var cstr_ptr = try allocator.alloc([*c]u8, 1);
-                cstr_ptr[0] = try allocator.dupeZ(u8, str);
+                const cstr_ptr = try allocator.create([*c]u8);
+                cstr_ptr.* = try allocator.dupeZ(u8, str);
                 break :ptr @ptrCast(cstr_ptr);
             },
             .Flag => |flag| ptr: {
                 const value: c_int = if (flag) 1 else 0;
-                const cflag_ptr = try allocator.alloc(c_int, 1);
-                cflag_ptr[0] = value;
+                const cflag_ptr = try allocator.create(c_int);
+                cflag_ptr.* = value;
                 break :ptr @ptrCast(cflag_ptr);
             },
             .INT64 => |num| ptr: {
-                const cint_ptr = try allocator.alloc(i64, 1);
-                cint_ptr[0] = num;
+                const cint_ptr = try allocator.create(i64);
+                cint_ptr.* = num;
                 break :ptr @ptrCast(cint_ptr);
             },
             .Double => |num| ptr: {
-                const cdouble_ptr = try allocator.alloc(f64, 1);
-                cdouble_ptr[0] = num;
+                const cdouble_ptr = try allocator.create(f64);
+                cdouble_ptr.* = num;
                 break :ptr @ptrCast(cdouble_ptr);
             },
             .Node => |node| ptr: {
