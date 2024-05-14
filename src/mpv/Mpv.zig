@@ -200,6 +200,24 @@ pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
     }
 }
 
+pub fn hook_add(self: Self, reply_userdata: u64, name: [:0]const u8, priority: i64) MpvError!void {
+    const ret = c.mpv_hook_add(self.handle, reply_userdata, name, @intCast(priority));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
+pub fn hook_continue(self: Self, id: u64) MpvError!void {
+    const ret = c.mpv_hook_continue(self.handle, id);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 

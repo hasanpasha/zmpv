@@ -30,9 +30,11 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    // try mpv.loadfile("sample.mp4", .{});
+    try mpv.hook_add(0, "on_load", 0);
 
-    var args = [_][]const u8{ "loadfile", "sample.mp4" };
+    try mpv.loadfile("sample.mp4", .{});
+
+    var args = [_][]const u8{ "cycle", "pause" };
     try mpv.command_async(0, &args);
 
     try mpv.request_log_messages(.None);
@@ -53,9 +55,21 @@ pub fn main() !void {
         const event = try mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
-            // .CommandReply => {
-            //     std.log.debug("[event] {}", .{event});
-            // },
+            .CommandReply => {
+                std.log.debug("[event] {}", .{event.data.CommandReply.result});
+            },
+            .Hook => {
+                std.log.debug("[event] hook {}", .{event.data});
+
+                std.log.debug("HANDLING {s} hook", .{event.data.Hook.name});
+
+                for (0..10) |i| {
+                    std.log.debug("DOING WORK {}", .{i});
+                }
+
+                std.log.debug("CONTINUING", .{});
+                try mpv.hook_continue(event.data.Hook.id);
+            },
             // .PlaybackRestart => {
             //     const filename = try mpv.get_property("filename", .Node);
             //     std.log.debug("[filename]: {s}", .{filename.Node.String});
