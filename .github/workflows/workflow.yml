@@ -15,9 +15,7 @@ jobs:
     steps:
       - uses: "actions/checkout@v3"
       - name: "TODO to Issue"
-        uses: "alstr/todo-to-issue-action@master"
-        with:
-          LANGUAGES: "https://raw.githubusercontent.com/hasanpasha/zmpv/main/.github/workflows/lang.json"
+        uses: "hasanpasha/todo-to-issue-action@master"
         env:
           MANUAL_COMMIT_REF: ${{ inputs.MANUAL_COMMIT_REF }}
           MANUAL_BASE_REF: ${{ inputs.MANUAL_BASE_REF }}
