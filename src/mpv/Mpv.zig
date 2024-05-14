@@ -191,6 +191,15 @@ pub fn observe_property(self: Self, reply_userdata: u64, name: [*:0]const u8, fo
     }
 }
 
+pub fn unobserve_property(self: Self, registered_reply_userdata: u64) MpvError!void {
+    const ret = c.mpv_unobserve_property(self.handle, registered_reply_userdata);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
     const ret = c.mpv_request_log_messages(self.handle, level.to_c_string());
     const err = mpv_error.from_mpv_c_error(ret);

@@ -39,10 +39,11 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.None);
 
-    try mpv.observe_property(0, "fullscreen", .Flag);
+    try mpv.observe_property(11, "fullscreen", .Flag);
+    try mpv.unobserve_property(11);
     // try mpv.observe_property(0, "time-pos", .Node);
     // try mpv.observe_property(0, "screenshot-raw", .ByteArray);
-    try mpv.observe_property(0, "playlist", .Node);
+    // try mpv.observe_property(0, "playlist", .Node);
 
     try mpv.set_property_string("fullscreen", "yes");
 
@@ -74,18 +75,19 @@ pub fn main() !void {
             //     const filename = try mpv.get_property("filename", .Node);
             //     std.log.debug("[filename]: {s}", .{filename.Node.String});
             // },
-            // .PropertyChange => {
-            // const property_change = event.data.?.PropertyChange;
-            // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
-            //     const playlist = try mpv.get_property("playlist", .Node);
-            //     std.log.debug("[playlist]: {any}", .{playlist.Node});
-            //     // const title_osd = try mpv.get_property("title", .String);
-            //     // std.log.debug("[title_osd] {}\n", .{title_osd});
-            // },
-            // .LogMessage => {
-            //     const log = event.data.?.LogMessage;
-            //     std.debug.print("[log] {s} \"{s}\"\n", .{ log.level, log.text });
-            // },
+            .PropertyChange => {
+                const property_change = event.data.PropertyChange;
+                std.log.debug("[property_change] name={s} value={any}", .{ property_change.name, property_change.data });
+                // std.debug.print("[propertyChange] name={s}, {?}\n", .{ property_change.name, property_change.data });
+                //     const playlist = try mpv.get_property("playlist", .Node);
+                //     std.log.debug("[playlist]: {any}", .{playlist.Node});
+                //     // const title_osd = try mpv.get_property("title", .String);
+                //     // std.log.debug("[title_osd] {}\n", .{title_osd});
+            },
+            .LogMessage => {
+                const log = event.data.LogMessage;
+                std.log.debug("[log] {s} \"{s}\"", .{ log.level, log.text });
+            },
             // .EndFile => {
             //     const endfile = event.data.?.EndFile;
             //     std.debug.print("[endfile] {any}\n", .{endfile});
