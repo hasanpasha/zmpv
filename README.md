@@ -25,3 +25,33 @@ Work in progress.
   exe.root_module.addImport("zmpv", zmpv_dep.module("zmpv"));
   exe.linkLibrary(zmpv_dep.artifact("zmpv_lib"));
   ```
+
+## Example
+```zig
+const std = @import("std");
+const zmpv = @import("zmpv");
+
+pub fn main() !void {
+    const mpv = try zmpv.Mpv.new(std.heap.page_allocator);
+
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    try mpv.loadfile("sample.mp4", .{});
+
+    try mpv.request_log_messages(.V);
+
+    while (true) {
+        const event = try mpv.wait_event(10000);
+        const event_id = event.event_id;
+        switch (event_id) {
+            .Shutdown => break,
+            .LogMessage => {
+                const log = event.data.LogMessage;
+                std.log.debug("[{s}] \"{s}\"", .{ log.prefix, log.text });
+            },
+            else => {},
+        }
+    }
+}
+```
