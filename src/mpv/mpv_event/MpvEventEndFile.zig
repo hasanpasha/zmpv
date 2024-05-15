@@ -11,7 +11,7 @@ playlist_insert_id: i64,
 playlist_insert_num_entries: i64,
 event_error: MpvError,
 
-pub fn from(data_ptr: ?*anyopaque) Self {
+pub fn from(data_ptr: *anyopaque) Self {
     const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_end_file);
     return Self{
         .reason = @enumFromInt(data.reason),

@@ -7,7 +7,7 @@ const Self = @This();
 name: []const u8,
 id: u64,
 
-pub fn from(data_ptr: ?*anyopaque) Self {
+pub fn from(data_ptr: *anyopaque) Self {
     const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_hook);
 
     return Self{

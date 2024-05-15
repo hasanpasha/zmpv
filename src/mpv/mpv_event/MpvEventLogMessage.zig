@@ -9,7 +9,7 @@ level: []const u8,
 text: []const u8,
 log_level: MpvLogLevel,
 
-pub fn from(data_ptr: ?*anyopaque) Self {
+pub fn from(data_ptr: *anyopaque) Self {
     const log = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_log_message);
     return Self{
         .prefix = std.mem.span(log.prefix),
