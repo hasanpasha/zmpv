@@ -1,8 +1,7 @@
 const std = @import("std");
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-
-pub const MpvNodehashMap = std.StringHashMap(MpvNode);
+const MpvNodeHashMap = @import("./types.zig").MpvNodehashMap;
 
 pub const MpvNode = union(enum) {
     None: void,
@@ -11,7 +10,7 @@ pub const MpvNode = union(enum) {
     INT64: i64,
     Double: f64,
     NodeArray: []MpvNode,
-    NodeMap: MpvNodehashMap,
+    NodeMap: MpvNodeHashMap,
     ByteArray: []const u8,
 
     const Self = @This();
@@ -40,9 +39,9 @@ pub const MpvNode = union(enum) {
         return node_list;
     }
 
-    pub fn from_node_map(map: c.struct_mpv_node_list, allocator: std.mem.Allocator) std.mem.Allocator.Error!MpvNodehashMap {
+    pub fn from_node_map(map: c.struct_mpv_node_list, allocator: std.mem.Allocator) std.mem.Allocator.Error!MpvNodeHashMap {
         const hash_map_len: usize = @intCast(map.num);
-        var hash_map = MpvNodehashMap.init(allocator);
+        var hash_map = MpvNodeHashMap.init(allocator);
         for (0..hash_map_len) |index| {
             const key = std.mem.span(map.keys[index]);
             const value = try MpvNode.from(map.values[index], allocator);

@@ -3,7 +3,7 @@ const mpv_error = @import("./errors/mpv_error.zig");
 const generic_error = @import("./errors/generic_error.zig");
 const mpv_event = @import("./mpv_event.zig");
 const utils = @import("./utils.zig");
-const MpvPropertyData = @import("./mpv_event/MpvEventProperty.zig").MpvPropertyData;
+const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
 const c = @import("./c.zig");
 
 const MpvEvent = mpv_event.MpvEvent;
