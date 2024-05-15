@@ -55,8 +55,9 @@ pub fn main() !void {
 
     // const fullscreen_status = try mpv.get_property_string("fullscreen");
     // std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
-    // const fullscreen_status = try mpv.get_property("fullscreen", .String);
-    // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
+    const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    defer mpv.free_property_data(fullscreen_status);
+    std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
 
     var time_pos_not_changed = true;
     while (true) {
@@ -117,7 +118,6 @@ pub fn main() !void {
                                 std.log.debug("[screenshot] w={}", .{data.NodeMap.get("w").?.data.INT64});
                                 std.log.debug("[screenshot] h={}", .{data.NodeMap.get("h").?.data.INT64});
                                 std.log.debug("[screenshot] stride={}", .{data.NodeMap.get("stride").?.data.INT64});
-
                                 // var stop_cmd = [_][]const u8{"quit"};
                                 // try mpv.command(&stop_cmd);
                             }

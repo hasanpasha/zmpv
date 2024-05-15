@@ -271,6 +271,10 @@ pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
 }
 
+pub fn free_property_data(self: Self, data: MpvPropertyData) void {
+    data.free(self.allocator);
+}
+
 fn free(data: ?*anyopaque) void {
     c.mpv_free(data);
 }
