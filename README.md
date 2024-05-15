@@ -7,10 +7,10 @@ Work in progress.
     - [ ] `mpv/render.h`
     - [ ] `mpv/render_gl.h`
     - [ ] `mpv/stream_cb.h`
-- [ ] Fix memory leaks.
+- [x] Fix memory leaks.
 - [ ] write more tests.
 - [ ] Add another structs that contains helper functions.
-- [ ] Add Examples.
+- [x] Add Examples.
 - [x] Export as a library.
 - [x] Add usage guide.
 
