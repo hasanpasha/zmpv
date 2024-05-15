@@ -277,6 +277,10 @@ pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
     return try MpvEvent.from(event, self.allocator);
 }
 
+pub fn wakeup(self: Self) void {
+    c.mpv_wakeup(self.handle);
+}
+
 pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
 }
