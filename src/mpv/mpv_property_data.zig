@@ -1,7 +1,7 @@
 const std = @import("std");
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvNode = @import("./mpv_node.zig").MpvNode;
+const MpvNode = @import("./MpvNode.zig");
 const MpvNodeHashMap = @import("./types.zig").MpvNodehashMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
@@ -12,7 +12,7 @@ pub const MpvPropertyData = union(MpvFormat) {
     INT64: i64,
     Double: f64,
     Node: MpvNode,
-    NodeArray: []const MpvNode,
+    NodeArray: []MpvNode,
     NodeMap: MpvNodeHashMap,
     ByteArray: []const u8,
 
@@ -44,7 +44,7 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
             .Node => value: {
                 const node_ptr: *c.mpv_node = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .Node = try MpvNode.from(node_ptr.*, allocator) };
+                break :value MpvPropertyData{ .Node = try MpvNode.from(node_ptr, allocator) };
             },
             .NodeArray => value: {
                 const list_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
@@ -90,5 +90,30 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
             else => @panic("MpvFormat not supported."),
         };
+    }
+
+    pub fn free(self: MpvPropertyData, allocator: std.mem.Allocator) void {
+        switch (self) {
+            .Node => |node| {
+                node.free();
+            },
+            .NodeArray => |array| {
+                for (array) |node| {
+                    node.free();
+                }
+            },
+            .NodeMap => |map| {
+                var iter = map.keyIterator();
+                while (iter.next()) |key| {
+                    map.get(key.*).?.free();
+                }
+                var m: *MpvNodeHashMap = @constCast(&map);
+                m.deinit();
+            },
+            .ByteArray => |bytes| {
+                allocator.free(bytes);
+            },
+            else => {},
+        }
     }
 };

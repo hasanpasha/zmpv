@@ -16,6 +16,7 @@ const Self = @This();
 event_id: MpvEventId,
 event_error: MpvError,
 data: MpvEventData,
+allocator: std.mem.Allocator,
 
 pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self {
     const event: *c.mpv_event = @ptrCast(c_event);
@@ -27,29 +28,34 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
         .event_error = mpv_error.from_mpv_c_error(event.@"error"),
         .data = switch (event_id) {
             .EndFile => MpvEventData{
-                .EndFile = MpvEventEndFile.from(event.data),
+                .EndFile = MpvEventEndFile.from(event.data.?),
             },
             .StartFile => MpvEventData{
-                .StartFile = MpvEventStartFile.from(event.data),
+                .StartFile = MpvEventStartFile.from(event.data.?),
             },
             .PropertyChange => MpvEventData{
-                .PropertyChange = try MpvEventProperty.from(event.data, allocator),
+                .PropertyChange = try MpvEventProperty.from(event.data.?, allocator),
             },
             .LogMessage => MpvEventData{
-                .LogMessage = MpvEventLogMessage.from(event.data),
+                .LogMessage = MpvEventLogMessage.from(event.data.?),
             },
             .ClientMessage => MpvEventData{
-                .ClientMessage = try MpvEventClientMessage.from(event.data, allocator),
+                .ClientMessage = try MpvEventClientMessage.from(event.data.?, allocator),
             },
             .CommandReply => MpvEventData{
-                .CommandReply = try MpvEventCommand.from(event.data, allocator),
+                .CommandReply = try MpvEventCommand.from(event.data.?, allocator),
             },
             .Hook => MpvEventData{
-                .Hook = MpvEventHook.from(event.data),
+                .Hook = MpvEventHook.from(event.data.?),
             },
             else => MpvEventData{ .None = {} },
         },
+        .allocator = allocator,
     };
+}
+
+pub fn free(self: Self) void {
+    self.data.free();
 }
 
 pub const MpvEventData = union(enum) {
@@ -62,4 +68,19 @@ pub const MpvEventData = union(enum) {
     ClientMessage: MpvEventClientMessage,
     PropertyChange: MpvEventProperty,
     Hook: MpvEventHook,
+
+    pub fn free(self: MpvEventData) void {
+        switch (self) {
+            .GetPropertyReply, .PropertyChange => |property| {
+                property.free();
+            },
+            .CommandReply => |reply| {
+                reply.free();
+            },
+            .ClientMessage => |message| {
+                message.free();
+            },
+            else => {},
+        }
+    }
 };

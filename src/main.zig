@@ -2,6 +2,7 @@ const std = @import("std");
 //const glfw = @import("mach-glfw");
 const Mpv = @import("./mpv/Mpv.zig");
 const MpvFormat = @import("./mpv/mpv_format.zig").MpvFormat;
+const MpvNode = @import("./mpv/MpvNode.zig");
 
 const c = @cImport({
     @cInclude("mpv/client.h");
@@ -13,10 +14,7 @@ pub fn main() !void {
         const deinit_status = gpa.deinit();
         if (deinit_status == .leak) @panic("detected leakage");
     }
-
-    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    const allocator = gpa.allocator();
 
     const mpv = try Mpv.new(allocator);
 
@@ -43,7 +41,7 @@ pub fn main() !void {
     // try mpv.command_async(6969, &load_args);
     // mpv.abort_async_command(6969);
 
-    try mpv.request_log_messages(.None);
+    try mpv.request_log_messages(.V);
 
     try mpv.observe_property(11, "fullscreen", .Flag);
     try mpv.unobserve_property(11);
@@ -53,7 +51,7 @@ pub fn main() !void {
 
     // try mpv.set_property_string("fullscreen", "yes");
 
-    try mpv.set_property("fullscreen", .Node, .{ .Node = .{ .Flag = true } });
+    try mpv.set_property("fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
 
     // const fullscreen_status = try mpv.get_property_string("fullscreen");
     // std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
@@ -63,6 +61,8 @@ pub fn main() !void {
     var time_pos_not_changed = true;
     while (true) {
         const event = try mpv.wait_event(10000);
+        defer event.free();
+
         switch (event.event_id) {
             .Shutdown => break,
             .CommandReply => {
@@ -84,10 +84,14 @@ pub fn main() !void {
                 std.log.debug("CONTINUING", .{});
                 try mpv.hook_continue(event.data.Hook.id);
             },
-            // .PlaybackRestart => {
-            //     // const filename = try mpv.get_property("filename", .Node);
-            //     // std.log.debug("[filename]: {s}", .{filename.Node.String});
-            // },
+            .ClientMessage => {
+                const message = event.data.ClientMessage;
+                std.log.debug("[MESSAGE] {s}", .{message.args});
+            },
+            .PlaybackRestart => {
+                const filename = try mpv.get_property("filename", .Node);
+                std.log.debug("[filename]: {s}", .{filename.Node.data.String});
+            },
             .PropertyChange => {
                 const property_change = event.data.PropertyChange;
                 //     std.log.debug("[property_change] name={s} value={any}", .{ property_change.name, property_change.data });
@@ -105,12 +109,15 @@ pub fn main() !void {
                                 time_pos_not_changed = false;
                                 // try mpv.set_property("time-pos", .Double, .{ .Double = num * 2 });
                                 var args = [_][]const u8{"screenshot-raw"};
-                                const data = try mpv.command_ret(&args);
+                                const node_data = try mpv.command_ret(&args);
+                                defer node_data.free();
                                 // std.log.debug("[screenshot] {?}", .{data.NodeMap.get("data")});
-                                std.log.debug("[screenshot] format={s}", .{data.NodeMap.get("format").?.String});
-                                std.log.debug("[screenshot] w={}", .{data.NodeMap.get("w").?.INT64});
-                                std.log.debug("[screenshot] h={}", .{data.NodeMap.get("h").?.INT64});
-                                std.log.debug("[screenshot] stride={}", .{data.NodeMap.get("stride").?.INT64});
+                                const data = node_data.data;
+                                std.log.debug("[screenshot] format={s}", .{data.NodeMap.get("format").?.data.String});
+                                std.log.debug("[screenshot] w={}", .{data.NodeMap.get("w").?.data.INT64});
+                                std.log.debug("[screenshot] h={}", .{data.NodeMap.get("h").?.data.INT64});
+                                std.log.debug("[screenshot] stride={}", .{data.NodeMap.get("stride").?.data.INT64});
+
                                 // var stop_cmd = [_][]const u8{"quit"};
                                 // try mpv.command(&stop_cmd);
                             }

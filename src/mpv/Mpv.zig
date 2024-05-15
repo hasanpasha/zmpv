@@ -9,7 +9,7 @@ const c = @import("./c.zig");
 const MpvEvent = mpv_event.MpvEvent;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event/MpvEventLogMessage.zig").MpvLogLevel;
-const MpvNode = @import("./mpv_node.zig").MpvNode;
+const MpvNode = @import("./MpvNode.zig");
 
 const MpvError = mpv_error.MpvError;
 const GenericError = generic_error.GenericError;
@@ -17,7 +17,6 @@ const GenericError = generic_error.GenericError;
 const Self = @This();
 
 handle: *c.mpv_handle,
-// arena: std.heap.ArenaAllocator,
 allocator: std.mem.Allocator,
 
 pub fn new(allocator: std.mem.Allocator) GenericError!Self {
@@ -26,11 +25,8 @@ pub fn new(allocator: std.mem.Allocator) GenericError!Self {
         return GenericError.NullValue;
     }
 
-    // var arena = std.heap.ArenaAllocator.init(allocator);
-
     return Self{
         .handle = handle.?,
-        // .arena = arena,
         .allocator = allocator,
     };
 }
@@ -46,7 +42,10 @@ pub fn initialize(self: Self) MpvError!void {
 
 // TODO: Fix option `title` error on OSDString format
 pub fn set_option(self: Self, key: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
-    const data_ptr = try value.to_c(self.allocator);
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const this_allocator = arena.allocator();
+    const data_ptr = try value.to_c(this_allocator);
 
     const ret = c.mpv_set_option(self.handle, key, format.to(), data_ptr);
     const err = mpv_error.from_mpv_c_error(ret);
@@ -106,6 +105,7 @@ pub fn loadfile(self: Self, filename: []const u8, args: struct {
 }) !void {
     const flag_str = args.flag.to_string();
     const index_str = try std.fmt.allocPrint(self.allocator, "{}", .{args.index});
+    defer self.allocator.free(index_str);
     var cmd_args = [_][]const u8{ "loadfile", filename, flag_str, index_str, args.options };
 
     return self.command(&cmd_args);
@@ -133,7 +133,7 @@ pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
         return err;
     }
 
-    return try MpvNode.from(output, self.allocator);
+    return try MpvNode.from(@ptrCast(&output), self.allocator);
 }
 
 pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void {
@@ -194,8 +194,10 @@ pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {
 }
 
 pub fn set_property(self: Self, name: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
-    const data_ptr = try value.to_c(self.allocator);
-    std.log.debug("[c_data]: format:{}", .{format});
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const this_allocator = arena.allocator();
+    const data_ptr = try value.to_c(this_allocator);
 
     const ret = c.mpv_set_property(self.handle, name, format.to(), data_ptr);
     const err = mpv_error.from_mpv_c_error(ret);
