@@ -32,6 +32,11 @@ pub fn build(b: *std.Build) void {
     // running `zig build`).
     b.installArtifact(lib);
 
+    const module = b.addModule("zmpv", .{
+        .root_source_file = .{ .path = "src/root.zig" },
+    });
+    _ = module;
+
     const exe = b.addExecutable(.{
         .name = "zmpv",
         .root_source_file = .{ .path = "src/main.zig" },
