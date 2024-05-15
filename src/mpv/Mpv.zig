@@ -42,13 +42,13 @@ pub fn initialize(self: Self) MpvError!void {
 }
 
 // TODO: Fix option `title` error on OSDString format
-pub fn set_option(self: Self, key: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
+pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const this_allocator = arena.allocator();
     const data_ptr = try value.to_c(this_allocator);
 
-    const ret = c.mpv_set_option(self.handle, key, format.to(), data_ptr);
+    const ret = c.mpv_set_option(self.handle, key.ptr, format.to(), data_ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -56,8 +56,8 @@ pub fn set_option(self: Self, key: [:0]const u8, format: MpvFormat, value: MpvPr
     }
 }
 
-pub fn set_option_string(self: Self, key: [:0]const u8, value: [:0]const u8) MpvError!void {
-    const ret = c.mpv_set_option_string(self.handle, key, value);
+pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
+    const ret = c.mpv_set_option_string(self.handle, key.ptr, value.ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -112,8 +112,8 @@ pub fn loadfile(self: Self, filename: []const u8, args: struct {
     return self.command(&cmd_args);
 }
 
-pub fn command_string(self: Self, args: [*:0]const u8) MpvError!void {
-    const ret = c.mpv_command_string(self.handle, @ptrCast(args));
+pub fn command_string(self: Self, args: []const u8) MpvError!void {
+    const ret = c.mpv_command_string(self.handle, args.ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -155,10 +155,10 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
 
 // TODO mpv_free allocated memory
 // TODO empty string on MpvFormat.String
-pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat) !MpvPropertyData {
+pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
-    const ret = c.mpv_get_property(self.handle, name, format.to(), data_ptr);
+    const ret = c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr);
     defer {
         // TODO better way to free memory
         // IDEA: store a c data reference in the zig equivlent struct and free both together when user requests..
@@ -182,8 +182,8 @@ pub fn get_property(self: Self, name: [*:0]const u8, comptime format: MpvFormat)
     return try MpvPropertyData.from(format, data_ptr, self.allocator);
 }
 
-pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {
-    const returned_value = c.mpv_get_property_string(self.handle, name);
+pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
+    const returned_value = c.mpv_get_property_string(self.handle, name.ptr);
     if (returned_value == null) {
         return GenericError.NullValue;
     }
@@ -194,13 +194,13 @@ pub fn get_property_string(self: Self, name: [*:0]const u8) ![]u8 {
     return string;
 }
 
-pub fn set_property(self: Self, name: [:0]const u8, format: MpvFormat, value: MpvPropertyData) !void {
+pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const this_allocator = arena.allocator();
     const data_ptr = try value.to_c(this_allocator);
 
-    const ret = c.mpv_set_property(self.handle, name, format.to(), data_ptr);
+    const ret = c.mpv_set_property(self.handle, name.ptr, format.to(), data_ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -208,8 +208,8 @@ pub fn set_property(self: Self, name: [:0]const u8, format: MpvFormat, value: Mp
     }
 }
 
-pub fn set_property_string(self: Self, name: [*:0]const u8, value: [*:0]const u8) MpvError!void {
-    const ret = c.mpv_set_property_string(self.handle, name, value);
+pub fn set_property_string(self: Self, name: []const u8, value: []const u8) MpvError!void {
+    const ret = c.mpv_set_property_string(self.handle, name.ptr, value.ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -217,8 +217,8 @@ pub fn set_property_string(self: Self, name: [*:0]const u8, value: [*:0]const u8
     }
 }
 
-pub fn observe_property(self: Self, reply_userdata: u64, name: [*:0]const u8, format: MpvFormat) MpvError!void {
-    const ret = c.mpv_observe_property(self.handle, reply_userdata, name, format.to());
+pub fn observe_property(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
+    const ret = c.mpv_observe_property(self.handle, reply_userdata, name.ptr, format.to());
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -244,8 +244,8 @@ pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
     }
 }
 
-pub fn hook_add(self: Self, reply_userdata: u64, name: [:0]const u8, priority: i64) MpvError!void {
-    const ret = c.mpv_hook_add(self.handle, reply_userdata, name, @intCast(priority));
+pub fn hook_add(self: Self, reply_userdata: u64, name: []const u8, priority: i64) MpvError!void {
+    const ret = c.mpv_hook_add(self.handle, reply_userdata, name.ptr, @intCast(priority));
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
