@@ -236,7 +236,7 @@ pub fn unobserve_property(self: Self, registered_reply_userdata: u64) MpvError!v
 }
 
 pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
-    const ret = c.mpv_request_log_messages(self.handle, level.to_c_string());
+    const ret = c.mpv_request_log_messages(self.handle, level.to_string().ptr);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -280,6 +280,16 @@ pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
 pub fn wakeup(self: Self) void {
     c.mpv_wakeup(self.handle);
 }
+
+// pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
+//     const Callback = struct {
+//         fn cb(cb_data: ?*anyopaque) callconv(.C) void {
+//             callback_function(cb_data);
+//         }
+//     };
+
+//     c.mpv_set_wakeup_callback(self.handle, cb, data);
+// }
 
 pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);

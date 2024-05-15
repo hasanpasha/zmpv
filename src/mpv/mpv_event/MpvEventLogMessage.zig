@@ -29,7 +29,7 @@ pub const MpvLogLevel = enum(u8) {
     Debug = 60,
     Trace = 70,
 
-    pub fn to_c_string(self: MpvLogLevel) [*c]const u8 {
+    pub fn to_string(self: MpvLogLevel) []const u8 {
         return switch (self) {
             .None => "no",
             .Fatal => "fatal",
