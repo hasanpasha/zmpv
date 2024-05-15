@@ -1,3 +1,5 @@
+const c = @import("../c.zig");
+
 pub const MpvEventId = enum(u8) {
     None = 0,
     Shutdown = 1,
@@ -18,4 +20,8 @@ pub const MpvEventId = enum(u8) {
     PropertyChange = 22,
     QueueOverflow = 24,
     Hook = 25,
+
+    pub fn to_c(self: MpvEventId) c.mpv_event_id {
+        return @intCast(@intFromEnum(self));
+    }
 };

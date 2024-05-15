@@ -41,12 +41,12 @@ pub fn main() !void {
     // try mpv.command_async(6969, &load_args);
     // mpv.abort_async_command(6969);
 
-    try mpv.request_log_messages(.V);
+    try mpv.request_event(.Hook, false);
+    // try mpv.request_log_messages(.V);
 
     try mpv.observe_property(11, "fullscreen", .Flag);
     try mpv.unobserve_property(11);
-    try mpv.observe_property(0, "time-pos", .Double);
-    // try mpv.observe_property(0, "screenshot-raw", .ByteArray);
+    // try mpv.observe_property(0, "time-pos", .Double);
     // try mpv.observe_property(0, "playlist", .Node);
 
     // try mpv.set_property_string("fullscreen", "yes");

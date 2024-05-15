@@ -4,6 +4,7 @@ const generic_error = @import("./errors/generic_error.zig");
 const mpv_event = @import("./mpv_event.zig");
 const utils = @import("./utils.zig");
 const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
+const MpvEventId = @import("./mpv_event/mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
 
 const MpvEvent = mpv_event.MpvEvent;
@@ -254,6 +255,15 @@ pub fn hook_add(self: Self, reply_userdata: u64, name: [:0]const u8, priority: i
 
 pub fn hook_continue(self: Self, id: u64) MpvError!void {
     const ret = c.mpv_hook_continue(self.handle, id);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
+pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!void {
+    const ret = c.mpv_request_event(self.handle, event_id.to_c(), if (enable) 1 else 0);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
