@@ -1,10 +1,3 @@
-const std = @import("std");
-const testing = std.testing;
-
-export fn add(a: i32, b: i32) i32 {
-    return a + b;
-}
-
-test "basic add functionality" {
-    try testing.expect(add(3, 7) == 10);
-}
+pub const Mpv = @import("./mpv/Mpv.zig");
+pub const MpvPropertyData = @import("./mpv/mpv_property_data.zig").MpvPropertyData;
+pub const MpvNode = @import("./mpv/mpv_format.zig").MpvFormat;
