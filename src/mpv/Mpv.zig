@@ -20,16 +20,30 @@ const Self = @This();
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
-pub fn new(allocator: std.mem.Allocator) GenericError!Self {
-    const handle = c.mpv_create();
-    if (handle == null) {
+pub fn create(allocator: std.mem.Allocator) GenericError!Self {
+    const n_handle = c.mpv_create();
+
+    if (n_handle) |handle| {
+        return Self{
+            .handle = handle,
+            .allocator = allocator,
+        };
+    } else {
         return GenericError.NullValue;
     }
+}
 
-    return Self{
-        .handle = handle.?,
-        .allocator = allocator,
-    };
+pub fn create_client(self: Self, name: []const u8) GenericError!Self {
+    const n_client_handle = c.mpv_create_client(self.handle, name.ptr);
+
+    if (n_client_handle) |handle| {
+        return Self{
+            .handle = handle,
+            .allocator = self.allocator,
+        };
+    } else {
+        return GenericError.NullValue;
+    }
 }
 
 pub fn initialize(self: Self) MpvError!void {
