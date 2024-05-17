@@ -299,6 +299,11 @@ pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque
     c.mpv_set_wakeup_callback(self.handle, @ptrCast(callback_function), data);
 }
 
+pub fn client_name(self: Self) []const u8 {
+    const name = c.mpv_client_name(self.handle);
+    return std.mem.span(name);
+}
+
 pub fn destroy(self: Self) void {
     c.mpv_destroy(self.handle);
 }

@@ -66,6 +66,7 @@ pub fn main() !void {
     // mpv.set_wakeup_callback(&wakeup_callback, @ptrCast(&mpv));
 
     const client = try mpv.create_client("new_client");
+    std.log.debug("new client name is {s}", .{client.client_name()});
     defer client.destroy();
 
     // while (true) {}
