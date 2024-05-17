@@ -14,6 +14,10 @@ pub const MpvFormat = enum(u8) {
     NodeMap = 8,
     ByteArray = 9,
 
+    pub fn from(format: c.mpv_format) Self {
+        return @enumFromInt(format);
+    }
+
     pub fn to(self: Self) c.mpv_format {
         return @as(c.mpv_format, @intFromEnum(self));
     }

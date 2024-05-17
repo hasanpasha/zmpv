@@ -1,7 +1,7 @@
 const std = @import("std");
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvNodeHashMap = @import("./types.zig").MpvNodehashMap;
+const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 
 const Self = @This();
 
@@ -91,19 +91,72 @@ pub fn from_byte_array(bytes: c.struct_mpv_byte_array, allocator: std.mem.Alloca
     return zig_bytes;
 }
 
-pub fn to_c(self: Self, allocator: std.mem.Allocator) !*anyopaque {
+pub fn to_c(self: Self, allocator: std.mem.Allocator) !*c.mpv_node {
     const node_ptr = try allocator.create(c.mpv_node);
     switch (self.data) {
         .None => {
-            node_ptr.format = @intFromEnum(MpvFormat.None);
+            node_ptr.format = MpvFormat.None.to();
+        },
+        .String => |string| {
+            node_ptr.format = MpvFormat.String.to();
+            node_ptr.u.string = @constCast(string.ptr);
         },
         .Flag => |flag| {
-            node_ptr.format = @intFromEnum(MpvFormat.Flag);
+            node_ptr.format = MpvFormat.Flag.to();
             node_ptr.u.flag = if (flag) 1 else 0;
+        },
+        .INT64 => |num| {
+            node_ptr.format = MpvFormat.INT64.to();
+            node_ptr.u.int64 = num;
+        },
+        .Double => |num| {
+            node_ptr.format = MpvFormat.Double.to();
+            node_ptr.u.double_ = num;
+        },
+        .NodeArray => |array| {
+            node_ptr.format = MpvFormat.NodeArray.to();
+            var node_list_ptr = try allocator.create(c.mpv_node_list);
+            node_list_ptr.num = @intCast(array.len);
+            var node_values = try allocator.alloc(c.mpv_node, array.len);
+            for (0..array.len) |index| {
+                const node: *c.mpv_node = @ptrCast(@alignCast(try array[index].to_c(allocator)));
+                node_values[index] = node.*;
+            }
+            node_list_ptr.values = node_values.ptr;
+            node_ptr.u.list = @ptrCast(node_list_ptr);
+        },
+        .NodeMap => |map| {
+            node_ptr.format = MpvFormat.NodeMap.to();
+            var node_list_ptr = try allocator.create(c.mpv_node_list);
+            const map_len: usize = @intCast(map.count());
+
+            node_list_ptr.num = @intCast(map_len);
+
+            var node_values = try allocator.alloc(c.mpv_node, map_len);
+            var value_iterator = map.valueIterator();
+            var index: usize = 0;
+            while (value_iterator.next()) |value| {
+                const node: *c.mpv_node = @ptrCast(@alignCast(try value.to_c(allocator)));
+                node_values[index] = node.*;
+                index += 1;
+            }
+            node_list_ptr.values = node_values.ptr;
+
+            var node_keys = try allocator.alloc([*c]u8, map_len + 1);
+            node_keys[map_len - 1] = null;
+            var keys_iterator = map.keyIterator();
+            index = 0;
+            while (keys_iterator.next()) |key| {
+                node_keys[index] = @ptrCast(@constCast(key.*.ptr));
+                index += 1;
+            }
+            node_list_ptr.keys = @ptrCast(node_keys);
+
+            node_ptr.u.list = @ptrCast(node_list_ptr);
         },
         else => @panic("I don't know"),
     }
-    return @ptrCast(node_ptr);
+    return node_ptr;
 }
 
 pub const MpvNodeData = union(enum) {

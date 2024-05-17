@@ -157,6 +157,23 @@ pub fn command_string(self: Self, args: []const u8) MpvError!void {
     }
 }
 
+pub fn command_node(self: Self, args: MpvNode) !MpvNode {
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const c_node_ptr = try args.to_c(arena.allocator());
+
+    var output: c.mpv_node = undefined;
+
+    const ret = c.mpv_command_node(self.handle, @ptrCast(c_node_ptr), @ptrCast(&output));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+
+    return try MpvNode.from(@ptrCast(&output), self.allocator);
+}
+
 pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
