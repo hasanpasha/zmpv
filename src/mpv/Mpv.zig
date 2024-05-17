@@ -202,6 +202,19 @@ pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void 
     }
 }
 
+pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void {
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const c_node_ptr = try args.to_c(arena.allocator());
+
+    const ret = c.mpv_command_node_async(self.handle, reply_userdata, @ptrCast(c_node_ptr));
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn abort_async_command(self: Self, reply_userdata: u64) void {
     c.mpv_abort_async_command(self.handle, reply_userdata);
 }

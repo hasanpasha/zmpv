@@ -51,8 +51,7 @@ pub fn main() !void {
     try args_map.put("url", MpvNode.new(.{ .String = "sample.mp4" }));
 
     const args = MpvNode.new(.{ .NodeMap = args_map });
-    const result = try mpv.command_node(args);
-    defer result.free();
+    try mpv.command_node_async(2121, args);
 
     // std.log.debug("[screenshot-raw result] {}", .{result});
 
