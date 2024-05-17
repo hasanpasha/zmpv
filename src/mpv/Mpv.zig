@@ -304,6 +304,10 @@ pub fn client_name(self: Self) []const u8 {
     return std.mem.span(name);
 }
 
+pub fn client_id(self: Self) i64 {
+    return c.mpv_client_id(self.handle);
+}
+
 pub fn destroy(self: Self) void {
     c.mpv_destroy(self.handle);
 }
