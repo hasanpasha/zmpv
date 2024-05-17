@@ -346,6 +346,11 @@ pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
 }
 
+pub fn error_string(err: MpvError) []const u8 {
+    const error_str = c.mpv_error_string(mpv_error.to_mpv_c_error(err));
+    return std.mem.span(error_str);
+}
+
 pub fn free_property_data(self: Self, data: MpvPropertyData) void {
     data.free(self.allocator);
 }
