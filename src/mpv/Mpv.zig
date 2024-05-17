@@ -281,15 +281,9 @@ pub fn wakeup(self: Self) void {
     c.mpv_wakeup(self.handle);
 }
 
-// pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
-//     const Callback = struct {
-//         fn cb(cb_data: ?*anyopaque) callconv(.C) void {
-//             callback_function(cb_data);
-//         }
-//     };
-
-//     c.mpv_set_wakeup_callback(self.handle, cb, data);
-// }
+pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
+    c.mpv_set_wakeup_callback(self.handle, @ptrCast(callback_function), data);
+}
 
 pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
