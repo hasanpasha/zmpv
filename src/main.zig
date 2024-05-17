@@ -32,13 +32,13 @@ pub fn main() !void {
 
     // try mpv.hook_add(0, "on_load", 0);
 
-    try mpv.loadfile("sample.mp4", .{});
+    // try mpv.loadfile("sample.mp4", .{});
 
     // var args = [_][]const u8{"screenshot-raw"};
     // const result = try mpv.command_ret(&args);
 
-    // var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    // try mpv.command(&args);
+    var args = [_][]const u8{ "loadfile", "sample.mp4" };
+    try mpv.command_async(6969, &args);
 
     // std.log.debug("[screenshot-raw result] {}", .{result});
 
@@ -71,6 +71,10 @@ pub fn main() !void {
     const title = try mpv.get_property_osd_string("title");
     defer mpv.free(title);
     std.debug.print("\n[title]: {s}\n", .{title});
+
+    mpv.wait_async_requests();
+
+    std.log.info("async requests completed", .{});
 
     // const fullscreen_status = try mpv.get_property("fullscreen", .String);
     // defer mpv.free_property_data(fullscreen_status);

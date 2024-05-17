@@ -337,6 +337,10 @@ pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
     return try MpvEvent.from(event, self.allocator);
 }
 
+pub fn wait_async_requests(self: Self) void {
+    c.mpv_wait_async_requests(self.handle);
+}
+
 pub fn wakeup(self: Self) void {
     c.mpv_wakeup(self.handle);
 }
