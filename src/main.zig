@@ -89,6 +89,9 @@ pub fn main() !void {
 
     std.log.info("async requests completed", .{});
 
+    const pipefd = try mpv.get_wakeup_pipe();
+    std.log.info("pipefd = {}", .{pipefd});
+
     // const fullscreen_status = try mpv.get_property("fullscreen", .String);
     // defer mpv.free_property_data(fullscreen_status);
     // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});

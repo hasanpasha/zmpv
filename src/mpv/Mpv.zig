@@ -379,6 +379,17 @@ pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque
     c.mpv_set_wakeup_callback(self.handle, @ptrCast(callback_function), data);
 }
 
+pub fn get_wakeup_pipe(self: Self) MpvError!c_int {
+    const ret = c.mpv_get_wakeup_pipe(self.handle);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+
+    return ret;
+}
+
 pub fn client_name(self: Self) []const u8 {
     const name = c.mpv_client_name(self.handle);
     return std.mem.span(name);
