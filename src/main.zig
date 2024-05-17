@@ -51,7 +51,7 @@ pub fn main() !void {
     // try mpv.request_log_messages(.Trace);
 
     mpv.observe_property(11, "fullscreen", .NodeArray) catch |err| {
-        std.log.debug("error string {s}", .{Mpv.error_string(err)});
+        std.log.err("error string {s}", .{Mpv.error_string(err)});
     };
     // try mpv.unobserve_property(11);
     try mpv.observe_property(0, "time-pos", .Double);
@@ -59,6 +59,9 @@ pub fn main() !void {
 
     // try mpv.set_property_string("fullscreen", "yes");
 
+    // try mpv.set_property_string("fullscreen", "yes");
+    // try mpv.del_property("playlist");
+    // try mpv.del_property("name");
     try mpv.set_property_async(9090, "fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
     // try mpv.set_property("fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
 
