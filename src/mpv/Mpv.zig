@@ -202,16 +202,15 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
     return try MpvPropertyData.from(format, data_ptr, self.allocator);
 }
 
+/// The returened value should be freed with mpv.free(string)
 pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     const returned_value = c.mpv_get_property_string(self.handle, name.ptr);
     if (returned_value == null) {
         return GenericError.NullValue;
     }
-    defer free(returned_value);
+    defer mpv_free(returned_value);
 
-    const string = try self.allocator.dupe(u8, std.mem.span(returned_value));
-    // std.debug.print("\n[[{s}]]\n\n", .{string});
-    return string;
+    return try self.allocator.dupe(u8, std.mem.span(returned_value));
 }
 
 pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
@@ -339,10 +338,14 @@ pub fn free_property_data(self: Self, data: MpvPropertyData) void {
     data.free(self.allocator);
 }
 
-fn free(data: ?*anyopaque) void {
+pub fn free(self: Self, data: anytype) void {
+    self.allocator.free(data);
+}
+
+fn mpv_free(data: ?*anyopaque) void {
     c.mpv_free(data);
 }
 
-fn free_cnode_content(data: ?*anyopaque) void {
+fn mpv_free_node_content(data: ?*anyopaque) void {
     c.mpv_free_node_contents(@ptrCast(@alignCast(data)));
 }

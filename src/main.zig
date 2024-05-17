@@ -61,11 +61,12 @@ pub fn main() !void {
 
     try mpv.set_property("fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
 
-    // const fullscreen_status = try mpv.get_property_string("fullscreen");
-    // std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
-    const fullscreen_status = try mpv.get_property("fullscreen", .String);
-    defer mpv.free_property_data(fullscreen_status);
-    std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
+    const fullscreen_status = try mpv.get_property_string("fullscreen");
+    defer mpv.free(fullscreen_status);
+    std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
+    // const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    // defer mpv.free_property_data(fullscreen_status);
+    // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
 
     // mpv.set_wakeup_callback(&wakeup_callback, @ptrCast(&mpv));
 
