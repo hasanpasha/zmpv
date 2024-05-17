@@ -16,6 +16,7 @@ const Self = @This();
 event_id: MpvEventId,
 event_error: MpvError,
 data: MpvEventData,
+reply_userdata: u64,
 allocator: std.mem.Allocator,
 
 pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self {
@@ -50,6 +51,7 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
             },
             else => MpvEventData{ .None = {} },
         },
+        .reply_userdata = event.reply_userdata,
         .allocator = allocator,
     };
 }
