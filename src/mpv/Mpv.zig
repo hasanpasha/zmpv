@@ -330,6 +330,14 @@ pub fn client_id(self: Self) i64 {
     return c.mpv_client_id(self.handle);
 }
 
+pub fn get_time_ns(self: Self) i64 {
+    return c.mpv_get_time_ns(self.handle);
+}
+
+pub fn get_time_us(self: Self) i64 {
+    return c.mpv_get_time_us(self.handle);
+}
+
 pub fn destroy(self: Self) void {
     c.mpv_destroy(self.handle);
 }

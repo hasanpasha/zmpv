@@ -18,12 +18,12 @@ pub fn main() !void {
 
     var mpv = try Mpv.create(allocator);
 
-    try mpv.load_config_file("mpv.conf");
+    // try mpv.load_config_file("mpv.conf");
 
-    // try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    // try mpv.set_option("title", .String, .{ .String = "zmpv" });
-    // try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
-    // try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+    try mpv.set_option("osc", .Flag, .{ .Flag = true });
+    try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
+    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
 
     // try mpv.set_option_string("input-default-bindings", "yes");
     // try mpv.set_option_string("input-vo-keyboard", "yes");
@@ -48,7 +48,7 @@ pub fn main() !void {
     // mpv.abort_async_command(6969);
 
     // try mpv.request_event(.Hook, false);
-    // try mpv.request_log_messages(.V);
+    try mpv.request_log_messages(.Trace);
 
     try mpv.observe_property(11, "fullscreen", .Flag);
     // try mpv.unobserve_property(11);
@@ -143,7 +143,7 @@ pub fn main() !void {
             // },
             .LogMessage => {
                 const log = event.data.LogMessage;
-                std.log.debug("[log] {s} \"{s}\"", .{ log.level, log.text });
+                std.log.debug("{}:[log] {s} \"{s}\"", .{ mpv.get_time_us(), log.level, log.text });
             },
             .EndFile => {
                 const endfile = event.data.EndFile;
