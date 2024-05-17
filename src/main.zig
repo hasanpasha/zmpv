@@ -67,6 +67,7 @@ pub fn main() !void {
     const title = try mpv.get_property_osd_string("title");
     defer mpv.free(title);
     std.debug.print("\n[title]: {s}\n", .{title});
+
     // const fullscreen_status = try mpv.get_property("fullscreen", .String);
     // defer mpv.free_property_data(fullscreen_status);
     // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});
@@ -111,8 +112,15 @@ pub fn main() !void {
                 std.log.debug("[MESSAGE] {s}", .{message.args});
             },
             .PlaybackRestart => {
+                try mpv.get_property_async(7878, "filename", .String);
                 const filename = try mpv.get_property("filename", .Node);
                 std.log.debug("[filename]: {s}", .{filename.Node.data.String});
+            },
+            .GetPropertyReply => {
+                // const property = event.data.GetPropertyReply;
+                // std.log.debug("got async property name={s}", .{property.name});
+                // std.log.debug("async property value={any}", .{property.data});
+                std.log.debug("async {} {} {}", .{ event.reply_userdata, event.data, event.event_error });
             },
             // .PropertyChange => {
             //     const property_change = event.data.PropertyChange;

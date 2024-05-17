@@ -224,6 +224,15 @@ pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
     return try self.allocator.dupe(u8, std.mem.span(returned_value));
 }
 
+pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
+    const ret = c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to());
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
