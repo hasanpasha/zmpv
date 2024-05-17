@@ -4,7 +4,7 @@ const MpvError = mpv_error.MpvError;
 const MpvFormat = @import("../mpv_format.zig").MpvFormat;
 const MpvNode = @import("../MpvNode.zig");
 const MpvPropertyData = @import("../mpv_property_data.zig").MpvPropertyData;
-const MpvNodehashMap = @import("../types.zig").MpvNodehashMap;
+const MpvNodehashMap = @import("../types.zig").MpvNodeHashMap;
 const mpv_event_utils = @import("./mpv_event_utils.zig");
 const c = @import("../c.zig");
 

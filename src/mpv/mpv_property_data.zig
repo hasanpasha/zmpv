@@ -2,7 +2,7 @@ const std = @import("std");
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvNode = @import("./MpvNode.zig");
-const MpvNodeHashMap = @import("./types.zig").MpvNodehashMap;
+const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,

@@ -3,6 +3,7 @@ const std = @import("std");
 const Mpv = @import("./mpv/Mpv.zig");
 const MpvFormat = @import("./mpv/mpv_format.zig").MpvFormat;
 const MpvNode = @import("./mpv/MpvNode.zig");
+const MpvNodeHashMap = @import("./mpv/types.zig").MpvNodeHashMap;
 
 const c = @cImport({
     @cInclude("mpv/client.h");
@@ -37,8 +38,21 @@ pub fn main() !void {
     // var args = [_][]const u8{"screenshot-raw"};
     // const result = try mpv.command_ret(&args);
 
-    var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    try mpv.command_async(6969, &args);
+    // var args = [_][]const u8{ "loadfile", "sample.mp4" };
+    // try mpv.command_async(6969, &args);
+
+    // var args_list = [_]MpvNode{
+    //     MpvNode.new(.{ .String = "loadfile" }),
+    //     MpvNode.new(.{ .String = "sample.mp4" }),
+    // };
+    var args_map = MpvNodeHashMap.init(allocator);
+    defer args_map.deinit();
+    try args_map.put("name", MpvNode.new(.{ .String = "loadfile" }));
+    try args_map.put("url", MpvNode.new(.{ .String = "sample.mp4" }));
+
+    const args = MpvNode.new(.{ .NodeMap = args_map });
+    const result = try mpv.command_node(args);
+    defer result.free();
 
     // std.log.debug("[screenshot-raw result] {}", .{result});
 
