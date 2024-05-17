@@ -21,7 +21,7 @@ pub fn main() !void {
     // try mpv.load_config_file("mpv.conf");
 
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    // try mpv.set_option("title", .String, .{ .String = "zmpv" });
     try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
     try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
 
@@ -64,6 +64,9 @@ pub fn main() !void {
     const fullscreen_status = try mpv.get_property_string("fullscreen");
     defer mpv.free(fullscreen_status);
     std.debug.print("\n[fullscreen]: {s}\n", .{fullscreen_status});
+    const title = try mpv.get_property_osd_string("title");
+    defer mpv.free(title);
+    std.debug.print("\n[title]: {s}\n", .{title});
     // const fullscreen_status = try mpv.get_property("fullscreen", .String);
     // defer mpv.free_property_data(fullscreen_status);
     // std.log.debug("[fullscreen]: {s}", .{fullscreen_status.String});

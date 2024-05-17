@@ -202,9 +202,20 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
     return try MpvPropertyData.from(format, data_ptr, self.allocator);
 }
 
-/// The returened value should be freed with mpv.free(string)
+/// The returened value should be freed with self.free(string)
 pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     const returned_value = c.mpv_get_property_string(self.handle, name.ptr);
+    if (returned_value == null) {
+        return GenericError.NullValue;
+    }
+    defer mpv_free(returned_value);
+
+    return try self.allocator.dupe(u8, std.mem.span(returned_value));
+}
+
+/// free returned string with self.free(string);
+pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
+    const returned_value = c.mpv_get_property_osd_string(self.handle, name.ptr);
     if (returned_value == null) {
         return GenericError.NullValue;
     }
