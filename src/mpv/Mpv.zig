@@ -46,6 +46,19 @@ pub fn create_client(self: Self, name: []const u8) GenericError!Self {
     }
 }
 
+pub fn create_weak_client(self: Self, name: []const u8) GenericError!Self {
+    const n_weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr);
+
+    if (n_weak_client_handle) |handle| {
+        return Self{
+            .handle = handle,
+            .allocator = self.allocator,
+        };
+    } else {
+        return GenericError.NullValue;
+    }
+}
+
 pub fn initialize(self: Self) MpvError!void {
     const ret = c.mpv_initialize(self.handle);
     const err = mpv_error.from_mpv_c_error(ret);
