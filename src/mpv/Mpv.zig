@@ -299,6 +299,10 @@ pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque
     c.mpv_set_wakeup_callback(self.handle, @ptrCast(callback_function), data);
 }
 
+pub fn destroy(self: Self) void {
+    c.mpv_destroy(self.handle);
+}
+
 pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
 }

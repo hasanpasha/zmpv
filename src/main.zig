@@ -65,6 +65,9 @@ pub fn main() !void {
 
     // mpv.set_wakeup_callback(&wakeup_callback, @ptrCast(&mpv));
 
+    const client = try mpv.create_client("new_client");
+    defer client.destroy();
+
     // while (true) {}
 
     // var time_pos_not_changed = true;
