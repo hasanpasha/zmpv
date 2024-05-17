@@ -92,6 +92,15 @@ pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvErro
     }
 }
 
+pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
+    const ret = c.mpv_load_config_file(self.handle, filename.ptr);
+    const err = mpv_error.from_mpv_c_error(ret);
+
+    if (err != MpvError.Success) {
+        return err;
+    }
+}
+
 pub fn command(self: Self, args: [][]const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);

@@ -18,10 +18,12 @@ pub fn main() !void {
 
     var mpv = try Mpv.create(allocator);
 
-    try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    try mpv.set_option("title", .String, .{ .String = "zmpv" });
-    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+    try mpv.load_config_file("mpv.conf");
+
+    // try mpv.set_option("osc", .Flag, .{ .Flag = true });
+    // try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    // try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
+    // try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
 
     // try mpv.set_option_string("input-default-bindings", "yes");
     // try mpv.set_option_string("input-vo-keyboard", "yes");
