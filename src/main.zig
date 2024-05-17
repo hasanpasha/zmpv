@@ -59,7 +59,8 @@ pub fn main() !void {
 
     // try mpv.set_property_string("fullscreen", "yes");
 
-    try mpv.set_property("fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
+    try mpv.set_property_async(9090, "fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
+    // try mpv.set_property("fullscreen", .Node, .{ .Node = MpvNode.new(.{ .Flag = true }) });
 
     const fullscreen_status = try mpv.get_property_string("fullscreen");
     defer mpv.free(fullscreen_status);
