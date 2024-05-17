@@ -189,26 +189,10 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
     c.mpv_abort_async_command(self.handle, reply_userdata);
 }
 
-// TODO mpv_free allocated memory
-// TODO empty string on MpvFormat.String
 pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
     const ret = c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr);
-    defer {
-        // TODO better way to free memory
-        // IDEA: store a c data reference in the zig equivlent struct and free both together when user requests..
-        // Freeing memory here
-        // switch (format) {
-        //     .String => {
-        //         free(output_mem);
-        //     },
-        //     .Node => {
-        //         free_cnode_content(data_ptr);
-        //     },
-        //     else => {},
-        // }
-    }
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
