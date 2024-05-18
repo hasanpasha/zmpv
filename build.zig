@@ -44,10 +44,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // const glfw_dep = b.dependency("mach_glfw", .{
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
+    // const glfw_dep = b.dependency("mach_glfw", .{ .target = target, .optimize = optimize });
     // exe.root_module.addImport("mach-glfw", glfw_dep.module("mach-glfw"));
 
     exe.linkLibC();
@@ -80,6 +77,25 @@ pub fn build(b: *std.Build) void {
     // This will evaluate the `run` step rather than the default, which is "install".
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    const opengl_exe = b.addExecutable(.{
+        .name = "zmpv_opengl_exe",
+        .root_source_file = .{ .path = "src/opengl_example.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    opengl_exe.linkLibC();
+    opengl_exe.linkSystemLibrary("SDL2");
+    opengl_exe.linkSystemLibrary("mpv");
+    b.installArtifact(opengl_exe);
+    const opengl_run_cmd = b.addRunArtifact(opengl_exe);
+    opengl_run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        opengl_run_cmd.addArgs(args);
+    }
+    const opengl_run_step = b.step("opengl", "Run the opengl example");
+    opengl_run_step.dependOn(&opengl_run_cmd.step);
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.

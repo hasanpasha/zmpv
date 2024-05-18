@@ -435,3 +435,200 @@ fn mpv_free(data: ?*anyopaque) void {
 fn mpv_free_node_content(data: ?*anyopaque) void {
     c.mpv_free_node_contents(@ptrCast(@alignCast(data)));
 }
+
+pub const MpvRenderParamType = enum(c.mpv_render_param_type) {
+    Invalid = c.MPV_RENDER_PARAM_INVALID,
+    ApiType = c.MPV_RENDER_PARAM_API_TYPE,
+    OpenglInitParams = c.MPV_RENDER_PARAM_OPENGL_INIT_PARAMS,
+    OpenglFbo = c.MPV_RENDER_PARAM_OPENGL_FBO,
+    FlipY = c.MPV_RENDER_PARAM_FLIP_Y,
+    Depth = c.MPV_RENDER_PARAM_DEPTH,
+    IccProfile = c.MPV_RENDER_PARAM_ICC_PROFILE,
+    AmbientLight = c.MPV_RENDER_PARAM_AMBIENT_LIGHT,
+    X11Display = c.MPV_RENDER_PARAM_X11_DISPLAY,
+    WlDisplay = c.MPV_RENDER_PARAM_WL_DISPLAY,
+    AdvancedControl = c.MPV_RENDER_PARAM_ADVANCED_CONTROL,
+    NextFrameInfo = c.MPV_RENDER_PARAM_NEXT_FRAME_INFO,
+    BlockForTargetTime = c.MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME,
+    SkipRendering = c.MPV_RENDER_PARAM_SKIP_RENDERING,
+    DrmDisplay = c.MPV_RENDER_PARAM_DRM_DISPLAY,
+    DrmDrawSurfaceSize = c.MPV_RENDER_PARAM_DRM_DRAW_SURFACE_SIZE,
+    DrmDisplayV2 = c.MPV_RENDER_PARAM_DRM_DISPLAY_V2,
+    SwSize = c.MPV_RENDER_PARAM_SW_SIZE,
+    SwFormat = c.MPV_RENDER_PARAM_SW_FORMAT,
+    SwStride = c.MPV_RENDER_PARAM_SW_STRIDE,
+    SwPointer = c.MPV_RENDER_PARAM_SW_POINTER,
+
+    pub fn to_c(self: MpvRenderParamType) c.mpv_render_param_type {
+        const param_type: c.mpv_render_param_type = @intCast(@intFromEnum(self));
+        return param_type;
+    }
+};
+
+pub const MpvRenderApiType = enum {
+    OpenGL,
+    SW,
+
+    pub fn to_c(self: MpvRenderApiType) *anyopaque {
+        const text = switch (self) {
+            .OpenGL => c.MPV_RENDER_API_TYPE_OPENGL,
+            .SW => c.MPV_RENDER_API_TYPE_SW,
+        };
+        return @ptrCast(@constCast(text));
+    }
+};
+
+pub const MpvOpenGLInitParams = struct {
+    get_process_address: ?*const fn (?*anyopaque, [*c]const u8) ?*anyopaque,
+    get_process_address_ctx: ?*anyopaque,
+
+    pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
+        const value_ptr = try allocator.create(c.mpv_opengl_init_params);
+        value_ptr.*.get_proc_address = @ptrCast(self.get_process_address);
+        value_ptr.*.get_proc_address_ctx = self.get_process_address_ctx;
+        return value_ptr;
+    }
+};
+
+pub const MpvOpenGLFBO = struct {
+    fbo: i64,
+    w: i64,
+    h: i64,
+    internal_format: i64,
+
+    pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) !*c.mpv_opengl_fbo {
+        const value_ptr = try allocator.create(c.mpv_opengl_fbo);
+        value_ptr.*.fbo = @intCast(self.fbo);
+        value_ptr.*.w = @intCast(self.w);
+        value_ptr.*.h = @intCast(self.h);
+        value_ptr.*.internal_format = @intCast(self.internal_format);
+        return value_ptr;
+    }
+};
+
+pub const MpvRenderParam = union(MpvRenderParamType) {
+    Invalid: void,
+    ApiType: MpvRenderApiType,
+    OpenglInitParams: MpvOpenGLInitParams,
+    OpenglFbo: MpvOpenGLFBO,
+    FlipY: bool,
+    Depth: i64,
+    IccProfile: void,
+    AmbientLight: void,
+    X11Display: void,
+    WlDisplay: void,
+    AdvancedControl: bool,
+    NextFrameInfo: void,
+    BlockForTargetTime: void,
+    SkipRendering: void,
+    DrmDisplay: void,
+    DrmDrawSurfaceSize: void,
+    DrmDisplayV2: void,
+    SwSize: void,
+    SwFormat: void,
+    SwStride: void,
+    SwPointer: void,
+
+    pub fn to_c(self: MpvRenderParam, allocator: std.mem.Allocator) !c.mpv_render_param {
+        var param: c.mpv_render_param = undefined;
+        switch (self) {
+            .Invalid => {
+                param.type = MpvRenderParamType.Invalid.to_c();
+                param.data = null;
+            },
+            .ApiType => |api_type| {
+                param.type = MpvRenderParamType.ApiType.to_c();
+                param.data = api_type.to_c();
+            },
+            .OpenglInitParams => |opengl_init_params| {
+                param.type = MpvRenderParamType.OpenglInitParams.to_c();
+                param.data = try opengl_init_params.to_c(allocator);
+            },
+            .OpenglFbo => |opengl_fbo| {
+                param.type = MpvRenderParamType.OpenglFbo.to_c();
+                param.data = try opengl_fbo.to_c(allocator);
+            },
+            .FlipY => |flip| {
+                param.type = MpvRenderParamType.FlipY.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = if (flip) 1 else 0;
+                param.data = value_ptr;
+            },
+            .AdvancedControl => |advanced| {
+                param.type = MpvRenderParamType.AdvancedControl.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = if (advanced) 1 else 0;
+                param.data = value_ptr;
+            },
+            else => {
+                @panic("Unimplemented");
+            },
+        }
+        return param;
+    }
+};
+
+pub const MpvRenderContext = struct {
+    context: *c.mpv_render_context,
+    allocator: std.mem.Allocator,
+
+    fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c]c.mpv_render_param {
+        var c_params = try allocator.alloc(c.mpv_render_param, params.len);
+        for (0..params.len) |index| {
+            c_params[index] = try params[index].to_c(allocator);
+        }
+        return @ptrCast(c_params);
+    } 
+
+    pub fn create(mpv: Self, params: []MpvRenderParam) !MpvRenderContext {
+        var context: *c.mpv_render_context = undefined;
+        
+        var arena = std.heap.ArenaAllocator.init(mpv.allocator);
+        defer arena.deinit();
+
+        const c_params = try MpvRenderContext.params_list_to_c(params, arena.allocator());
+        const ret = c.mpv_render_context_create(@ptrCast(&context), mpv.handle, c_params);
+        const err = mpv_error.from_mpv_c_error(ret);
+
+        if (err != MpvError.Success) {
+            return err;
+        }
+
+        std.log.debug("created mpv_render_context {any}", .{context});
+    
+        return MpvRenderContext{
+            .context = context,
+            .allocator = mpv.allocator,
+        };
+    }
+
+    pub fn free(self: MpvRenderContext) void {
+        c.mpv_render_context_free(self.context);
+    }
+
+    pub fn render(self: MpvRenderContext, params: []MpvRenderParam) !void {
+        var arena = std.heap.ArenaAllocator.init(self.allocator);
+        defer arena.deinit();
+
+        const c_params = try MpvRenderContext.params_list_to_c(params, arena.allocator());
+        const ret = c.mpv_render_context_render(self.context, c_params);
+        const err = mpv_error.from_mpv_c_error(ret);
+
+        if (err != MpvError.Success) {
+            return err;
+        }
+    }
+
+    pub fn set_update_callback(self: MpvRenderContext, callback: ?*const fn (?*anyopaque) void, ctx: ?*anyopaque) void {
+        c.mpv_render_context_set_update_callback(self.context, @ptrCast(callback), ctx);
+    }
+
+    pub fn update(self: MpvRenderContext) bool {
+        const flags = c.mpv_render_context_update(self.context);
+        return (flags & c.MPV_RENDER_UPDATE_FRAME) == 1;
+    }
+
+    pub fn report_swap(self: MpvRenderContext) void {
+        c.mpv_render_context_report_swap(self.context);
+    }
+};
