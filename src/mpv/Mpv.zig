@@ -463,6 +463,13 @@ pub const MpvRenderParamType = enum(c.mpv_render_param_type) {
         const param_type: c.mpv_render_param_type = @intCast(@intFromEnum(self));
         return param_type;
     }
+
+    pub inline fn CDataType(comptime self: MpvRenderParamType) type {
+        return switch (self) {
+            .NextFrameInfo => c.mpv_render_frame_info,
+            else => @panic("Unimplemented"),
+        };
+    }
 };
 
 pub const MpvRenderApiType = enum {
@@ -506,7 +513,7 @@ pub const MpvOpenGLFBO = struct {
     }
 };
 
-const MpvRenderFrameInfoFlag = struct {
+pub const MpvRenderFrameInfoFlag = struct {
     present: bool,
     redraw: bool,
     repeat: bool,
@@ -522,9 +529,23 @@ const MpvRenderFrameInfoFlag = struct {
     }
 };
 
-const MpvRenderFrameInfo = struct {
+pub const MpvRenderFrameInfo = struct {
     flags: MpvRenderFrameInfoFlag,
     target_time: i64,
+
+    pub fn from(data: c.mpv_render_frame_info) MpvRenderFrameInfo {
+        const flags = MpvRenderFrameInfoFlag{
+            .present = (data.flags & c.MPV_RENDER_FRAME_INFO_PRESENT) == 1,
+            .redraw = (data.flags & c.MPV_RENDER_FRAME_INFO_REDRAW) == 1,
+            .repeat = (data.flags & c.MPV_RENDER_FRAME_INFO_REPEAT) == 1,
+            .block_vsync = (data.flags & c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC) == 1,
+        };
+
+        return MpvRenderFrameInfo{
+            .flags = flags,
+            .target_time = data.target_time,
+        };
+    }
 
     pub fn to_c(self: MpvRenderFrameInfo, allocator: std.mem.Allocator) !*c.mpv_render_frame_info {
         const value_ptr = try allocator.create(c.mpv_render_frame_info);
@@ -625,6 +646,15 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
     SwFormat: MpvSwFormat,
     SwStride: usize,
     SwPointer: *anyopaque,
+
+    pub fn from(param_type: MpvRenderParamType, data: anytype) MpvRenderParam {
+        switch (param_type) {
+            .NextFrameInfo => {
+                return .{ .NextFrameInfo = MpvRenderFrameInfo.from(data) };
+            },
+            else => @panic("Unimplemented"),
+        }
+    }
 
     pub fn to_c(self: MpvRenderParam, allocator: std.mem.Allocator) !c.mpv_render_param {
         var param: c.mpv_render_param = undefined;
@@ -762,8 +792,6 @@ pub const MpvRenderContext = struct {
             return err;
         }
 
-        std.log.debug("created mpv_render_context {any}", .{context});
-
         return MpvRenderContext{
             .context = context,
             .allocator = mpv.allocator,
@@ -785,6 +813,23 @@ pub const MpvRenderContext = struct {
         if (err != MpvError.Success) {
             return err;
         }
+    }
+
+    pub fn get_info(self: MpvRenderContext, comptime param_type: MpvRenderParamType) !MpvRenderParam {
+        const param_data_type = param_type.CDataType();
+        var data: param_data_type = undefined;
+        const param = c.mpv_render_param{
+            .type = param_type.to_c(),
+            .data = &data,
+        };
+        const ret = c.mpv_render_context_get_info(self.context, param);
+        const err = mpv_error.from_mpv_c_error(ret);
+        if (err != MpvError.Success) {
+            return err;
+        }
+        // std.log.debug("get_info {any}", .{data});
+
+        return MpvRenderParam.from(param_type, data);
     }
 
     pub fn render(self: MpvRenderContext, params: []MpvRenderParam) !void {

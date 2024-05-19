@@ -38,9 +38,9 @@ pub fn main() !void {
 
     var params = [_]MpvRenderParam{
         .{ .ApiType = .OpenGL },
-        .{ .OpenglInitParams = .{ 
+        .{ .OpenglInitParams = .{
             .get_process_address = &get_process_address,
-            .get_process_address_ctx = null, 
+            .get_process_address_ctx = null,
         } },
         .{ .AdvancedControl = true },
         .{ .Invalid = {} },
@@ -59,7 +59,7 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.Error);
 
-    var args = [_][]const u8{"loadfile", "sample.mp4"};
+    var args = [_][]const u8{ "loadfile", "sample.mp4" };
     try mpv.command_async(0, &args);
 
     var redraw: bool = false;
@@ -79,8 +79,11 @@ pub fn main() !void {
                 if (event.key.keysym.sym == sdl.SDLK_q) {
                     break;
                 } else if (event.key.keysym.sym == sdl.SDLK_SPACE) {
-                    var pause_args = [_][]const u8{"cycle", "pause"};
+                    var pause_args = [_][]const u8{ "cycle", "pause" };
                     try mpv.command_async(0, &pause_args);
+                } else if (event.key.keysym.sym == sdl.SDLK_RIGHT) {
+                    var seek_r_args = [_][]const u8{ "seek", "30" };
+                    try mpv.command_async(0, &seek_r_args);
                 }
             },
             else => {
@@ -90,11 +93,12 @@ pub fn main() !void {
                     while (true) {
                         const mpv_event = try mpv.wait_event(0);
                         defer mpv_event.free();
-                        
+
                         if (mpv_event.event_id == .None) {
                             break;
-                        }
-                        else if (mpv_event.event_id == .LogMessage) {
+                        } else if (mpv_event.event_id == .Shutdown or mpv_event.event_id == .EndFile) {
+                            break :done;
+                        } else if (mpv_event.event_id == .LogMessage) {
                             const log = mpv_event.data.LogMessage;
                             std.log.info("\"{s}\"", .{log.text});
                         }
@@ -104,18 +108,24 @@ pub fn main() !void {
         }
 
         if (redraw) {
+            const info = try mpv_render_ctx.get_info(.NextFrameInfo);
+            std.log.debug("{}", .{info});
+
             var w: c_int = undefined;
             var h: c_int = undefined;
             sdl.SDL_GetWindowSize(window, &w, &h);
 
-            var arena = std.heap.ArenaAllocator.init(mpv.allocator);
-            defer arena.deinit();
             var zig_render_params = [_]MpvRenderParam{
                 .{ .SkipRendering = false },
-                .{ .OpenglFbo = .{ .fbo = 0, .w = w, .h = h, .internal_format = 0, } },
+                .{ .OpenglFbo = .{
+                    .fbo = 0,
+                    .w = w,
+                    .h = h,
+                    .internal_format = 0,
+                } },
                 .{ .FlipY = true },
                 .{ .Depth = 16 },
-                .{ .BlockForTargetTime = false },
+                .{ .BlockForTargetTime = true },
                 .{ .Invalid = {} },
             };
             try mpv_render_ctx.render(&zig_render_params);
