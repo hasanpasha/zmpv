@@ -616,6 +616,12 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 param.type = MpvRenderParamType.OpenglFbo.to_c();
                 param.data = try opengl_fbo.to_c(allocator);
             },
+            .Depth => |depth| {
+                param.type = MpvRenderParamType.Depth.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = @intCast(depth);
+                param.data = value_ptr;
+            },
             .FlipY => |flip| {
                 param.type = MpvRenderParamType.FlipY.to_c();
                 const value_ptr = try allocator.create(c_int);

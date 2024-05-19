@@ -85,10 +85,6 @@ pub fn main() !void {
             },
             else => {
                 if (event.type == wakeup_on_mpv_render_update) {
-                    // const flags = c.mpv_render_context_update(mpv_context);
-                    // if ((flags & c.MPV_RENDER_UPDATE_FRAME) == 1) {
-                    //     redraw = true;
-                    // }
                     redraw = mpv_render_ctx.update();
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
@@ -118,6 +114,8 @@ pub fn main() !void {
                 .{ .SkipRendering = false },
                 .{ .OpenglFbo = .{ .fbo = 0, .w = w, .h = h, .internal_format = 0, } },
                 .{ .FlipY = true },
+                .{ .Depth = 16 },
+                .{ .BlockForTargetTime = false },
                 .{ .Invalid = {} },
             };
             try mpv_render_ctx.render(&zig_render_params);
