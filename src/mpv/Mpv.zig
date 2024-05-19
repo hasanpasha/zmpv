@@ -629,6 +629,12 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 value_ptr.size = icc_profile.len;
                 param.data = value_ptr;
             },
+            .AmbientLight => |light| {
+                param.type = MpvRenderParamType.AmbientLight.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = @intCast(light);
+                param.data = value_ptr;
+            },
             .X11Display => |x11_display| {
                 param.type = MpvRenderParamType.X11Display.to_c();
                 param.data = x11_display;
@@ -715,6 +721,19 @@ pub const MpvRenderContext = struct {
 
     pub fn free(self: MpvRenderContext) void {
         c.mpv_render_context_free(self.context);
+    }
+
+    pub fn set_parameter(self: MpvRenderContext, param: MpvRenderParam) !void {
+        var arena = std.heap.ArenaAllocator.init(self.allocator);
+        defer arena.deinit();
+        
+        const c_param = try param.to_c(arena.allocator());
+        const ret = c.mpv_render_context_set_parameter(self.context, c_param);
+        const err = mpv_error.from_mpv_c_error(ret);
+
+        if (err != MpvError.Success) {
+            return err;
+        }
     }
 
     pub fn render(self: MpvRenderContext, params: []MpvRenderParam) !void {
