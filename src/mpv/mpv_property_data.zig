@@ -22,7 +22,7 @@ pub const MpvPropertyData = union(MpvFormat) {
             // TODO mv .OSDString to its own branch to fix Mpv.set_option error on .OSDString format.
             .String, .OSDString => value: {
                 const string: [*c]const u8 = @ptrCast(data);
-                const zig_string = std.mem.span(string);
+                const zig_string = std.mem.sliceTo(string, 0);
                 break :value MpvPropertyData{
                     .String = zig_string,
                 };

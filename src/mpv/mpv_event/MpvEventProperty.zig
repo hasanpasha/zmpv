@@ -22,7 +22,7 @@ pub fn from(data_ptr: *anyopaque, allocator: std.mem.Allocator) !Self {
 
     const format: MpvFormat = @enumFromInt(data.format);
     return Self{
-        .name = std.mem.span(data.name),
+        .name = std.mem.sliceTo(data.name, 0),
         .format = format,
         .data = try MpvPropertyData.from(format, data.data, allocator),
         .c_data_ptr = data_ptr,

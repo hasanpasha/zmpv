@@ -61,7 +61,7 @@ pub fn main() !void {
     // mpv.abort_async_command(6969);
 
     // try mpv.request_event(.Hook, false);
-    // try mpv.request_log_messages(.Trace);
+    try mpv.request_log_messages(.Trace);
 
     mpv.observe_property(11, "fullscreen", .NodeArray) catch |err| {
         std.log.err("error string {s}", .{Mpv.error_string(err)});

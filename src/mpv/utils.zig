@@ -12,7 +12,7 @@ pub fn create_cstring_array(z_array: [][]const u8, allocator: std.mem.Allocator)
 pub fn free_cstring_array(c_array: [][*c]const u8, n: usize, allocator: std.mem.Allocator) void {
     const array = c_array;
     for (0..n) |index| {
-        const slice: [:0]const u8 = std.mem.span(array[index]);
+        const slice: [:0]const u8 = std.mem.sliceTo(array[index], 0);
         allocator.free(slice);
     }
     allocator.free(array);
@@ -21,7 +21,7 @@ pub fn free_cstring_array(c_array: [][*c]const u8, n: usize, allocator: std.mem.
 pub fn create_zstring_array(c_array: [*c][*c]const u8, n: usize, allocator: std.mem.Allocator) ![][]const u8 {
     const array = try allocator.alloc([]const u8, n);
     for (0..n) |index| {
-        array[index] = try allocator.dupe(u8, std.mem.span(c_array[index]));
+        array[index] = try allocator.dupe(u8, std.mem.sliceTo(c_array[index], 0));
     }
     return array;
 }
