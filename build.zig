@@ -78,24 +78,37 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
-    const opengl_exe = b.addExecutable(.{
-        .name = "zmpv_opengl_exe",
-        .root_source_file = .{ .path = "src/opengl_example.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const Example = struct {
+        name: []const u8,
+        src: []const u8,
+    };
 
-    opengl_exe.linkLibC();
-    opengl_exe.linkSystemLibrary("SDL2");
-    opengl_exe.linkSystemLibrary("mpv");
-    b.installArtifact(opengl_exe);
-    const opengl_run_cmd = b.addRunArtifact(opengl_exe);
-    opengl_run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        opengl_run_cmd.addArgs(args);
+    const examples = [_]Example{ 
+        .{ .name = "sdl-opengl", .src = "src/sdl_opengl_example.zig", },
+        .{ .name = "sdl-sw", .src = "src/sdl_sw_example.zig", },
+    };
+
+    for (examples) |example| {
+        const e_exe = b.addExecutable(.{
+            .name = example.name,
+            .root_source_file = .{ .path = example.src },
+            .target = target,
+            .optimize = optimize,
+        });
+
+        e_exe.linkLibC();
+        e_exe.linkSystemLibrary("SDL2");
+        e_exe.linkSystemLibrary("mpv");
+        b.installArtifact(e_exe);
+        const e_run_cmd = b.addRunArtifact(e_exe);
+        e_run_cmd.step.dependOn(b.getInstallStep());
+        if (b.args) |args| {
+            e_run_cmd.addArgs(args);
+        }
+        const e_run_step = b.step(example.name, "Run the example");
+        e_run_step.dependOn(&e_run_cmd.step);
     }
-    const opengl_run_step = b.step("opengl", "Run the opengl example");
-    opengl_run_step.dependOn(&opengl_run_cmd.step);
+
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
