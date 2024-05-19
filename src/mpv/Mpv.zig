@@ -574,6 +574,35 @@ const MpvOpenGLDRMParams = struct {
     }
 };
 
+const MpvSwSize = struct {
+    w: i64,
+    h: i64,
+
+    pub fn to_c(self: MpvSwSize, allocator: std.mem.Allocator) !*[2]c_int {
+        const value_ptr = try allocator.create([2]c_int);
+        value_ptr.*[0] = @intCast(self.w);
+        value_ptr.*[1] = @intCast(self.h);
+        return value_ptr;
+    }
+};
+
+const MpvSwFormat = enum {
+    Rgb0,
+    Bgr0,
+    @"0bgr",
+    @"0rgb",
+
+    pub fn to_c(self: MpvSwFormat) *[4:0]u8 {
+        const value = switch (self) {
+            .Rgb0 => "rgb0",
+            .Bgr0 => "bgr0",
+            .@"0bgr" => "0bgr",
+            .@"0rgb" => "0rgb",
+        };
+        return @constCast(value);
+    }
+};
+
 pub const MpvRenderParam = union(MpvRenderParamType) {
     Invalid: void,
     ApiType: MpvRenderApiType,
@@ -584,18 +613,18 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
     IccProfile: []u8,
     AmbientLight: i64,
     X11Display: *anyopaque, // *Display
-    WlDisplay: *anyopaque,  // *wl_display
-    AdvancedControl: bool,  
+    WlDisplay: *anyopaque, // *wl_display
+    AdvancedControl: bool,
     NextFrameInfo: MpvRenderFrameInfo,
     BlockForTargetTime: bool,
     SkipRendering: bool,
     DrmDisplay: MpvOpenGLDRMParams,
     DrmDrawSurfaceSize: MpvOpenGLDRMDrawSurfaceSize,
     DrmDisplayV2: MpvOpenGLDRMParams,
-    SwSize: void,
-    SwFormat: void,
-    SwStride: void,
-    SwPointer: void,
+    SwSize: MpvSwSize,
+    SwFormat: MpvSwFormat,
+    SwStride: usize,
+    SwPointer: *anyopaque,
 
     pub fn to_c(self: MpvRenderParam, allocator: std.mem.Allocator) !c.mpv_render_param {
         var param: c.mpv_render_param = undefined;
@@ -683,8 +712,24 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 param.type = MpvRenderParamType.DrmDisplayV2.to_c();
                 param.data = try params.to_c_v2(allocator);
             },
-            else => {
-                @panic("Unimplemented");
+            .SwSize => |size| {
+                param.type = MpvRenderParamType.SwSize.to_c();
+                const data = try size.to_c(allocator);
+                param.data = @ptrCast(data);
+            },
+            .SwFormat => |format| {
+                param.type = MpvRenderParamType.SwFormat.to_c();
+                param.data = @ptrCast(format.to_c());
+            },
+            .SwStride => |stride| {
+                param.type = MpvRenderParamType.SwStride.to_c();
+                const value_ptr = try allocator.create(usize);
+                value_ptr.* = stride;
+                param.data = value_ptr;
+            },
+            .SwPointer => |pointer| {
+                param.type = MpvRenderParamType.SwPointer.to_c();
+                param.data = pointer;
             },
         }
         return param;
@@ -701,11 +746,11 @@ pub const MpvRenderContext = struct {
             c_params[index] = try params[index].to_c(allocator);
         }
         return @ptrCast(c_params);
-    } 
+    }
 
     pub fn create(mpv: Self, params: []MpvRenderParam) !MpvRenderContext {
         var context: *c.mpv_render_context = undefined;
-        
+
         var arena = std.heap.ArenaAllocator.init(mpv.allocator);
         defer arena.deinit();
 
@@ -718,7 +763,7 @@ pub const MpvRenderContext = struct {
         }
 
         std.log.debug("created mpv_render_context {any}", .{context});
-    
+
         return MpvRenderContext{
             .context = context,
             .allocator = mpv.allocator,
@@ -732,7 +777,7 @@ pub const MpvRenderContext = struct {
     pub fn set_parameter(self: MpvRenderContext, param: MpvRenderParam) !void {
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
-        
+
         const c_param = try param.to_c(arena.allocator());
         const ret = c.mpv_render_context_set_parameter(self.context, c_param);
         const err = mpv_error.from_mpv_c_error(ret);
