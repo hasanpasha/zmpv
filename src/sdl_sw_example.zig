@@ -52,8 +52,6 @@ pub fn main() !void {
     const mpv_render_ctx = try MpvRenderContext.create(mpv, &params);
     defer mpv_render_ctx.free();
 
-    // try mpv_render_ctx.set_parameter(.{ .AmbientLight = -100000000 });
-
     wakeup_on_mpv_render_update = sdl.SDL_RegisterEvents(1);
     wakeup_on_mpv_events = sdl.SDL_RegisterEvents(1);
 
