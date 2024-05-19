@@ -2,35 +2,54 @@ const std = @import("std");
 const c = @import("./mpv/c.zig");
 const Mpv = @import("./mpv/Mpv.zig");
 
-fn seek_cb(cookie: ?*anyopaque, offset: i64) callconv(.C) i64 {
-    if (cookie) |fdp| {
-        const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
-        fd.seekBy(offset) catch {
-            return c.MPV_ERROR_UNSUPPORTED;
-        };
-        const pos = fd.getPos() catch {
-            return c.MPV_ERROR_UNSUPPORTED;
-        };
-        return @intCast(pos);
-    } else {
-        return c.MPV_ERROR_UNSUPPORTED;
-    }
-}
+// fn seek_cb(cookie: ?*anyopaque, offset: i64) callconv(.C) i64 {
+//     if (cookie) |fdp| {
+//         const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
+//         fd.seekBy(offset) catch {
+//             return c.MPV_ERROR_UNSUPPORTED;
+//         };
+//         const pos = fd.getPos() catch {
+//             return c.MPV_ERROR_UNSUPPORTED;
+//         };
+//         return @intCast(pos);
+//     } else {
+//         return c.MPV_ERROR_UNSUPPORTED;
+//     }
+// }
 
 fn read_cb(cookie: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
-    _ = size;
-
-    const fd = std.fs.cwd().openFile("sample.mp4", .{}) catch {
-        return -2;
-    };
-
+    std.log.debug("reading", .{});
     if (cookie) |fdp| {
-        // const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
-        _ = fdp;
-        const read_size = fd.read(std.mem.sliceTo(buf, 0)) catch {
+        std.log.debug("file is here", .{});
+        const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
+
+        const buf_size: usize = @intCast(size);
+
+        var zbuf = std.heap.c_allocator.alloc(u8, buf_size) catch {
+            std.log.err("failed to alloc memory for read", .{});
             return -1;
         };
+        defer std.heap.c_allocator.free(zbuf);
+
+        _ = fd.tryLock(.exclusive) catch {
+            std.log.err("failed to lock file", .{});
+            return -2;
+        };
+
+        const read_size = fd.read(zbuf) catch {
+            std.log.err("failed to read", .{});
+            return -1;
+        };
+
+        fd.unlock();
+
         std.log.debug("read_size = {}", .{read_size});
+
+        for (0..buf_size) |index| {
+            buf[index] = zbuf[index];
+            zbuf[index] = 0;
+        }
+
         return @intCast(read_size);
     } else {
         return -1;
@@ -38,8 +57,8 @@ fn read_cb(cookie: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
 }
 
 fn close_cb(cookie: ?*anyopaque) callconv(.C) void {
-    // const fdp: *std.fs.File = @ptrCast(@alignCast(cookie.?));
-    // fdp.*.close();
+    // const fdp: *std.fs.File = @ptrCast(@alignCast(cookie));
+    // fdp.close();
     _ = cookie;
 }
 
@@ -49,13 +68,19 @@ fn open_cb(user_data: ?*anyopaque, uri: [*c]u8, info: [*c]c.mpv_stream_cb_info) 
     const filename = std.mem.sliceTo(uri[6..], 0);
     std.log.debug("opening {s}", .{filename});
 
-    var fd = std.fs.cwd().openFile(filename, .{}) catch {
+    const fd = std.fs.cwd().openFile(filename, .{}) catch {
         return c.MPV_ERROR_LOADING_FAILED;
     };
+    std.log.debug("setting read options", .{});
 
-    info.*.cookie = @ptrCast(&fd);
+    const file_ptr = std.heap.c_allocator.create(std.fs.File) catch {
+        return c.MPV_ERROR_LOADING_FAILED;
+    };
+    file_ptr.* = fd;
+
+    info.*.cookie = @ptrCast(file_ptr);
     info.*.read_fn = &read_cb;
-    info.*.seek_fn = &seek_cb;
+    // info.*.seek_fn = &seek_cb;
     info.*.close_fn = &close_cb;
 
     return 0;
