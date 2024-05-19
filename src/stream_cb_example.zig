@@ -2,48 +2,68 @@ const std = @import("std");
 const c = @import("./mpv/c.zig");
 const Mpv = @import("./mpv/Mpv.zig");
 
-// fn seek_cb(cookie: ?*anyopaque, offset: i64) callconv(.C) i64 {
-//     if (cookie) |fdp| {
-//         const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
-//         fd.seekBy(offset) catch {
-//             return c.MPV_ERROR_UNSUPPORTED;
-//         };
-//         const pos = fd.getPos() catch {
-//             return c.MPV_ERROR_UNSUPPORTED;
-//         };
-//         return @intCast(pos);
-//     } else {
-//         return c.MPV_ERROR_UNSUPPORTED;
-//     }
-// }
+fn seek_cb(cookie: ?*anyopaque, offset: i64) callconv(.C) i64 {
+    if (cookie) |fdp| {
+        const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
+
+        _ = fd.tryLock(.exclusive) catch {
+            return c.MPV_ERROR_UNSUPPORTED;
+        };
+
+        fd.seekTo(@intCast(offset)) catch {
+            return c.MPV_ERROR_UNSUPPORTED;
+        };
+
+        const apos = fd.getPos() catch {
+            return c.MPV_ERROR_UNSUPPORTED;
+        };
+
+        fd.unlock();
+
+        return @intCast(apos);
+    } else {
+        return c.MPV_ERROR_UNSUPPORTED;
+    }
+}
+
+fn size_cb(cookie: ?*anyopaque) callconv(.C) i64 {
+    if (cookie) |fdp| {
+        const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
+        const meta = fd.metadata() catch {
+            return c.MPV_ERROR_UNSUPPORTED;
+        };
+
+        return @intCast(meta.size());
+    } else {
+        return c.MPV_ERROR_UNSUPPORTED;
+    }
+}
 
 fn read_cb(cookie: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
-    std.log.debug("reading", .{});
+    // std.log.debug("reading", .{});
     if (cookie) |fdp| {
-        std.log.debug("file is here", .{});
+        // std.log.debug("file is here", .{});
         const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
 
         const buf_size: usize = @intCast(size);
 
         var zbuf = std.heap.c_allocator.alloc(u8, buf_size) catch {
             std.log.err("failed to alloc memory for read", .{});
-            return -1;
+            return c.MPV_ERROR_GENERIC;
         };
         defer std.heap.c_allocator.free(zbuf);
 
         _ = fd.tryLock(.exclusive) catch {
             std.log.err("failed to lock file", .{});
-            return -2;
+            return c.MPV_ERROR_GENERIC;
         };
 
         const read_size = fd.read(zbuf) catch {
             std.log.err("failed to read", .{});
-            return -1;
+            return c.MPV_ERROR_GENERIC;
         };
 
         fd.unlock();
-
-        std.log.debug("read_size = {}", .{read_size});
 
         for (0..buf_size) |index| {
             buf[index] = zbuf[index];
@@ -52,14 +72,14 @@ fn read_cb(cookie: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
 
         return @intCast(read_size);
     } else {
-        return -1;
+        return c.MPV_ERROR_GENERIC;
     }
 }
 
 fn close_cb(cookie: ?*anyopaque) callconv(.C) void {
-    // const fdp: *std.fs.File = @ptrCast(@alignCast(cookie));
-    // fdp.close();
-    _ = cookie;
+    const fdp: *std.fs.File = @ptrCast(@alignCast(cookie));
+    fdp.close();
+    std.heap.c_allocator.destroy(fdp);
 }
 
 fn open_cb(user_data: ?*anyopaque, uri: [*c]u8, info: [*c]c.mpv_stream_cb_info) callconv(.C) c_int {
@@ -71,7 +91,6 @@ fn open_cb(user_data: ?*anyopaque, uri: [*c]u8, info: [*c]c.mpv_stream_cb_info) 
     const fd = std.fs.cwd().openFile(filename, .{}) catch {
         return c.MPV_ERROR_LOADING_FAILED;
     };
-    std.log.debug("setting read options", .{});
 
     const file_ptr = std.heap.c_allocator.create(std.fs.File) catch {
         return c.MPV_ERROR_LOADING_FAILED;
@@ -80,7 +99,8 @@ fn open_cb(user_data: ?*anyopaque, uri: [*c]u8, info: [*c]c.mpv_stream_cb_info) 
 
     info.*.cookie = @ptrCast(file_ptr);
     info.*.read_fn = &read_cb;
-    // info.*.seek_fn = &seek_cb;
+    info.*.seek_fn = &seek_cb;
+    info.*.size_fn = &size_cb;
     info.*.close_fn = &close_cb;
 
     return 0;
@@ -106,9 +126,9 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    _ = c.mpv_stream_cb_add_ro(mpv.handle, "foo", null, &open_cb);
+    _ = c.mpv_stream_cb_add_ro(mpv.handle, "zig", null, &open_cb);
 
-    var cmd_args = [_][]const u8{ "loadfile", "foo://sample.mp4" };
+    var cmd_args = [_][]const u8{ "loadfile", "zig://sample.mp4" };
     try mpv.command_async(0, &cmd_args);
 
     try mpv.request_log_messages(.Error);
