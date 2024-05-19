@@ -113,6 +113,7 @@ pub fn main() !void {
             var arena = std.heap.ArenaAllocator.init(mpv.allocator);
             defer arena.deinit();
             var zig_render_params = [_]MpvRenderParam{
+                .{ .SkipRendering = false },
                 .{ .OpenglFbo = .{ .fbo = 0, .w = w, .h = h, .internal_format = 0, } },
                 .{ .FlipY = true },
                 .{ .Invalid = {} },

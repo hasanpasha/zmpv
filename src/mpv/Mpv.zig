@@ -506,6 +506,74 @@ pub const MpvOpenGLFBO = struct {
     }
 };
 
+const MpvRenderFrameInfoFlag = struct {
+    present: bool,
+    redraw: bool,
+    repeat: bool,
+    block_vsync: bool,
+
+    pub fn to_c(self: MpvRenderFrameInfoFlag) u64 {
+        var flag: u64 = 0;
+        flag = if (self.present) flag | c.MPV_RENDER_FRAME_INFO_PRESENT else flag;
+        flag = if (self.redraw) flag | c.MPV_RENDER_FRAME_INFO_REDRAW else flag;
+        flag = if (self.repeat) flag | c.MPV_RENDER_FRAME_INFO_REPEAT else flag;
+        flag = if (self.block_vsync) flag | c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC else flag;
+        return flag;
+    }
+};
+
+const MpvRenderFrameInfo = struct {
+    flags: MpvRenderFrameInfoFlag,
+    target_time: i64,
+
+    pub fn to_c(self: MpvRenderFrameInfo, allocator: std.mem.Allocator) !*c.mpv_render_frame_info {
+        const value_ptr = try allocator.create(c.mpv_render_frame_info);
+        value_ptr.*.flags = self.flags.to_c();
+        value_ptr.*.target_time = self.target_time;
+        return value_ptr;
+    }
+};
+
+const MpvOpenGLDRMDrawSurfaceSize = struct {
+    width: i64,
+    height: i64,
+
+    pub fn to_c(self: MpvOpenGLDRMDrawSurfaceSize, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_draw_surface_size {
+        const value_ptr = try allocator.create(c.mpv_opengl_drm_draw_surface_size);
+        value_ptr.*.width = @intCast(self.width);
+        value_ptr.*.height = @intCast(self.height);
+        return value_ptr;
+    }
+};
+
+const MpvOpenGLDRMParams = struct {
+    fd: i64,
+    crtc_id: i64,
+    connector_id: i64,
+    atomic_request_ptr: [*c]?*anyopaque, // not tested
+    render_fd: i64,
+
+    pub fn to_c(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params {
+        const value_ptr = try allocator.create(c.mpv_opengl_drm_params);
+        value_ptr.*.fd = @intCast(self.fd);
+        value_ptr.*.crtc_id = @intCast(self.crtc_id);
+        value_ptr.*.connector_id = @intCast(self.connector_id);
+        value_ptr.*.atomic_request_ptr = @ptrCast(self.atomic_request_ptr);
+        value_ptr.*.render_fd = @intCast(self.render_fd);
+        return value_ptr;
+    }
+
+    pub fn to_c_v2(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params_v2 {
+        const value_ptr = try allocator.create(c.mpv_opengl_drm_params_v2);
+        value_ptr.*.fd = @intCast(self.fd);
+        value_ptr.*.crtc_id = @intCast(self.crtc_id);
+        value_ptr.*.connector_id = @intCast(self.connector_id);
+        value_ptr.*.atomic_request_ptr = @ptrCast(self.atomic_request_ptr);
+        value_ptr.*.render_fd = @intCast(self.render_fd);
+        return value_ptr;
+    }
+};
+
 pub const MpvRenderParam = union(MpvRenderParamType) {
     Invalid: void,
     ApiType: MpvRenderApiType,
@@ -513,17 +581,17 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
     OpenglFbo: MpvOpenGLFBO,
     FlipY: bool,
     Depth: i64,
-    IccProfile: void,
-    AmbientLight: void,
-    X11Display: void,
-    WlDisplay: void,
-    AdvancedControl: bool,
-    NextFrameInfo: void,
-    BlockForTargetTime: void,
-    SkipRendering: void,
-    DrmDisplay: void,
-    DrmDrawSurfaceSize: void,
-    DrmDisplayV2: void,
+    IccProfile: []u8,
+    AmbientLight: i64,
+    X11Display: *anyopaque, // *Display
+    WlDisplay: *anyopaque,  // *wl_display
+    AdvancedControl: bool,  
+    NextFrameInfo: MpvRenderFrameInfo,
+    BlockForTargetTime: bool,
+    SkipRendering: bool,
+    DrmDisplay: MpvOpenGLDRMParams,
+    DrmDrawSurfaceSize: MpvOpenGLDRMDrawSurfaceSize,
+    DrmDisplayV2: MpvOpenGLDRMParams,
     SwSize: void,
     SwFormat: void,
     SwStride: void,
@@ -554,11 +622,54 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 value_ptr.* = if (flip) 1 else 0;
                 param.data = value_ptr;
             },
+            .IccProfile => |icc_profile| {
+                param.type = MpvRenderParamType.IccProfile.to_c();
+                const value_ptr = try allocator.create(c.mpv_byte_array);
+                value_ptr.data = icc_profile.ptr;
+                value_ptr.size = icc_profile.len;
+                param.data = value_ptr;
+            },
+            .X11Display => |x11_display| {
+                param.type = MpvRenderParamType.X11Display.to_c();
+                param.data = x11_display;
+            },
+            .WlDisplay => |wl_display| {
+                param.type = MpvRenderParamType.WlDisplay.to_c();
+                param.data = wl_display;
+            },
             .AdvancedControl => |advanced| {
                 param.type = MpvRenderParamType.AdvancedControl.to_c();
                 const value_ptr = try allocator.create(c_int);
                 value_ptr.* = if (advanced) 1 else 0;
                 param.data = value_ptr;
+            },
+            .NextFrameInfo => |next_frame_info| {
+                param.type = MpvRenderParamType.NextFrameInfo.to_c();
+                param.data = try next_frame_info.to_c(allocator);
+            },
+            .BlockForTargetTime => |block| {
+                param.type = MpvRenderParamType.BlockForTargetTime.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = if (block) 1 else 0;
+                param.data = value_ptr;
+            },
+            .SkipRendering => |skip| {
+                param.type = MpvRenderParamType.SkipRendering.to_c();
+                const value_ptr = try allocator.create(c_int);
+                value_ptr.* = if (skip) 1 else 0;
+                param.data = value_ptr;
+            },
+            .DrmDisplay => |params| {
+                param.type = MpvRenderParamType.DrmDisplay.to_c();
+                param.data = try params.to_c(allocator);
+            },
+            .DrmDrawSurfaceSize => |size| {
+                param.type = MpvRenderParamType.DrmDrawSurfaceSize.to_c();
+                param.data = try size.to_c(allocator);
+            },
+            .DrmDisplayV2 => |params| {
+                param.type = MpvRenderParamType.DrmDisplayV2.to_c();
+                param.data = try params.to_c_v2(allocator);
             },
             else => {
                 @panic("Unimplemented");
