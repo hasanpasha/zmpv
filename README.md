@@ -4,7 +4,7 @@ Work in progress.
 ## Todo
 - [ ] Finish wrapping all exported mpv functions.
     - [x] `mpv/client.h`
-    - [ ] `mpv/render.h`
+    - [x] `mpv/render.h`
     - [x] `mpv/render_gl.h`
     - [ ] `mpv/stream_cb.h`
 - [x] Fix memory leaks.
