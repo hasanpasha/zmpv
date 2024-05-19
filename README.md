@@ -42,7 +42,7 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.new(std.heap.page_allocator);
+    const mpv = try Mpv.create(std.heap.page_allocator);
 
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
@@ -51,7 +51,8 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.loadfile(filename, .{});
+    var cmd_args = [_][]const u8{ "loadfile", filename };
+    try mpv.command_async(0, &cmd_args);
 
     try mpv.request_log_messages(.Error);
 
