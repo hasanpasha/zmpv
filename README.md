@@ -5,7 +5,7 @@ Work in progress.
 - [ ] Finish wrapping all exported mpv functions.
     - [x] `mpv/client.h`
     - [ ] `mpv/render.h`
-    - [ ] `mpv/render_gl.h`
+    - [x] `mpv/render_gl.h`
     - [ ] `mpv/stream_cb.h`
 - [x] Fix memory leaks.
 - [ ] write more tests.
