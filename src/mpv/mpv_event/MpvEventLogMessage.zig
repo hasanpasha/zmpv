@@ -12,9 +12,9 @@ log_level: MpvLogLevel,
 pub fn from(data_ptr: *anyopaque) Self {
     const log = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_log_message);
     return Self{
-        .prefix = std.mem.span(log.prefix),
-        .level = std.mem.span(log.level),
-        .text = std.mem.span(log.text),
+        .prefix = std.mem.sliceTo(log.prefix, 0),
+        .level = std.mem.sliceTo(log.level, 0),
+        .text = std.mem.sliceTo(log.text, 0),
         .log_level = @enumFromInt(log.log_level),
     };
 }

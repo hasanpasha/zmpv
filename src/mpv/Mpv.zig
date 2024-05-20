@@ -239,7 +239,7 @@ pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     }
     defer mpv_free(returned_value);
 
-    return try self.allocator.dupe(u8, std.mem.span(returned_value));
+    return try self.allocator.dupe(u8, std.mem.sliceTo(returned_value, 0));
 }
 
 /// free returned string with self.free(string);
@@ -250,7 +250,7 @@ pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
     }
     defer mpv_free(returned_value);
 
-    return try self.allocator.dupe(u8, std.mem.span(returned_value));
+    return try self.allocator.dupe(u8, std.mem.sliceTo(returned_value, 0));
 }
 
 pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
@@ -391,7 +391,7 @@ pub fn get_wakeup_pipe(self: Self) MpvError!c_int {
 
 pub fn client_name(self: Self) []const u8 {
     const name = c.mpv_client_name(self.handle);
-    return std.mem.span(name);
+    return std.mem.sliceTo(name, 0);
 }
 
 pub fn client_id(self: Self) i64 {
@@ -416,7 +416,7 @@ pub fn terminate_destroy(self: Self) void {
 
 pub fn error_string(err: MpvError) []const u8 {
     const error_str = c.mpv_error_string(mpv_error.to_mpv_c_error(err));
-    return std.mem.span(error_str);
+    return std.mem.sliceTo(error_str, 0);
 }
 
 pub fn free_property_data(self: Self, data: MpvPropertyData) void {

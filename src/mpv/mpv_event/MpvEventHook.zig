@@ -11,7 +11,7 @@ pub fn from(data_ptr: *anyopaque) Self {
     const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_hook);
 
     return Self{
-        .name = std.mem.span(data.name),
+        .name = std.mem.sliceTo(data.name, 0),
         .id = data.id,
     };
 }

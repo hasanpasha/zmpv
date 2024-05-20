@@ -26,7 +26,7 @@ pub fn from(node_ptr: *c.mpv_node, allocator: std.mem.Allocator) std.mem.Allocat
         .data = switch (node_format) {
             .None => MpvNodeData{ .None = {} },
             .Flag => MpvNodeData{ .Flag = (node_ptr.u.int64 == 1) },
-            .String => MpvNodeData{ .String = std.mem.span(node_ptr.u.string) },
+            .String => MpvNodeData{ .String = std.mem.sliceTo(node_ptr.u.string, 0) },
             .INT64 => MpvNodeData{ .INT64 = node_ptr.u.int64 },
             .Double => MpvNodeData{ .Double = node_ptr.u.double_ },
             .NodeArray => MpvNodeData{ .NodeArray = try from_node_list(node_ptr.u.list.*, allocator) },
@@ -74,7 +74,7 @@ pub fn from_node_map(map: c.struct_mpv_node_list, allocator: std.mem.Allocator) 
     const hash_map_len: usize = @intCast(map.num);
     var hash_map = MpvNodeHashMap.init(allocator);
     for (0..hash_map_len) |index| {
-        const key = std.mem.span(map.keys[index]);
+        const key = std.mem.sliceTo(map.keys[index], 0);
         const value = try Self.from(@ptrCast(&map.values[index]), allocator);
         try hash_map.put(key, value);
     }
