@@ -134,6 +134,8 @@ pub const LoadfileFlag = enum {
     }
 };
 
+// TODO this should be in the helper struct.
+// FIXME the function returns InvalidParameter error.
 pub fn loadfile(self: Self, filename: []const u8, args: struct {
     flag: LoadfileFlag = .Replace,
     index: usize = 0,
