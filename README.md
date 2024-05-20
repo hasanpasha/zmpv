@@ -1,20 +1,31 @@
 # zmpv
-Work in progress.
+
+WIP, but you should be able to use it with no much issues, see [below](#todo).
 
 ## Todo
-- [ ] Finish wrapping all exported mpv functions.
-    - [x] `mpv/client.h`
-    - [x] `mpv/render.h`
-    - [x] `mpv/render_gl.h`
-    - [ ] `mpv/stream_cb.h`
-- [x] Fix memory leaks.
+
+- [X] Finish wrapping all exported libmpv functions.
+  - [X] `mpv/client.h`
+  - [X] `mpv/render.h`
+  - [X] `mpv/render_gl.h`
+  - [X] `mpv/stream_cb.h`
+- [X] ~~Fix memory leak~~
+  - [ ] Free memory that is allocated by libmpv.
 - [ ] write more tests.
 - [ ] Add another structs that contains helper functions.
-- [x] Add Examples.
-- [x] Export as a library.
-- [x] Add usage guide.
+  - [ ] try implementing [python-mpv](https://github.com/jaseg/python-mpv) functionality.
+- [X] Add Examples.
+  - [ ] wayland rendering
+  - [ ] x11 rendering
+  - [ ] drm rendering
+  - [X] opengl rendering
+  - [X] software rendering
+- [X] ~~Export as a library Make the library~~
+  - [ ] cross-platform compatible
+- [X] Add usage guide.
 
 ## Usage
+
 - first fetch the package into your project:
   ```bash
   zig fetch --save https://github.com/hasanpasha/zmpv/archive/${DESIRED_COMMOT_HASH}.tar.gz 
