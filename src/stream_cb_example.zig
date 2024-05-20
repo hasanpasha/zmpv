@@ -38,7 +38,7 @@ fn size_cb(cookie: ?*anyopaque) MpvError!u64 {
             MpvError.Unsupported;
         };
 
-        std.log.debug("returning size", .{});
+        // std.log.debug("returning size", .{});
 
         return meta.size();
     } else {
@@ -47,9 +47,9 @@ fn size_cb(cookie: ?*anyopaque) MpvError!u64 {
 }
 
 fn read_cb(cookie: ?*anyopaque, buf: []u8, size: u64) MpvError!u64 {
-    std.log.debug("reading", .{});
+    // std.log.debug("reading", .{});
     if (cookie) |fdp| {
-        std.log.debug("file is here", .{});
+        // std.log.debug("file is here", .{});
         const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
 
         _ = size;
@@ -83,7 +83,7 @@ fn open_cb(user_data: ?*anyopaque, uri: []u8, allocator: std.mem.Allocator) MpvE
     _ = user_data;
 
     const filename = std.mem.sliceTo(uri[6..], 0);
-    std.log.debug("opening {s}", .{filename});
+    // std.log.debug("opening {s}", .{filename});
 
     const fd = std.fs.cwd().openFile(filename, .{}) catch {
         return MpvError.LoadingFailed;
@@ -115,7 +115,8 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     const args = try std.process.argsAlloc(allocator);
-    defer allocator.free(args);
+    // defer allocator.free(args);
+    defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
         std.debug.print("usage: {s} [filename]\n", .{args[0]});
@@ -123,7 +124,6 @@ pub fn main() !void {
     }
 
     const filename = args[1];
-    _ = filename;
 
     const mpv = try Mpv.create(allocator);
 
@@ -134,10 +134,12 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    // _ = c.mpv_stream_cb_add_ro(mpv.handle, "zig", null, &open_cb);
     try mpv.stream_cb_add_ro("zig", null, &open_cb);
 
-    var cmd_args = [_][]const u8{ "loadfile", "zig://sample.mp4" };
+    const uri = try std.fmt.allocPrint(allocator, "zig://{s}", .{filename});
+    defer allocator.free(uri);
+
+    var cmd_args = [_][]const u8{ "loadfile", uri };
     try mpv.command_async(0, &cmd_args);
 
     try mpv.request_log_messages(.Error);
@@ -147,6 +149,7 @@ pub fn main() !void {
 
     while (true) {
         const event = try mpv.wait_event(10000);
+        defer event.free();
         const event_id = event.event_id;
         switch (event_id) {
             .Shutdown => break,
