@@ -83,9 +83,10 @@ pub fn build(b: *std.Build) void {
         src: []const u8,
     };
 
-    const examples = [_]Example{ 
-        .{ .name = "sdl-opengl", .src = "src/sdl_opengl_example.zig", },
-        .{ .name = "sdl-sw", .src = "src/sdl_sw_example.zig", },
+    const examples = [_]Example{
+        .{ .name = "sdl-opengl", .src = "src/sdl_opengl_example.zig" },
+        .{ .name = "sdl-sw", .src = "src/sdl_sw_example.zig" },
+        .{ .name = "stream-cb", .src = "src/stream_cb_example.zig" },
     };
 
     for (examples) |example| {
@@ -108,7 +109,6 @@ pub fn build(b: *std.Build) void {
         const e_run_step = b.step(example.name, "Run the example");
         e_run_step.dependOn(&e_run_cmd.step);
     }
-
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
