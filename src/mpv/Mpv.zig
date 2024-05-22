@@ -135,7 +135,6 @@ pub const LoadfileFlag = enum {
 };
 
 // TODO this should be in the helper struct.
-// FIXME the function returns InvalidParameter error.
 pub fn loadfile(self: Self, filename: []const u8, args: struct {
     flag: LoadfileFlag = .Replace,
     index: usize = 0,
@@ -144,9 +143,17 @@ pub fn loadfile(self: Self, filename: []const u8, args: struct {
     const flag_str = args.flag.to_string();
     const index_str = try std.fmt.allocPrint(self.allocator, "{}", .{args.index});
     defer self.allocator.free(index_str);
-    var cmd_args = [_][]const u8{ "loadfile", filename, flag_str, index_str, args.options };
 
-    return self.command(&cmd_args);
+    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
+    defer cmd_args.deinit();
+
+    try cmd_args.appendSlice(&[_][]const u8{"loadfile", filename, flag_str});
+    if (args.flag == .InsertAt or args.flag == .InsertAtPlay) {
+        try cmd_args.append(index_str);
+    }
+    try cmd_args.append(args.options);
+
+    return self.command(cmd_args.items);
 }
 
 pub fn command_string(self: Self, args: []const u8) MpvError!void {
@@ -558,7 +565,6 @@ pub fn stream_cb_add_ro(
     user_data: ?*anyopaque,
     open_fn: *const fn (?*anyopaque, []u8, std.mem.Allocator) MpvError!MpvStreamCBInfo,
 ) !void {
-
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     const state_ptr = try arena.allocator().create(MpvStreamOpenState);
     state_ptr.*.cb = open_fn;
