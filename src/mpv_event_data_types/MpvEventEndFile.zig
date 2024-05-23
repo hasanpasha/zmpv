@@ -1,6 +1,6 @@
-const mpv_error = @import("../errors/mpv_error.zig");
+const mpv_error = @import("../mpv_error.zig");
 const MpvError = mpv_error.MpvError;
-const mpv_event_utils = @import("./mpv_event_utils.zig");
+const utils = @import("../utils.zig");
 const c = @import("../c.zig");
 const testing = @import("std").testing;
 
@@ -13,7 +13,7 @@ playlist_insert_num_entries: i64,
 event_error: MpvError,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_end_file);
+    const data = utils.cast_event_data(data_ptr, c.mpv_event_end_file);
     return Self{
         .reason = @enumFromInt(data.reason),
         .playlist_entry_id = data.playlist_entry_id,

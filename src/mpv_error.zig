@@ -1,6 +1,4 @@
-const c = @cImport({
-    @cInclude("mpv/client.h");
-});
+const c = @import("./c.zig");
 const std = @import("std");
 
 pub const MpvError = error{

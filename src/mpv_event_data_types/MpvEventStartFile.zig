@@ -1,5 +1,5 @@
 const testing = @import("std").testing;
-const mpv_event_utils = @import("./mpv_event_utils.zig");
+const utils = @import("../utils.zig");
 const c = @import("../c.zig");
 
 const Self = @This();
@@ -7,7 +7,7 @@ const Self = @This();
 playlist_entry_id: i64,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_start_file);
+    const data = utils.cast_event_data(data_ptr, c.mpv_event_start_file);
     return Self{
         .playlist_entry_id = data.playlist_entry_id,
     };

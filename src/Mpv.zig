@@ -1,16 +1,15 @@
 const std = @import("std");
 const testing = std.testing;
-const mpv_error = @import("./errors/mpv_error.zig");
-const generic_error = @import("./errors/generic_error.zig");
-const mpv_event = @import("./mpv_event.zig");
+const mpv_error = @import("./mpv_error.zig");
+const generic_error = @import("./generic_error.zig");
+const MpvEvent = @import("./MpvEvent.zig");
 const utils = @import("./utils.zig");
 const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
-const MpvEventId = @import("./mpv_event/mpv_event_id.zig").MpvEventId;
+const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
 
-const MpvEvent = mpv_event.MpvEvent;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvLogLevel = @import("./mpv_event/MpvEventLogMessage.zig").MpvLogLevel;
+const MpvLogLevel = @import("./mpv_event_data_types//MpvEventLogMessage.zig").MpvLogLevel;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
 
 const MpvError = mpv_error.MpvError;

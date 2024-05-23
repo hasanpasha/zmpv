@@ -1,9 +1,9 @@
 const std = @import("std");
 const testing = std.testing;
-const MpvError = @import("../errors/mpv_error.zig").MpvError;
+const MpvError = @import("../mpv_error.zig").MpvError;
 const MpvFormat = @import("../mpv_format.zig").MpvFormat;
 const MpvPropertyData = @import("../mpv_property_data.zig").MpvPropertyData;
-const mpv_event_utils = @import("./mpv_event_utils.zig");
+const utils = @import("../utils.zig");
 const c = @import("../c.zig");
 
 const Self = @This();
@@ -16,7 +16,7 @@ c_data_ptr: *anyopaque,
 allocator: std.mem.Allocator,
 
 pub fn from(data_ptr: *anyopaque, allocator: std.mem.Allocator) !Self {
-    const data = mpv_event_utils.cast_event_data(data_ptr, c.mpv_event_property);
+    const data = utils.cast_event_data(data_ptr, c.mpv_event_property);
 
     const format: MpvFormat = @enumFromInt(data.format);
     return Self{
