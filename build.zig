@@ -19,10 +19,9 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(lib);
 
-    const module = b.addModule("zmpv", .{
+    const zmpv_module = b.addModule("zmpv", .{
         .root_source_file = .{ .path = "src/root.zig" },
     });
-    _ = module;
 
     const Example = struct {
         name: []const u8,
@@ -30,9 +29,9 @@ pub fn build(b: *std.Build) void {
     };
 
     const examples = [_]Example{
-        .{ .name = "sdl-opengl", .src = "src/sdl_opengl_example.zig" },
-        .{ .name = "sdl-sw", .src = "src/sdl_sw_example.zig" },
-        .{ .name = "stream-cb", .src = "src/stream_cb_example.zig" },
+        .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
+        .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
+        .{ .name = "stream-cb", .src = "examples/stream_cb_example.zig" },
     };
 
     for (examples) |example| {
@@ -42,6 +41,8 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
+
+        e_exe.root_module.addImport("zmpv", zmpv_module);
 
         e_exe.linkLibC();
         e_exe.linkSystemLibrary("SDL2");

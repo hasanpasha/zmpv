@@ -1,7 +1,6 @@
 const std = @import("std");
-const c = @import("./mpv/c.zig");
-const Mpv = @import("./mpv/Mpv.zig");
-const MpvError = @import("./mpv/errors/mpv_error.zig").MpvError;
+const Mpv = @import("zmpv").Mpv;
+const MpvError = @import("zmpv").MpvError;
 
 fn seek_cb(cookie: ?*anyopaque, offset: u64) MpvError!u64 {
     if (cookie) |fdp| {
