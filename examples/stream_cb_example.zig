@@ -34,12 +34,14 @@ fn size_cb(cookie: ?*anyopaque) MpvError!u64 {
     if (cookie) |fdp| {
         const fd: *std.fs.File = @ptrCast(@alignCast(fdp));
         const meta = fd.metadata() catch {
-            MpvError.Unsupported;
+            return MpvError.Unsupported;
         };
 
-        // std.log.debug("returning size", .{});
+        const size = meta.size();
 
-        return meta.size();
+        std.log.debug("returning size {}", .{size});
+
+        return size;
     } else {
         return MpvError.Unsupported;
     }
@@ -82,7 +84,7 @@ fn open_cb(user_data: ?*anyopaque, uri: []u8, allocator: std.mem.Allocator) MpvE
     _ = user_data;
 
     const filename = std.mem.sliceTo(uri[6..], 0);
-    // std.log.debug("opening {s}", .{filename});
+    std.log.debug("opening {s}", .{filename});
 
     const fd = std.fs.cwd().openFile(filename, .{}) catch {
         return MpvError.LoadingFailed;
@@ -98,7 +100,7 @@ fn open_cb(user_data: ?*anyopaque, uri: []u8, allocator: std.mem.Allocator) MpvE
         .read_fn = &read_cb,
         .close_fn = &close_cb,
         .seek_fn = &seek_cb,
-        .size_fn = null,
+        .size_fn = &size_cb,
         .cancel_fn = null,
     };
 }
