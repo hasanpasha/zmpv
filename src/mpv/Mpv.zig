@@ -264,7 +264,7 @@ pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     if (returned_value == null) {
         return GenericError.NullValue;
     }
-    defer mpv_free(returned_value);
+    defer c.mpv_free(returned_value);
 
     return try self.allocator.dupe(u8, std.mem.sliceTo(returned_value, 0));
 }
@@ -275,7 +275,7 @@ pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
     if (returned_value == null) {
         return GenericError.NullValue;
     }
-    defer mpv_free(returned_value);
+    defer c.mpv_free(returned_value);
 
     return try self.allocator.dupe(u8, std.mem.sliceTo(returned_value, 0));
 }
@@ -457,14 +457,6 @@ pub fn free_node(self: Self, node: MpvNode) void {
 
 pub fn free(self: Self, data: anytype) void {
     self.allocator.free(data);
-}
-
-fn mpv_free(data: ?*anyopaque) void {
-    c.mpv_free(data);
-}
-
-fn mpv_free_node_content(data: ?*anyopaque) void {
-    c.mpv_free_node_contents(@ptrCast(@alignCast(data)));
 }
 
 pub const MpvStreamCBInfo = struct {
