@@ -67,7 +67,7 @@ pub fn initialize(self: Self) MpvError!void {
         return err;
     }
 }
-// FIXME: Fix option `title` error on OSDString format
+
 pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
