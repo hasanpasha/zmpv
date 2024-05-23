@@ -10,7 +10,7 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
   - [X] `mpv/render_gl.h`
   - [X] `mpv/stream_cb.h`
 - [X] ~~Fix memory leak~~
-  - [ ] Free memory that is allocated by libmpv.
+  - [X] ~~Free memory that is allocated by libmpv.~~ (mostly, please open an issue if you come across unallocated memory)
 - [ ] write more tests.
 - [ ] Add another structs that contains helper functions.
   - [ ] try implementing [python-mpv](https://github.com/jaseg/python-mpv) functionality.
@@ -18,6 +18,7 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
   - [ ] wayland rendering
   - [ ] x11 rendering
   - [ ] drm rendering
+  - [X] simple usage
   - [X] opengl rendering
   - [X] software rendering
 - [X] ~~Export as a library Make the library~~
@@ -38,6 +39,7 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
   ```
 
 ## Example
+
 ```zig
 const std = @import("std");
 const zmpv = @import("zmpv");
