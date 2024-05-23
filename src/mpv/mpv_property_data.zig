@@ -7,8 +7,8 @@ const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,
-    String: []const u8,
-    OSDString: []const u8,
+    String: []u8,
+    OSDString: []u8,
     Flag: bool,
     INT64: i64,
     Double: f64,
@@ -20,12 +20,20 @@ pub const MpvPropertyData = union(MpvFormat) {
     pub fn from(format: MpvFormat, data: ?*anyopaque, allocator: std.mem.Allocator) !MpvPropertyData {
         return switch (format) {
             .None => MpvPropertyData{ .None = {} },
-            // TODO mv .OSDString to its own branch to fix Mpv.set_option error on .OSDString format.
-            .String, .OSDString => value: {
-                const string: [*c]const u8 = @ptrCast(data);
-                const zig_string = std.mem.sliceTo(string, 0);
+            .String => value: {
+                const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
+                const string = string_ptr.*;
+                const zig_string = try allocator.dupe(u8, std.mem.sliceTo(string, 0));
                 break :value MpvPropertyData{
                     .String = zig_string,
+                };
+            },
+            .OSDString => value: {
+                const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
+                const string = string_ptr.*;
+                const zig_string = try allocator.dupe(u8, std.mem.sliceTo(string, 0));
+                break :value MpvPropertyData{
+                    .OSDString = zig_string,
                 };
             },
             .Flag => value: {
@@ -96,6 +104,9 @@ pub const MpvPropertyData = union(MpvFormat) {
 
     pub fn free(self: MpvPropertyData, allocator: std.mem.Allocator) void {
         switch (self) {
+            .String, .OSDString => |str| {
+                allocator.free(str);
+            },
             .Node => |node| {
                 node.free();
             },
