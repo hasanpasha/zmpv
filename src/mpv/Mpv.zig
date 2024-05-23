@@ -1040,5 +1040,32 @@ test "Mpv memory leak" {
             else => {},
         }
     }
+}
 
+test "Mpv.set_option" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.set_option("osc", .Flag, .{ .Flag = true });
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    const osc = try mpv.get_property("osc", .Flag);
+    defer mpv.free_property_data(osc);
+
+    try testing.expect(osc.Flag == true);
+}
+
+test "Mpv.set_option_string" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    const title = try mpv.get_property("title", .String);
+    defer mpv.free_property_data(title);
+
+    try testing.expect(std.mem.eql(u8, title.String, "zmpv"));
 }
