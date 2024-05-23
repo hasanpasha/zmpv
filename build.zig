@@ -29,6 +29,7 @@ pub fn build(b: *std.Build) void {
     };
 
     const examples = [_]Example{
+        .{ .name = "simple", .src = "examples/simple_example.zig" },
         .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
         .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
         .{ .name = "stream-cb", .src = "examples/stream_cb_example.zig" },
