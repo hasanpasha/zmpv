@@ -3,7 +3,9 @@ const MpvRenderContext = Mpv.MpvRenderContext;
 const MpvRenderParam = Mpv.MpvRenderParam;
 const std = @import("std");
 const c = @import("./mpv/c.zig");
-const sdl = @import("./sdl2.zig");
+const sdl = @cImport({
+    @cInclude("SDL2/SDL.h");
+});
 
 var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
