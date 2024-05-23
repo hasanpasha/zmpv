@@ -7,13 +7,11 @@ const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 const Self = @This();
 
 data: MpvNodeData,
-c_node_ptr: ?*c.mpv_node,
 allocator: ?std.mem.Allocator,
 
 pub fn new(data: MpvNodeData) Self {
     return Self{
         .data = data,
-        .c_node_ptr = null,
         .allocator = null,
     };
 }
