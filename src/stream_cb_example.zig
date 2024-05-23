@@ -113,6 +113,7 @@ pub fn main() !void {
         }
     }
     const allocator = gpa.allocator();
+    // const allocator = std.heap.page_allocator;
 
     const args = try std.process.argsAlloc(allocator);
     // defer allocator.free(args);
@@ -144,7 +145,11 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.Error);
 
-    try mpv.observe_property(1, "fullscreen", .Flag);
+    const fullscreen = try mpv.get_property("title", .OSDString);
+    defer mpv.free_property_data(fullscreen);
+    std.log.info("fullscreen = {s}", .{fullscreen.OSDString});
+
+    try mpv.observe_property(1, "fullscreen", .String);
     try mpv.observe_property(2, "time-pos", .INT64);
 
     while (true) {
@@ -161,7 +166,7 @@ pub fn main() !void {
                 const property = event.data.PropertyChange;
 
                 if (std.mem.eql(u8, property.name, "fullscreen")) {
-                    std.log.debug("[fullscreen] {}", .{property.data.Flag});
+                    std.log.debug("[fullscreen] {s}", .{property.data.String});
                 } else if (std.mem.eql(u8, property.name, "time-pos")) {
                     switch (property.data) {
                         .INT64 => |time_pos| {

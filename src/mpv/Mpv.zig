@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 const mpv_error = @import("./errors/mpv_error.zig");
 const generic_error = @import("./errors/generic_error.zig");
 const mpv_event = @import("./mpv_event.zig");
@@ -227,10 +228,25 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
     c.mpv_abort_async_command(self.handle, reply_userdata);
 }
 
+fn mpv_free_data(data_anon_ptr: *anyopaque, format: MpvFormat) void {
+    switch (format) {
+        .String, .OSDString => {
+            const str_ptr: *[*c]u8 = @ptrCast(@alignCast(data_anon_ptr));
+            const str = str_ptr.*;
+            c.mpv_free(str);
+        },
+        .Node, .NodeArray, .NodeMap => {
+            c.mpv_free_node_contents(@ptrCast(@alignCast(data_anon_ptr)));
+        },
+        else => {},
+    }
+}
+
 pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
     const ret = c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr);
+    defer mpv_free_data(data_ptr, format);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
@@ -1002,15 +1018,14 @@ pub const MpvRenderContext = struct {
     }
 };
 
-test "simple test" {
+test "Mpv simple test" {
     const mpv = try Self.create(std.testing.allocator);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 }
 
-test "memory leak" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+test "Mpv memory leak" {
+    const allocator = testing.allocator;
 
     const mpv = try Self.create(allocator);
     try mpv.initialize();
@@ -1027,7 +1042,4 @@ test "memory leak" {
     }
 
     mpv.terminate_destroy();
-
-    const status = gpa.deinit();
-    try std.testing.expect(status == .ok);
 }
