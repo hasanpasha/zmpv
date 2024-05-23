@@ -191,6 +191,7 @@ pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
     var output: c.mpv_node = undefined;
 
     const ret = c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output));
+    defer c.mpv_free_node_contents(&output);
     const err = mpv_error.from_mpv_c_error(ret);
 
     if (err != MpvError.Success) {
