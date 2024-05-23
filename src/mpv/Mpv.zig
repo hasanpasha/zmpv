@@ -11,7 +11,7 @@ const c = @import("./c.zig");
 const MpvEvent = mpv_event.MpvEvent;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event/MpvEventLogMessage.zig").MpvLogLevel;
-const MpvNode = @import("./MpvNode.zig");
+const MpvNode = @import("./mpv_node.zig").MpvNode;
 
 const MpvError = mpv_error.MpvError;
 const GenericError = generic_error.GenericError;
@@ -166,6 +166,7 @@ pub fn command_string(self: Self, args: []const u8) MpvError!void {
     }
 }
 
+/// The resulting MpvNode should be freed with `Mpv.free_node(node)`
 pub fn command_node(self: Self, args: MpvNode) !MpvNode {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
@@ -447,6 +448,10 @@ pub fn error_string(err: MpvError) []const u8 {
 
 pub fn free_property_data(self: Self, data: MpvPropertyData) void {
     data.free(self.allocator);
+}
+
+pub fn free_node(self: Self, node: MpvNode) void {
+    node.free(self.allocator);
 }
 
 pub fn free(self: Self, data: anytype) void {
@@ -1142,9 +1147,9 @@ test "Mpv.command_node" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_]MpvNode{ MpvNode.new(.{ .String = "loadfile" }), MpvNode.new(.{ .String = "sample.mp4" })};
-    const result = try mpv.command_node(MpvNode.new(.{ .NodeArray = &args }));
-    result.free();
+    var args = [_]MpvNode{ .{ .String = "loadfile" }, .{ .String = "sample.mp4" } };
+    const result = try mpv.command_node(.{ .NodeArray = &args });
+    defer mpv.free_node(result);
 
     while (true) {
         const event = try mpv.wait_event(0);

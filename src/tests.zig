@@ -1,7 +1,7 @@
 comptime {
     _ = @import("./mpv/Mpv.zig");
     _ = @import("./mpv/mpv_format.zig");
-    _ = @import("./mpv/MpvNode.zig");
+    _ = @import("./mpv/mpv_node.zig");
     _ = @import("./mpv/utils.zig");
     _ = @import("./mpv/mpv_property_data.zig");
     _ = @import("./mpv/mpv_event/mpv_event_id.zig");

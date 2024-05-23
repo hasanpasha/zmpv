@@ -2,7 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvNode = @import("./MpvNode.zig");
+const MpvNode = @import("./mpv_node.zig").MpvNode;
 const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
@@ -108,17 +108,17 @@ pub const MpvPropertyData = union(MpvFormat) {
                 allocator.free(str);
             },
             .Node => |node| {
-                node.free();
+                node.free(allocator);
             },
             .NodeArray => |array| {
                 for (array) |node| {
-                    node.free();
+                    node.free(allocator);
                 }
             },
             .NodeMap => |map| {
                 var iter = map.keyIterator();
                 while (iter.next()) |key| {
-                    map.get(key.*).?.free();
+                    map.get(key.*).?.free(allocator);
                 }
                 var m: *MpvNodeHashMap = @constCast(&map);
                 m.deinit();
