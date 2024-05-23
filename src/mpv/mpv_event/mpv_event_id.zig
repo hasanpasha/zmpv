@@ -1,4 +1,5 @@
 const c = @import("../c.zig");
+const testing = @import("std").testing;
 
 pub const MpvEventId = enum(u8) {
     None = 0,
@@ -25,3 +26,10 @@ pub const MpvEventId = enum(u8) {
         return @intCast(@intFromEnum(self));
     }
 };
+
+test "MpvEventId to" {
+    try testing.expect(MpvEventId.AudioReconfig.to_c() == c.MPV_EVENT_AUDIO_RECONFIG);
+    try testing.expect(MpvEventId.Tick.to_c() == c.MPV_EVENT_TICK);
+    try testing.expect(MpvEventId.QueueOverflow.to_c() == c.MPV_EVENT_QUEUE_OVERFLOW);
+    try testing.expect(MpvEventId.FileLoaded.to_c() != c.MPV_EVENT_COMMAND_REPLY);
+}

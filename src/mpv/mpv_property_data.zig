@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvNode = @import("./MpvNode.zig");
@@ -61,6 +62,7 @@ pub const MpvPropertyData = union(MpvFormat) {
         };
     }
 
+    // TODO a better way to free the allocated memory (maybe return a union type!)
     pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) !*anyopaque {
         return switch (self) {
             .String, .OSDString => |str| ptr: {
@@ -117,3 +119,25 @@ pub const MpvPropertyData = union(MpvFormat) {
         }
     }
 };
+
+test "MpvNodeData from" {
+    const allocator = testing.allocator;
+    var num = c.mpv_node{
+        .format = c.MPV_FORMAT_INT64,
+        .u = .{ .int64 = 45 },
+    };
+    const z_num = try MpvPropertyData.from(.INT64, &num, allocator);
+    defer MpvPropertyData.free(z_num, allocator);
+
+    try testing.expect(z_num.INT64 == 45);
+}
+
+test "MpvNodeData to" {
+    const allocator = testing.allocator;
+    const z_num = MpvPropertyData{ .INT64 = 45 };
+    const c_num_anon_ptr = try z_num.to_c(allocator);
+    const c_num_ptr: *i64 = @ptrCast(@alignCast(c_num_anon_ptr));
+    defer allocator.destroy(c_num_ptr);
+
+    try testing.expect(z_num.INT64 == c_num_ptr.*);
+}

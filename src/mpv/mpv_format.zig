@@ -1,4 +1,5 @@
 const c = @import("./c.zig");
+const testing = @import("std").testing;
 
 pub const MpvFormat = enum(u8) {
     const Self = @This();
@@ -35,3 +36,24 @@ pub const MpvFormat = enum(u8) {
         };
     }
 };
+
+test "MpvFormat from" {
+    try testing.expect(MpvFormat.from(c.MPV_FORMAT_NONE) == .None);
+    try testing.expect(MpvFormat.from(c.MPV_FORMAT_STRING) == .String);
+    try testing.expect(MpvFormat.from(c.MPV_FORMAT_NODE) == .Node);
+    try testing.expect(MpvFormat.from(c.MPV_FORMAT_NODE_ARRAY) == .NodeArray);
+}
+
+test "MpvFormat to" {
+    try testing.expect(MpvFormat.to(.None) == c.MPV_FORMAT_NONE);
+    try testing.expect(MpvFormat.to(.INT64) == c.MPV_FORMAT_INT64);
+    try testing.expect(MpvFormat.to(.Double) == c.MPV_FORMAT_DOUBLE);
+    try testing.expect(MpvFormat.to(.Node) == c.MPV_FORMAT_NODE);
+}
+
+test "MpvFormat ctype" {
+    try testing.expect(MpvFormat.CDataType(.ByteArray) == c.mpv_byte_array);
+    try testing.expect(MpvFormat.CDataType(.String) == [*c]u8);
+    try testing.expect(MpvFormat.CDataType(.NodeMap) == c.mpv_node_list);
+    try testing.expect(MpvFormat.CDataType(.INT64) != c_int);
+}

@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
@@ -169,3 +170,39 @@ pub const MpvNodeData = union(enum) {
     NodeMap: MpvNodeHashMap,
     ByteArray: []const u8,
 };
+
+test "MpvNodeData" {
+    const none = MpvNodeData{ .None = {} };
+    try testing.expect(none.None == {});
+
+    const int = MpvNodeData{ .INT64 = 69 };
+    switch (int) {
+        .INT64 => |num| try testing.expect(num == 69),
+        else => unreachable,
+    }
+
+    const flag = MpvNodeData{ .Flag = false };
+    try testing.expect(@TypeOf(flag.Flag) == bool);
+}
+
+test "MpvNode to c" {
+    return error.SkipZigTest;
+    // const allocator = testing.allocator;
+    // const node = Self{ .data = .{ .Double = 3.14 } };
+    // const c_node = try node.to_c(allocator);
+    // defer allocator.free(c_node);
+}
+
+test "MpvNode from c" {
+    const allocator = testing.allocator;
+    var num = c.mpv_node{
+        .format = c.MPV_FORMAT_INT64,
+        .u = .{ .int64 = 6996 },
+    };
+    const z_node = try Self.from(&num, allocator);
+    z_node.free();
+    try testing.expect(z_node.allocator != null);
+    try testing.expect(z_node.c_node_ptr != null);
+    try testing.expect(z_node.c_node_ptr.? == &num);
+    try testing.expect(z_node.data.INT64 == 6996);
+}

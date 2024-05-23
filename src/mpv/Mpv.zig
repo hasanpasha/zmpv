@@ -147,7 +147,7 @@ pub fn loadfile(self: Self, filename: []const u8, args: struct {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
 
-    try cmd_args.appendSlice(&[_][]const u8{"loadfile", filename, flag_str});
+    try cmd_args.appendSlice(&[_][]const u8{ "loadfile", filename, flag_str });
     if (args.flag == .InsertAt or args.flag == .InsertAtPlay) {
         try cmd_args.append(index_str);
     }
@@ -1001,3 +1001,33 @@ pub const MpvRenderContext = struct {
         c.mpv_render_context_report_swap(self.context);
     }
 };
+
+test "simple test" {
+    const mpv = try Self.create(std.testing.allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+}
+
+test "memory leak" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    const mpv = try Self.create(allocator);
+    try mpv.initialize();
+
+    try mpv.loadfile("sample.mp4", .{});
+
+    while (true) {
+        const event = try mpv.wait_event(10000);
+        switch (event.event_id) {
+            .Shutdown => break,
+            .PlaybackRestart => break,
+            else => {},
+        }
+    }
+
+    mpv.terminate_destroy();
+
+    const status = gpa.deinit();
+    try std.testing.expect(status == .ok);
+}

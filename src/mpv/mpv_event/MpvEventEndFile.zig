@@ -2,6 +2,7 @@ const mpv_error = @import("../errors/mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const mpv_event_utils = @import("./mpv_event_utils.zig");
 const c = @import("../c.zig");
+const testing = @import("std").testing;
 
 const Self = @This();
 
@@ -29,3 +30,20 @@ const MpvEventEndFileReason = enum(u8) {
     Error = 4,
     Redirect = 5,
 };
+
+test "MpvEventEndFile from" {
+    var event_end_file = c.mpv_event_end_file{
+        .@"error" = c.MPV_ERROR_SUCCESS,
+        .playlist_entry_id = 0,
+        .playlist_insert_id = 0,
+        .playlist_insert_num_entries = 0,
+        .reason = c.MPV_END_FILE_REASON_QUIT,
+    };
+    const z_event_end_file = Self.from(&event_end_file);
+
+    try testing.expect(z_event_end_file.event_error == MpvError.Success);
+    try testing.expect(z_event_end_file.playlist_entry_id == 0);
+    try testing.expect(z_event_end_file.playlist_insert_id == 0);
+    try testing.expect(z_event_end_file.playlist_insert_num_entries == 0);
+    try testing.expect(z_event_end_file.reason == .Quit);
+}

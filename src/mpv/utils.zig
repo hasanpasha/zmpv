@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 
 pub fn create_cstring_array(z_array: [][]const u8, allocator: std.mem.Allocator) ![][*c]const u8 {
     const array = try allocator.alloc([*c]const u8, z_array.len + 1);
@@ -31,4 +32,36 @@ pub fn free_zstring_array(z_array: [][]const u8, allocator: std.mem.Allocator) v
         allocator.free(z_array[index]);
     }
     allocator.free(z_array);
+}
+
+test "zstring to cstring array" {
+    const allocator = testing.allocator;
+
+    var zstrings = [_][]const u8{ "hello", "world" };
+    const cstrings = try create_cstring_array(&zstrings, allocator);
+    defer free_cstring_array(cstrings, zstrings.len, allocator);
+    try testing.expect(zstrings[0][0] == cstrings[0][0]);
+    try testing.expect(zstrings[1][0] == cstrings[1][0]);
+    try testing.expect(zstrings[0][0] != cstrings[1][0]);
+    for (0.., zstrings) |i, string| {
+        for (0.., string) |j, char| {
+            try testing.expect(char == cstrings[i][j]);
+        }
+    }
+}
+
+test "cstring to zstring array" {
+    const allocator = testing.allocator;
+
+    var cstrings = [_][*c]const u8{ "hello", "world" };
+    const zstrings = try create_zstring_array(&cstrings, 2, allocator);
+    defer free_zstring_array(zstrings, allocator);
+    try testing.expect(zstrings[0][0] == cstrings[0][0]);
+    try testing.expect(zstrings[1][2] == cstrings[1][2]);
+    try testing.expect(zstrings[0][0] != cstrings[1][1]);
+    for (0.., zstrings) |i, string| {
+        for (0.., string) |j, char| {
+            try testing.expect(char == cstrings[i][j]);
+        }
+    }
 }

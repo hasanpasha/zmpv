@@ -10,6 +10,7 @@ const MpvEventHook = @import("./MpvEventHook.zig");
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("../c.zig");
 const std = @import("std");
+const testing = std.testing;
 
 const Self = @This();
 
@@ -86,3 +87,30 @@ pub const MpvEventData = union(enum) {
         }
     }
 };
+
+test "MpvEvent from" {
+    const allocator = testing.allocator;
+    var log_event_data = c.mpv_event_log_message{
+        .log_level = c.MPV_LOG_LEVEL_V,
+        .level = "v",
+        .prefix = "simple",
+        .text = "this is a test log",
+    };
+    var log_event = c.mpv_event{
+        .@"error" = c.MPV_ERROR_SUCCESS,
+        .data = &log_event_data,
+        .event_id = c.MPV_EVENT_LOG_MESSAGE,
+        .reply_userdata = 0,
+    };
+    const z_log = try Self.from(&log_event, allocator);
+    const z_data = z_log.data.LogMessage;
+    defer Self.free(z_log);
+
+    try testing.expect(z_log.event_id == .LogMessage);
+    try testing.expect(z_log.event_error == MpvError.Success);
+    try testing.expect(z_log.reply_userdata == 0);
+    try testing.expect(z_data.log_level == .V);
+    try testing.expect(std.mem.eql(u8, z_data.level, "v"));
+    try testing.expect(std.mem.eql(u8, z_data.prefix, "simple"));
+    try testing.expect(std.mem.eql(u8, z_data.text, "this is a test log"));
+}

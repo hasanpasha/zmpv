@@ -1,6 +1,7 @@
 const c = @import("../c.zig");
 const mpv_event_utils = @import("./mpv_event_utils.zig");
 const std = @import("std");
+const testing = std.testing;
 const utils = @import("../utils.zig");
 
 const Self = @This();
@@ -21,4 +22,19 @@ pub fn from(data_ptr: *anyopaque, allocator: std.mem.Allocator) !Self {
 
 pub fn free(self: Self) void {
     utils.free_zstring_array(self.args, self.allocator);
+}
+
+test "MpvEventClientMessage from" {
+    const allocator = testing.allocator;
+    var message_args = [_][*c]const u8{ "hello", "world" };
+    var message = c.mpv_event_client_message{
+        .args = &message_args,
+        .num_args = 2,
+    };
+    const z_message = try from(&message, allocator);
+    defer z_message.free();
+
+    try testing.expect(z_message.args.len == 2);
+    try testing.expect(std.mem.eql(u8, z_message.args[0], "hello"));
+    try testing.expect(std.mem.eql(u8, z_message.args[1], "world"));
 }

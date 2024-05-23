@@ -1,5 +1,6 @@
 const c = @import("../c.zig");
 const std = @import("std");
+const testing = std.testing;
 const mpv_event_utils = @import("./mpv_event_utils.zig");
 
 const Self = @This();
@@ -42,3 +43,18 @@ pub const MpvLogLevel = enum(u8) {
         };
     }
 };
+
+test "MpvEventLogMessage from" {
+    var log_event_data = c.mpv_event_log_message{
+        .log_level = c.MPV_LOG_LEVEL_V,
+        .level = "v",
+        .prefix = "simple",
+        .text = "this is a test log",
+    };
+    const z_log = Self.from(&log_event_data);
+
+    try testing.expect(z_log.log_level == .V);
+    try testing.expect(std.mem.eql(u8, z_log.level, "v"));
+    try testing.expect(std.mem.eql(u8, z_log.prefix, "simple"));
+    try testing.expect(std.mem.eql(u8, z_log.text, "this is a test log"));
+}
