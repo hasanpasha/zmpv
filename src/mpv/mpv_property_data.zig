@@ -7,8 +7,8 @@ const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,
-    String: []u8,
-    OSDString: []u8,
+    String: []const u8,
+    OSDString: []const u8,
     Flag: bool,
     INT64: i64,
     Double: f64,
