@@ -385,6 +385,7 @@ pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!vo
     }
 }
 
+/// the caller have to free allocated memory with `MpvEvent.free(event)`
 pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 
@@ -1068,4 +1069,89 @@ test "Mpv.set_option_string" {
     defer mpv.free_property_data(title);
 
     try testing.expect(std.mem.eql(u8, title.String, "zmpv"));
+}
+
+
+test "Mpv.load_config_file" {
+    return error.SkipZigTest;
+}
+
+test "Mpv.command" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    var args = [_][]const u8{"loadfile", "sample.mp4"};
+    try mpv.command(&args);
+
+    while (true) {
+        const event = try mpv.wait_event(0);
+        defer event.free();
+        switch (event.event_id) {
+            .FileLoaded => break,
+            else => {}
+        }
+    }
+}
+
+test "Mpv.command_string" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+
+    while (true) {
+        const event = try mpv.wait_event(0);
+        defer event.free();
+        switch (event.event_id) {
+            .FileLoaded => break,
+            else => {}
+        }
+    }
+}
+
+test "Mpv.command_async" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    var args = [_][]const u8{"loadfile", "sample.mp4"};
+    try mpv.command_async(0, &args);
+
+    while (true) {
+        const event = try mpv.wait_event(0);
+        defer event.free();
+        switch (event.event_id) {
+            .FileLoaded => break,
+            else => {}
+        }
+    }
+}
+
+test "Mpv.command_node" {
+    const allocator = testing.allocator;
+
+    const mpv = try Self.create(allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    var args = [_]MpvNode{ MpvNode.new(.{ .String = "loadfile" }), MpvNode.new(.{ .String = "sample.mp4" })};
+    const result = try mpv.command_node(MpvNode.new(.{ .NodeArray = &args }));
+    result.free();
+
+    while (true) {
+        const event = try mpv.wait_event(0);
+        defer event.free();
+        switch (event.event_id) {
+            .FileLoaded => break,
+            else => {}
+        }
+    }
 }
