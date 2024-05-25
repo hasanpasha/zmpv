@@ -38,6 +38,7 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
   const zmpv_dep = b.dependency("zmpv", .{ .target = target, .optimize = optimize });
   exe.root_module.addImport("zmpv", zmpv_dep.module("zmpv"));
   exe.linkSystemLibrary("mpv"); # in linux
+  exe.linkLibC();
   ```
 
 ## Example
