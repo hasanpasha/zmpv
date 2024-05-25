@@ -1,10 +1,9 @@
 # zmpv
-
-WIP, but you should be able to use it with no much issues, see [below](#todo).
+`libmpv` bindings in zig.
 
 ## Todo
 
-- [X] Finish wrapping all exported libmpv functions.
+- [X] Finish wrapping all exported `libmpv` functions.
   - [X] `mpv/client.h`
   - [X] `mpv/render.h`
   - [X] `mpv/render_gl.h`
@@ -12,7 +11,7 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
 - [X] ~~Fix memory leak~~
   - [X] ~~Free memory that is allocated by libmpv.~~ (mostly, please open an issue if you come across unallocated memory)
 - [ ] write more tests.
-- [ ] Add another structs that contains helper functions.
+- [ ] Add another struct that contains helper functions.
   - [ ] try implementing [python-mpv](https://github.com/jaseg/python-mpv) functionality.
 - [X] Add Examples.
   - [ ] wayland rendering
