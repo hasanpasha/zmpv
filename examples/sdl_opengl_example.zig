@@ -11,7 +11,7 @@ var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
 
 pub fn main() !void {
-    var mpv = try Mpv.create(std.heap.page_allocator);
+    var mpv = try Mpv.create(std.heap.page_allocator, null);
     defer mpv.terminate_destroy();
 
     try mpv.set_option_string("vo", "libmpv");

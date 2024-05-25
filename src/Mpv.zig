@@ -20,14 +20,23 @@ const Self = @This();
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
-pub fn create(allocator: std.mem.Allocator) GenericError!Self {
+pub fn create(allocator: std.mem.Allocator, options: ?[]const struct{[]const u8, []const u8}) !Self {
     const n_handle = c.mpv_create();
 
     if (n_handle) |handle| {
-        return Self{
+        var instance = Self{
             .handle = handle,
             .allocator = allocator,
         };
+
+        if (options) |unwrapped_options| {
+            for (unwrapped_options) |option| {
+                try instance.set_option_string(option[0], option[1]);
+            }
+        }
+
+        return instance;
+
     } else {
         return GenericError.NullValue;
     }

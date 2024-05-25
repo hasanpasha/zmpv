@@ -12,11 +12,11 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(std.heap.page_allocator);
-
-    try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+    const mpv = try Mpv.create(std.heap.page_allocator, &.{
+        .{"osc", "yes"},
+        .{"input-default-bindings", "yes"},
+        .{"input-vo-keyboard", "yes"},
+    });
 
     try mpv.initialize();
     defer mpv.terminate_destroy();

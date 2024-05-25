@@ -127,7 +127,7 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(allocator);
+    const mpv = try Mpv.create(allocator, null);
 
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
