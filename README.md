@@ -22,20 +22,22 @@ WIP, but you should be able to use it with no much issues, see [below](#todo).
   - [X] opengl rendering
   - [X] software rendering
 - [X] ~~Export as a library Make the library~~
-  - [ ] cross-platform compatible
+  - [X] ~~cross-platform compatible~~ (the module user should link to `libmpv`)
 - [X] Add usage guide.
 
 ## Usage
 
 - first fetch the package into your project:
+
   ```bash
   zig fetch --save https://github.com/hasanpasha/zmpv/archive/${DESIRED_COMMOT_HASH}.tar.gz 
   ```
 - import the package in your `build.zig` file:
+
   ```zig
   const zmpv_dep = b.dependency("zmpv", .{ .target = target, .optimize = optimize });
   exe.root_module.addImport("zmpv", zmpv_dep.module("zmpv"));
-  exe.linkLibrary(zmpv_dep.artifact("zmpv_lib"));
+  exe.linkSystemLibrary("mpv"); # in linux
   ```
 
 ## Example
@@ -55,7 +57,7 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(std.heap.page_allocator);
+    const mpv = try Mpv.create(std.heap.page_allocator, null);
 
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });

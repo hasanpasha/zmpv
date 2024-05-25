@@ -7,18 +7,6 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "zmpv_lib",
-        .root_source_file = .{ .path = "src/root.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-
-    lib.linkLibC();
-    lib.linkSystemLibrary("mpv");
-
-    b.installArtifact(lib);
-
     const zmpv_module = b.addModule("zmpv", .{
         .root_source_file = .{ .path = "src/root.zig" },
     });
