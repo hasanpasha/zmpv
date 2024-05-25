@@ -20,6 +20,7 @@ const Self = @This();
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
+/// Create an `Mpv` instance and set options if provided
 pub fn create(allocator: std.mem.Allocator, options: ?[]const struct{[]const u8, []const u8}) !Self {
     const n_handle = c.mpv_create();
 
