@@ -99,50 +99,6 @@ pub fn command(self: Self, args: [][]const u8) !void {
     try catch_mpv_error(c.mpv_command(self.handle, @ptrCast(c_args)));
 }
 
-pub const LoadfileFlag = enum {
-    Replace,
-    Append,
-    AppendPlay,
-    InsertNext,
-    InsertNextPlay,
-    InsertAt,
-    InsertAtPlay,
-
-    pub fn to_string(self: LoadfileFlag) []const u8 {
-        return switch (self) {
-            .Replace => "replace",
-            .Append => "append",
-            .AppendPlay => "append-play",
-            .InsertNext => "insert-next",
-            .InsertNextPlay => "insert-next-play",
-            .InsertAt => "insert-at",
-            .InsertAtPlay => "insert-at-play",
-        };
-    }
-};
-
-// TODO this should be in the helper struct.
-pub fn loadfile(self: Self, filename: []const u8, args: struct {
-    flag: LoadfileFlag = .Replace,
-    index: usize = 0,
-    options: []const u8 = "",
-}) !void {
-    const flag_str = args.flag.to_string();
-    const index_str = try std.fmt.allocPrint(self.allocator, "{}", .{args.index});
-    defer self.allocator.free(index_str);
-
-    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
-    defer cmd_args.deinit();
-
-    try cmd_args.appendSlice(&[_][]const u8{ "loadfile", filename, flag_str });
-    if (args.flag == .InsertAt or args.flag == .InsertAtPlay) {
-        try cmd_args.append(index_str);
-    }
-    try cmd_args.append(args.options);
-
-    try self.command(cmd_args.items);
-}
-
 pub fn command_string(self: Self, args: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_command_string(self.handle, args.ptr));
 }
@@ -356,6 +312,8 @@ pub fn free_node(self: Self, node: MpvNode) void {
 pub fn free(self: Self, data: anytype) void {
     self.allocator.free(data);
 }
+
+pub usingnamespace @import("./MpvHelper.zig");
 
 pub const MpvStreamCBInfo = struct {
     cookie: ?*anyopaque,
