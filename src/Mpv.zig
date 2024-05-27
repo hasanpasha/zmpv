@@ -4,6 +4,7 @@ const mpv_error = @import("./mpv_error.zig");
 const generic_error = @import("./generic_error.zig");
 const MpvEvent = @import("./MpvEvent.zig");
 const utils = @import("./utils.zig");
+const catch_mpv_error = utils.catch_mpv_error;
 const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
@@ -70,12 +71,7 @@ pub fn create_weak_client(self: Self, name: []const u8) GenericError!Self {
 }
 
 pub fn initialize(self: Self) MpvError!void {
-    const ret = c.mpv_initialize(self.handle);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_initialize(self.handle));
 }
 
 pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
@@ -84,42 +80,23 @@ pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvProp
     const this_allocator = arena.allocator();
     const data_ptr = try value.to_c(this_allocator);
 
-    const ret = c.mpv_set_option(self.handle, key.ptr, format.to(), data_ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, format.to(), data_ptr));
 }
 
 pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
-    const ret = c.mpv_set_option_string(self.handle, key.ptr, value.ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
+    try catch_mpv_error(c.mpv_set_option_string(self.handle, key.ptr, value.ptr));
 
-    if (err != MpvError.Success) {
-        return err;
-    }
 }
 
 pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
-    const ret = c.mpv_load_config_file(self.handle, filename.ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_load_config_file(self.handle, filename.ptr));
 }
 
 pub fn command(self: Self, args: [][]const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
-    const ret = c.mpv_command(self.handle, @ptrCast(c_args));
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_command(self.handle, @ptrCast(c_args)));
 }
 
 pub const LoadfileFlag = enum {
@@ -163,16 +140,11 @@ pub fn loadfile(self: Self, filename: []const u8, args: struct {
     }
     try cmd_args.append(args.options);
 
-    return self.command(cmd_args.items);
+    try self.command(cmd_args.items);
 }
 
 pub fn command_string(self: Self, args: []const u8) MpvError!void {
-    const ret = c.mpv_command_string(self.handle, args.ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_command_string(self.handle, args.ptr));
 }
 
 /// The resulting MpvNode should be freed with `Mpv.free_node(node)`
@@ -183,12 +155,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 
     var output: c.mpv_node = undefined;
 
-    const ret = c.mpv_command_node(self.handle, @ptrCast(c_node_ptr), @ptrCast(&output));
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_command_node(self.handle, @ptrCast(c_node_ptr), @ptrCast(&output)));
 
     return try MpvNode.from(@ptrCast(&output), self.allocator);
 }
@@ -199,13 +166,8 @@ pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
 
     var output: c.mpv_node = undefined;
 
-    const ret = c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output));
+    try catch_mpv_error(c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output)));
     defer c.mpv_free_node_contents(&output);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
 
     return try MpvNode.from(@ptrCast(&output), self.allocator);
 }
@@ -214,12 +176,7 @@ pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void 
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
-    const ret = c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args));
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args)));
 }
 
 pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void {
@@ -227,12 +184,7 @@ pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void 
     defer arena.deinit();
     const c_node_ptr = try args.to_c(arena.allocator());
 
-    const ret = c.mpv_command_node_async(self.handle, reply_userdata, @ptrCast(c_node_ptr));
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_command_node_async(self.handle, reply_userdata, @ptrCast(c_node_ptr)));
 }
 
 pub fn abort_async_command(self: Self, reply_userdata: u64) void {
@@ -256,13 +208,9 @@ fn mpv_free_data(data_anon_ptr: *anyopaque, format: MpvFormat) void {
 pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
-    const ret = c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr);
-    defer mpv_free_data(data_ptr, format);
-    const err = mpv_error.from_mpv_c_error(ret);
 
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr));
+    defer mpv_free_data(data_ptr, format);
 
     return try MpvPropertyData.from(format, data_ptr, self.allocator);
 }
@@ -290,12 +238,7 @@ pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
 }
 
 pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
-    const ret = c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to());
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to()));
 }
 
 pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
@@ -303,21 +246,11 @@ pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvP
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    const ret = c.mpv_set_property(self.handle, name.ptr, format.to(), data_ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_set_property(self.handle, name.ptr, format.to(), data_ptr));
 }
 
 pub fn set_property_string(self: Self, name: []const u8, value: []const u8) MpvError!void {
-    const ret = c.mpv_set_property_string(self.handle, name.ptr, value.ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_set_property_string(self.handle, name.ptr, value.ptr));
 }
 
 pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
@@ -325,75 +258,35 @@ pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, for
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    const ret = c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, format.to(), data_ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, format.to(), data_ptr));
 }
 
 pub fn del_property(self: Self, name: []const u8) MpvError!void {
-    const ret = c.mpv_del_property(self.handle, name.ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_del_property(self.handle, name.ptr));
 }
 
 pub fn observe_property(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
-    const ret = c.mpv_observe_property(self.handle, reply_userdata, name.ptr, format.to());
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_observe_property(self.handle, reply_userdata, name.ptr, format.to()));
 }
 
 pub fn unobserve_property(self: Self, registered_reply_userdata: u64) MpvError!void {
-    const ret = c.mpv_unobserve_property(self.handle, registered_reply_userdata);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_unobserve_property(self.handle, registered_reply_userdata));
 }
 
 pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
-    const ret = c.mpv_request_log_messages(self.handle, level.to_string().ptr);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_request_log_messages(self.handle, level.to_string().ptr));
 }
 
 pub fn hook_add(self: Self, reply_userdata: u64, name: []const u8, priority: i64) MpvError!void {
-    const ret = c.mpv_hook_add(self.handle, reply_userdata, name.ptr, @intCast(priority));
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_hook_add(self.handle, reply_userdata, name.ptr, @intCast(priority)));
 }
 
 pub fn hook_continue(self: Self, id: u64) MpvError!void {
-    const ret = c.mpv_hook_continue(self.handle, id);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_hook_continue(self.handle, id));
 }
 
 pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!void {
-    const ret = c.mpv_request_event(self.handle, event_id.to_c(), if (enable) 1 else 0);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_request_event(self.handle, event_id.to_c(), if (enable) 1 else 0));
 }
 
 /// the caller have to free allocated memory with `MpvEvent.free(event)`
@@ -417,11 +310,7 @@ pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque
 
 pub fn get_wakeup_pipe(self: Self) MpvError!c_int {
     const ret = c.mpv_get_wakeup_pipe(self.handle);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(ret);
 
     return ret;
 }
@@ -595,12 +484,7 @@ pub fn stream_cb_add_ro(
     state_ptr.*.user_data = user_data;
     state_ptr.*.arena = arena;
 
-    const ret = c.mpv_stream_cb_add_ro(self.handle, protocol.ptr, state_ptr, s_open_cb);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_stream_cb_add_ro(self.handle, protocol.ptr, state_ptr, s_open_cb));
 }
 
 test "Mpv simple test" {

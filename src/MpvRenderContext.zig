@@ -3,6 +3,7 @@ const Mpv = @import("./Mpv.zig");
 const std = @import("std");
 const mpv_error = @import("./mpv_error.zig");
 const MpvError = mpv_error.MpvError;
+const catch_mpv_error = @import("./utils.zig").catch_mpv_error;
 
 const Self = @This();
 
@@ -24,12 +25,7 @@ pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
     defer arena.deinit();
 
     const c_params = try Self.params_list_to_c(params, arena.allocator());
-    const ret = c.mpv_render_context_create(@ptrCast(&context), mpv.handle, c_params);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_render_context_create(@ptrCast(&context), mpv.handle, c_params));
 
     return Self{
         .context = context,
@@ -46,12 +42,7 @@ pub fn set_parameter(self: Self, param: MpvRenderParam) !void {
     defer arena.deinit();
 
     const c_param = try param.to_c(arena.allocator());
-    const ret = c.mpv_render_context_set_parameter(self.context, c_param);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_render_context_set_parameter(self.context, c_param));
 }
 
 pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) !MpvRenderParam {
@@ -61,11 +52,7 @@ pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) !MpvRenderP
         .type = param_type.to_c(),
         .data = &data,
     };
-    const ret = c.mpv_render_context_get_info(self.context, param);
-    const err = mpv_error.from_mpv_c_error(ret);
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_render_context_get_info(self.context, param));
     // std.log.debug("get_info {any}", .{data});
 
     return MpvRenderParam.from(param_type, data);
@@ -76,12 +63,7 @@ pub fn render(self: Self, params: []MpvRenderParam) !void {
     defer arena.deinit();
 
     const c_params = try Self.params_list_to_c(params, arena.allocator());
-    const ret = c.mpv_render_context_render(self.context, c_params);
-    const err = mpv_error.from_mpv_c_error(ret);
-
-    if (err != MpvError.Success) {
-        return err;
-    }
+    try catch_mpv_error(c.mpv_render_context_render(self.context, c_params));
 }
 
 pub fn set_update_callback(self: Self, callback: ?*const fn (?*anyopaque) void, ctx: ?*anyopaque) void {
