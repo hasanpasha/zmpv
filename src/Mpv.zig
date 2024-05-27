@@ -488,7 +488,7 @@ pub fn stream_cb_add_ro(
 }
 
 test "Mpv simple test" {
-    const mpv = try Self.create(std.testing.allocator);
+    const mpv = try Self.create(std.testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 }
@@ -496,7 +496,7 @@ test "Mpv simple test" {
 test "Mpv memory leak" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
     try mpv.loadfile("sample.mp4", .{});
@@ -514,7 +514,7 @@ test "Mpv memory leak" {
 test "Mpv.set_option" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.initialize();
     defer mpv.terminate_destroy();
@@ -528,7 +528,7 @@ test "Mpv.set_option" {
 test "Mpv.set_option_string" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.set_option("title", .String, .{ .String = "zmpv" });
     try mpv.initialize();
     defer mpv.terminate_destroy();
@@ -547,7 +547,7 @@ test "Mpv.load_config_file" {
 test "Mpv.command" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -567,7 +567,7 @@ test "Mpv.command" {
 test "Mpv.command_string" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -586,7 +586,7 @@ test "Mpv.command_string" {
 test "Mpv.command_async" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -606,7 +606,7 @@ test "Mpv.command_async" {
 test "Mpv.command_node" {
     const allocator = testing.allocator;
 
-    const mpv = try Self.create(allocator);
+    const mpv = try Self.create(allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
