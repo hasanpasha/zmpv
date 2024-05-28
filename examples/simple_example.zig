@@ -29,6 +29,8 @@ pub fn main() !void {
     try mpv.observe_property(1, "fullscreen", .Flag);
     try mpv.observe_property(2, "time-pos", .INT64);
 
+    try mpv.cycle("fullscreen", .{ .direction = .Down });
+
     while (true) {
         const event = try mpv.wait_event(10000);
         const event_id = event.event_id;

@@ -43,3 +43,11 @@ pub fn loadfile(self: Mpv, filename: []const u8, args: struct {
 
     try self.command(cmd_args.items);
 }
+
+pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
+    direction: enum {Up, Down} = .Up,
+}) !void {
+    const direction_str = if (args.direction == .Up) "up" else "down";
+    var cmd_args = [_][]const u8{ "cycle", property_name, direction_str };
+    try self.command(&cmd_args);
+}
