@@ -1,8 +1,5 @@
 const std = @import("std");
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -11,12 +8,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .path = "src/root.zig" },
     });
 
-    const Example = struct {
-        name: []const u8,
-        src: []const u8,
-    };
-
-    const examples = [_]Example{
+    const examples = [_]struct {name: []const u8, src: []const u8}{
         .{ .name = "simple", .src = "examples/simple_example.zig" },
         .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
         .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
