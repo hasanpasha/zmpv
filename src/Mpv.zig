@@ -77,8 +77,7 @@ pub fn initialize(self: Self) MpvError!void {
 pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
-    const this_allocator = arena.allocator();
-    const data_ptr = try value.to_c(this_allocator);
+    const data_ptr = try value.to_c(arena.allocator());
 
     try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, format.to(), data_ptr));
 }
