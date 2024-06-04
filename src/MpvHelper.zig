@@ -1,11 +1,18 @@
 const std = @import("std");
 const Mpv = @import("./Mpv.zig");
+const MpvRenderContext = @import("./MpvRenderContext.zig");
+const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 
 /// Create an `Mpv` instance and initialize it with the given options
 pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
     var instance = try Mpv.create(allocator, options);
     try instance.initialize();
     return instance;
+}
+
+/// an alternative helper function to create `MpvRenderContext`
+pub fn create_render_context(self: Mpv, params: []MpvRenderParam) !MpvRenderContext {
+    return MpvRenderContext.create(self, params);
 }
 
 pub const LoadfileFlag = enum {
