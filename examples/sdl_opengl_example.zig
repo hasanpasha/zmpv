@@ -47,8 +47,7 @@ pub fn main() !void {
         .{ .AdvancedControl = true },
         .{ .Invalid = {} },
     };
-
-    const mpv_render_ctx = try MpvRenderContext.create(mpv, &params);
+    const mpv_render_ctx = try mpv.create_render_context(&params);
     defer mpv_render_ctx.free();
 
     try mpv_render_ctx.set_parameter(.{ .AmbientLight = -100000000 });
