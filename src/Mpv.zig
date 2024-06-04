@@ -23,51 +23,30 @@ allocator: std.mem.Allocator,
 
 /// Create an `Mpv` instance and set options if provided
 pub fn create(allocator: std.mem.Allocator, options: ?[]const struct{[]const u8, []const u8}) !Self {
-    const n_handle = c.mpv_create();
+    const handle = c.mpv_create() orelse return GenericError.NullValue;
+    const instance = Self{ .handle = handle, .allocator = allocator };
 
-    if (n_handle) |handle| {
-        var instance = Self{
-            .handle = handle,
-            .allocator = allocator,
-        };
-
-        if (options) |unwrapped_options| {
-            for (unwrapped_options) |option| {
-                try instance.set_option_string(option[0], option[1]);
-            }
+    if (options) |unwrapped_options| {
+        for (unwrapped_options) |option| {
+            try instance.set_option_string(option[0], option[1]);
         }
-
-        return instance;
-
-    } else {
-        return GenericError.NullValue;
     }
+
+    return instance;
 }
 
 pub fn create_client(self: Self, name: []const u8) GenericError!Self {
-    const n_client_handle = c.mpv_create_client(self.handle, name.ptr);
+    const client_handle = c.mpv_create_client(self.handle, name.ptr)
+        orelse return GenericError.NullValue;
 
-    if (n_client_handle) |handle| {
-        return Self{
-            .handle = handle,
-            .allocator = self.allocator,
-        };
-    } else {
-        return GenericError.NullValue;
-    }
+    return Self{ .handle = client_handle, .allocator = self.allocator };
 }
 
 pub fn create_weak_client(self: Self, name: []const u8) GenericError!Self {
-    const n_weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr);
+    const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr)
+        orelse return GenericError.NullValue;
 
-    if (n_weak_client_handle) |handle| {
-        return Self{
-            .handle = handle,
-            .allocator = self.allocator,
-        };
-    } else {
-        return GenericError.NullValue;
-    }
+    return Self{ .handle = weak_client_handle, .allocator = self.allocator };
 }
 
 pub fn initialize(self: Self) MpvError!void {
