@@ -1,6 +1,13 @@
 const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 
+/// Create an `Mpv` instance and initialize it with the given options
+pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
+    var instance = try Mpv.create(allocator, options);
+    try instance.initialize();
+    return instance;
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,
@@ -45,7 +52,7 @@ pub fn loadfile(self: Mpv, filename: []const u8, args: struct {
 }
 
 pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
-    direction: enum {Up, Down} = .Up,
+    direction: enum { Up, Down } = .Up,
 }) !void {
     const direction_str = if (args.direction == .Up) "up" else "down";
     var cmd_args = [_][]const u8{ "cycle", property_name, direction_str };

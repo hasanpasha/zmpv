@@ -12,13 +12,11 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(std.heap.page_allocator, &.{
+    const mpv = try Mpv.create_and_initialize(std.heap.c_allocator, &.{
         .{"osc", "yes"},
         .{"input-default-bindings", "yes"},
         .{"input-vo-keyboard", "yes"},
     });
-
-    try mpv.initialize();
     defer mpv.terminate_destroy();
 
     var cmd_args = [_][]const u8{ "loadfile", filename };
