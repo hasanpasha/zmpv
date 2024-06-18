@@ -5,10 +5,10 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const zmpv_module = b.addModule("zmpv", .{
-        .root_source_file = .{ .path = "src/root.zig" },
+        .root_source_file = b.path("src/root.zig"),
     });
 
-    const examples = [_]struct {name: []const u8, src: []const u8}{
+    const examples = [_]struct { name: []const u8, src: []const u8 }{
         .{ .name = "simple", .src = "examples/simple_example.zig" },
         .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
         .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     for (examples) |example| {
         const e_exe = b.addExecutable(.{
             .name = example.name,
-            .root_source_file = .{ .path = example.src },
+            .root_source_file = b.path(example.src),
             .target = target,
             .optimize = optimize,
         });
@@ -39,7 +39,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/tests.zig" },
+        .root_source_file = b.path("src/tests.zig"),
         .target = target,
         .optimize = optimize,
     });
