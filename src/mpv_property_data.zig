@@ -41,7 +41,7 @@ pub const MpvPropertyData = union(MpvFormat) {
             .Flag => value: {
                 const ret_value_ptr: *c_int = @ptrCast(@alignCast(data));
                 const ret_value = ret_value_ptr.*;
-                break :value MpvPropertyData{ .Flag = if (ret_value == 1) true else false };
+                break :value MpvPropertyData{ .Flag = (ret_value == 1) };
             },
             .INT64 => value: {
                 const ret_value_ptr: *i64 = @ptrCast(@alignCast(data));

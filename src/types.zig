@@ -4,8 +4,6 @@ const MpvNode = @import("./mpv_node.zig").MpvNode;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const testing = std.testing;
 
-pub const MpvNodeHashMap = std.StringHashMap(MpvNode);
-
 pub const MpvNodeListIterator = struct {
     list: ?[]const T = null,
     c_list: ?*c.mpv_node_list = null,

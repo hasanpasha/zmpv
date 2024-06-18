@@ -92,7 +92,6 @@ pub const MpvNode = union(enum) {
     }
 
     pub fn free(self: MpvNode, allocator: std.mem.Allocator) void {
-        // _ = allocator;
         switch (self) {
             .String => |string| {
                 allocator.free(string);
@@ -122,7 +121,6 @@ test "MpvNode to c" {
 }
 
 test "MpvNode from c" {
-    // const allocator = testing.allocator;
     var num = c.mpv_node{
         .format = c.MPV_FORMAT_INT64,
         .u = .{ .int64 = 6996 },
