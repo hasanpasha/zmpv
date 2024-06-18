@@ -18,9 +18,8 @@ event_id: MpvEventId,
 event_error: MpvError,
 data: MpvEventData,
 reply_userdata: u64,
-allocator: std.mem.Allocator,
 
-pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self {
+pub fn from(c_event: [*c]c.struct_mpv_event) Self {
     const event: *c.mpv_event = @ptrCast(c_event);
 
     const event_id: MpvEventId = @enumFromInt(event.event_id);
@@ -36,16 +35,16 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
                 .StartFile = MpvEventStartFile.from(event.data.?),
             },
             .PropertyChange => MpvEventData{
-                .PropertyChange = try MpvEventProperty.from(event.data.?, allocator),
+                .PropertyChange = MpvEventProperty.from(event.data.?),
             },
             .LogMessage => MpvEventData{
                 .LogMessage = MpvEventLogMessage.from(event.data.?),
             },
             .ClientMessage => MpvEventData{
-                .ClientMessage = try MpvEventClientMessage.from(event.data.?, allocator),
+                .ClientMessage = MpvEventClientMessage.from(event.data.?),
             },
             .CommandReply => MpvEventData{
-                .CommandReply = try MpvEventCommand.from(event.data.?, allocator),
+                .CommandReply = MpvEventCommand.from(event.data.?),
             },
             .Hook => MpvEventData{
                 .Hook = MpvEventHook.from(event.data.?),
@@ -53,12 +52,8 @@ pub fn from(c_event: [*c]c.struct_mpv_event, allocator: std.mem.Allocator) !Self
             else => MpvEventData{ .None = {} },
         },
         .reply_userdata = event.reply_userdata,
-        .allocator = allocator,
+        // .allocator = allocator,
     };
-}
-
-pub fn free(self: Self) void {
-    self.data.free();
 }
 
 pub const MpvEventData = union(enum) {
@@ -71,25 +66,9 @@ pub const MpvEventData = union(enum) {
     ClientMessage: MpvEventClientMessage,
     PropertyChange: MpvEventProperty,
     Hook: MpvEventHook,
-
-    pub fn free(self: MpvEventData) void {
-        switch (self) {
-            .GetPropertyReply, .PropertyChange => |property| {
-                property.free();
-            },
-            .CommandReply => |reply| {
-                reply.free();
-            },
-            .ClientMessage => |message| {
-                message.free();
-            },
-            else => {},
-        }
-    }
 };
 
 test "MpvEvent from" {
-    const allocator = testing.allocator;
     var log_event_data = c.mpv_event_log_message{
         .log_level = c.MPV_LOG_LEVEL_V,
         .level = "v",
@@ -102,9 +81,8 @@ test "MpvEvent from" {
         .event_id = c.MPV_EVENT_LOG_MESSAGE,
         .reply_userdata = 0,
     };
-    const z_log = try Self.from(&log_event, allocator);
+    const z_log = Self.from(&log_event);
     const z_data = z_log.data.LogMessage;
-    defer Self.free(z_log);
 
     try testing.expect(z_log.event_id == .LogMessage);
     try testing.expect(z_log.event_error == MpvError.Success);

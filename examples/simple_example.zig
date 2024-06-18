@@ -12,10 +12,10 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create_and_initialize(std.heap.c_allocator, &.{
-        .{"osc", "yes"},
-        .{"input-default-bindings", "yes"},
-        .{"input-vo-keyboard", "yes"},
+    const mpv = try Mpv.create_and_initialize(std.heap.page_allocator, &.{
+        .{ "osc", "yes" },
+        .{ "input-default-bindings", "yes" },
+        .{ "input-vo-keyboard", "yes" },
     });
     defer mpv.terminate_destroy();
 
@@ -28,6 +28,8 @@ pub fn main() !void {
     try mpv.observe_property(2, "time-pos", .INT64);
 
     try mpv.cycle("fullscreen", .{ .direction = .Down });
+    const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    defer mpv.free(fullscreen_status);
 
     while (true) {
         const event = try mpv.wait_event(10000);

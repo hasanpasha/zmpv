@@ -21,7 +21,9 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
 pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
     var context: *c.mpv_render_context = undefined;
 
-    var arena = std.heap.ArenaAllocator.init(mpv.allocator);
+    const allocator = mpv.allocator;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
     const c_params = try Self.params_list_to_c(params, arena.allocator());
@@ -29,7 +31,7 @@ pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
 
     return Self{
         .context = context,
-        .allocator = mpv.allocator,
+        .allocator = allocator,
     };
 }
 

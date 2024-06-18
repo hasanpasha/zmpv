@@ -5,7 +5,6 @@ const mpv_error = @import("./mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const catch_mpv_error = @import("./utils.zig").catch_mpv_error;
 
-
 pub const MpvStreamCBInfo = struct {
     cookie: ?*anyopaque,
     read_fn: *const fn (?*anyopaque, []u8, u64) MpvError!u64,
@@ -127,7 +126,7 @@ pub fn stream_cb_add_ro(
     user_data: ?*anyopaque,
     open_fn: *const fn (?*anyopaque, []u8, std.mem.Allocator) MpvError!MpvStreamCBInfo,
 ) !void {
-    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.c_allocator);
     const state_ptr = try arena.allocator().create(MpvStreamOpenState);
     state_ptr.*.cb = open_fn;
     state_ptr.*.user_data = user_data;

@@ -11,7 +11,12 @@ var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
 
 pub fn main() !void {
-    var mpv = try Mpv.create(std.heap.page_allocator, null);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        if (gpa.deinit() == .leak) @panic("leak");
+    }
+
+    var mpv = try Mpv.create(gpa.allocator(), null);
     defer mpv.terminate_destroy();
 
     try mpv.set_option_string("vo", "libmpv");
@@ -63,6 +68,9 @@ pub fn main() !void {
     var args = [_][]const u8{ "loadfile", "sample.mp4" };
     try mpv.command_async(0, &args);
 
+    const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    mpv.free(fullscreen_status);
+
     var redraw: bool = false;
     done: while (true) {
         redraw = false;
@@ -93,7 +101,6 @@ pub fn main() !void {
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
                         const mpv_event = try mpv.wait_event(0);
-                        defer mpv_event.free();
 
                         if (mpv_event.event_id == .None) {
                             break;

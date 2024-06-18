@@ -3,7 +3,9 @@ const testing = std.testing;
 const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
-const MpvNodeHashMap = @import("./types.zig").MpvNodeHashMap;
+const types = @import("./types.zig");
+const MpvNodeListIterator = types.MpvNodeListIterator;
+const MpvNodeMapIterator = types.MpvNodeMapIterator;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,
@@ -13,17 +15,17 @@ pub const MpvPropertyData = union(MpvFormat) {
     INT64: i64,
     Double: f64,
     Node: MpvNode,
-    NodeArray: []MpvNode,
-    NodeMap: MpvNodeHashMap,
+    NodeArray: MpvNodeListIterator,
+    NodeMap: MpvNodeMapIterator,
     ByteArray: []const u8,
 
-    pub fn from(format: MpvFormat, data: ?*anyopaque, allocator: std.mem.Allocator) !MpvPropertyData {
+    pub fn from(format: MpvFormat, data: ?*anyopaque) MpvPropertyData {
         return switch (format) {
             .None => MpvPropertyData{ .None = {} },
             .String => value: {
                 const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
                 const string = string_ptr.*;
-                const zig_string = try allocator.dupe(u8, std.mem.sliceTo(string, 0));
+                const zig_string = std.mem.sliceTo(string, 0);
                 break :value MpvPropertyData{
                     .String = zig_string,
                 };
@@ -31,7 +33,7 @@ pub const MpvPropertyData = union(MpvFormat) {
             .OSDString => value: {
                 const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
                 const string = string_ptr.*;
-                const zig_string = try allocator.dupe(u8, std.mem.sliceTo(string, 0));
+                const zig_string = std.mem.sliceTo(string, 0);
                 break :value MpvPropertyData{
                     .OSDString = zig_string,
                 };
@@ -53,19 +55,20 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
             .Node => value: {
                 const node_ptr: *c.mpv_node = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .Node = try MpvNode.from(node_ptr, allocator) };
+                break :value MpvPropertyData{ .Node = MpvNode.from(node_ptr) };
             },
             .NodeArray => value: {
                 const list_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .NodeArray = try MpvNode.from_node_list(list_ptr.*, allocator) };
+                break :value MpvPropertyData{ .NodeArray = MpvNodeListIterator{ .c_list = list_ptr } };
             },
             .NodeMap => value: {
                 const map_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .NodeMap = try MpvNode.from_node_map(map_ptr.*, allocator) };
+                break :value MpvPropertyData{ .NodeMap = MpvNodeMapIterator{ .c_list = map_ptr } };
             },
             .ByteArray => value: {
                 const byte_ptr: *c.struct_mpv_byte_array = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .ByteArray = try MpvNode.from_byte_array(byte_ptr.*, allocator) };
+                const casted_bytes_data: [*:0]const u8 = @ptrCast(byte_ptr.data);
+                break :value MpvPropertyData{ .ByteArray = casted_bytes_data[0..byte_ptr.size] };
             },
         };
     }
@@ -102,26 +105,51 @@ pub const MpvPropertyData = union(MpvFormat) {
         };
     }
 
-    pub fn free(self: MpvPropertyData, allocator: std.mem.Allocator) void {
+    pub fn copy(self: MpvPropertyData, allocator: std.mem.Allocator) !MpvPropertyData {
         switch (self) {
-            .String, .OSDString => |str| {
-                allocator.free(str);
+            .String => |string| {
+                return MpvPropertyData{ .String = try allocator.dupe(u8, string) };
+            },
+            .OSDString => |string| {
+                return MpvPropertyData{ .OSDString = try allocator.dupe(u8, string) };
+            },
+            .Node => |node| {
+                return MpvPropertyData{ .Node = try node.copy(allocator) };
+            },
+            .NodeArray => |*array| {
+                var mut_array = @constCast(array);
+                return MpvPropertyData{ .NodeArray = try mut_array.copy(allocator) };
+            },
+            .NodeMap => |*map| {
+                var mut_map = @constCast(map);
+                return MpvPropertyData{ .NodeMap = try mut_map.copy(allocator) };
+            },
+            .ByteArray => |bytes| {
+                return MpvPropertyData{ .ByteArray = try allocator.dupe(u8, bytes) };
+            },
+            else => return self,
+        }
+    }
+    pub fn free(self: MpvPropertyData, allocator: std.mem.Allocator) void {
+        // _ = allocator;
+        std.log.debug("freeing data", .{});
+        switch (self) {
+            .String => |string| {
+                allocator.free(string);
+            },
+            .OSDString => |string| {
+                allocator.free(string);
             },
             .Node => |node| {
                 node.free(allocator);
             },
-            .NodeArray => |array| {
-                for (array) |node| {
-                    node.free(allocator);
-                }
+            .NodeArray => |*array| {
+                var mut_array = @constCast(array);
+                mut_array.free(allocator);
             },
-            .NodeMap => |map| {
-                var iter = map.keyIterator();
-                while (iter.next()) |key| {
-                    map.get(key.*).?.free(allocator);
-                }
-                var m: *MpvNodeHashMap = @constCast(&map);
-                m.deinit();
+            .NodeMap => |*map| {
+                var mut_map = @constCast(map);
+                mut_map.free(allocator);
             },
             .ByteArray => |bytes| {
                 allocator.free(bytes);
@@ -132,13 +160,11 @@ pub const MpvPropertyData = union(MpvFormat) {
 };
 
 test "MpvNodeData from" {
-    const allocator = testing.allocator;
     var num = c.mpv_node{
         .format = c.MPV_FORMAT_INT64,
         .u = .{ .int64 = 45 },
     };
-    const z_num = try MpvPropertyData.from(.INT64, &num, allocator);
-    defer MpvPropertyData.free(z_num, allocator);
+    const z_num = MpvPropertyData.from(.INT64, &num);
 
     try testing.expect(z_num.INT64 == 45);
 }

@@ -114,10 +114,8 @@ pub fn main() !void {
         }
     }
     const allocator = gpa.allocator();
-    // const allocator = std.heap.page_allocator;
 
     const args = try std.process.argsAlloc(allocator);
-    // defer allocator.free(args);
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
@@ -147,7 +145,7 @@ pub fn main() !void {
     try mpv.request_log_messages(.Error);
 
     const fullscreen = try mpv.get_property("title", .OSDString);
-    defer mpv.free_property_data(fullscreen);
+    defer mpv.free(fullscreen);
     std.log.info("fullscreen = {s}", .{fullscreen.OSDString});
 
     try mpv.observe_property(1, "fullscreen", .String);
@@ -155,7 +153,6 @@ pub fn main() !void {
 
     while (true) {
         const event = try mpv.wait_event(10000);
-        defer event.free();
         const event_id = event.event_id;
         switch (event_id) {
             .Shutdown => break,

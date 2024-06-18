@@ -8,7 +8,9 @@ const catch_mpv_error = utils.catch_mpv_error;
 const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
-
+const types = @import("./types.zig");
+const MpvNodeListIterator = types.MpvNodeListIterator;
+const MpvNodeMapIterator = types.MpvNodeMapIterator;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event_data_types//MpvEventLogMessage.zig").MpvLogLevel;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
@@ -22,7 +24,7 @@ handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
 /// Create an `Mpv` instance and set options if provided
-pub fn create(allocator: std.mem.Allocator, options: ?[]const struct{[]const u8, []const u8}) !Self {
+pub fn create(allocator: std.mem.Allocator, options: ?[]const struct { []const u8, []const u8 }) !Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
     const instance = Self{ .handle = handle, .allocator = allocator };
 
@@ -36,15 +38,13 @@ pub fn create(allocator: std.mem.Allocator, options: ?[]const struct{[]const u8,
 }
 
 pub fn create_client(self: Self, name: []const u8) GenericError!Self {
-    const client_handle = c.mpv_create_client(self.handle, name.ptr)
-        orelse return GenericError.NullValue;
+    const client_handle = c.mpv_create_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
     return Self{ .handle = client_handle, .allocator = self.allocator };
 }
 
 pub fn create_weak_client(self: Self, name: []const u8) GenericError!Self {
-    const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr)
-        orelse return GenericError.NullValue;
+    const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
     return Self{ .handle = weak_client_handle, .allocator = self.allocator };
 }
@@ -63,7 +63,6 @@ pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvProp
 
 pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_set_option_string(self.handle, key.ptr, value.ptr));
-
 }
 
 pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
@@ -90,8 +89,9 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
     var output: c.mpv_node = undefined;
 
     try catch_mpv_error(c.mpv_command_node(self.handle, @ptrCast(c_node_ptr), @ptrCast(&output)));
+    defer c.mpv_free_node_contents(&output);
 
-    return try MpvNode.from(@ptrCast(&output), self.allocator);
+    return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
 }
 
 pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
@@ -103,7 +103,7 @@ pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
     try catch_mpv_error(c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output)));
     defer c.mpv_free_node_contents(&output);
 
-    return try MpvNode.from(@ptrCast(&output), self.allocator);
+    return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
 }
 
 pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void {
@@ -146,7 +146,7 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
     try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr));
     defer mpv_free_data(data_ptr, format);
 
-    return try MpvPropertyData.from(format, data_ptr, self.allocator);
+    return try MpvPropertyData.from(format, data_ptr).copy(self.allocator);
 }
 
 /// The returened value should be freed with self.free(string)
@@ -224,10 +224,10 @@ pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!vo
 }
 
 /// the caller have to free allocated memory with `MpvEvent.free(event)`
-pub fn wait_event(self: Self, timeout: f64) !MpvEvent {
+pub fn wait_event(self: Self, timeout: f64) MpvError!MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 
-    return try MpvEvent.from(event, self.allocator);
+    return MpvEvent.from(event);
 }
 
 pub fn wait_async_requests(self: Self) void {
@@ -279,34 +279,34 @@ pub fn error_string(err: MpvError) []const u8 {
     return std.mem.sliceTo(error_str, 0);
 }
 
-pub fn free_property_data(self: Self, data: MpvPropertyData) void {
-    data.free(self.allocator);
-}
-
-pub fn free_node(self: Self, node: MpvNode) void {
-    node.free(self.allocator);
-}
-
 pub fn free(self: Self, data: anytype) void {
-    self.allocator.free(data);
+    switch (@TypeOf(data)) {
+        MpvNode, MpvPropertyData => {
+            data.free(self.allocator);
+        },
+        []u8, []const u8 => {
+            self.allocator.free(data);
+        },
+        else => {},
+    }
+    std.log.debug("{any}", .{@TypeOf(data)});
 }
 
 pub usingnamespace @import("./MpvHelper.zig");
 pub usingnamespace @import("./StreamCB.zig");
 
 test "Mpv simple test" {
-    const mpv = try Self.create(std.testing.allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 }
 
 test "Mpv memory leak" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
-    try mpv.loadfile("sample.mp4", .{});
+    // try mpv.loadfile("sample.mp4", .{});
+    try mpv.command_string("loadfile sample.mp4");
 
     while (true) {
         const event = try mpv.wait_event(10000);
@@ -319,62 +319,52 @@ test "Mpv memory leak" {
 }
 
 test "Mpv.set_option" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
     const osc = try mpv.get_property("osc", .Flag);
-    defer mpv.free_property_data(osc);
+    defer mpv.free(osc);
 
     try testing.expect(osc.Flag == true);
 }
 
 test "Mpv.set_option_string" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.set_option("title", .String, .{ .String = "zmpv" });
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
     const title = try mpv.get_property("title", .String);
-    defer mpv.free_property_data(title);
+    defer mpv.free(title);
 
     try testing.expect(std.mem.eql(u8, title.String, "zmpv"));
 }
-
 
 test "Mpv.load_config_file" {
     return error.SkipZigTest;
 }
 
 test "Mpv.command" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_][]const u8{"loadfile", "sample.mp4"};
+    var args = [_][]const u8{ "loadfile", "sample.mp4" };
     try mpv.command(&args);
 
     while (true) {
         const event = try mpv.wait_event(0);
-        defer event.free();
         switch (event.event_id) {
             .FileLoaded => break,
-            else => {}
+            else => {},
         }
     }
 }
 
 test "Mpv.command_string" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -382,51 +372,44 @@ test "Mpv.command_string" {
 
     while (true) {
         const event = try mpv.wait_event(0);
-        defer event.free();
         switch (event.event_id) {
             .FileLoaded => break,
-            else => {}
+            else => {},
         }
     }
 }
 
 test "Mpv.command_async" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_][]const u8{"loadfile", "sample.mp4"};
+    var args = [_][]const u8{ "loadfile", "sample.mp4" };
     try mpv.command_async(0, &args);
 
     while (true) {
         const event = try mpv.wait_event(0);
-        defer event.free();
         switch (event.event_id) {
             .FileLoaded => break,
-            else => {}
+            else => {},
         }
     }
 }
 
 test "Mpv.command_node" {
-    const allocator = testing.allocator;
-
-    const mpv = try Self.create(allocator, null);
+    const mpv = try Self.create(testing.allocator, null);
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
     var args = [_]MpvNode{ .{ .String = "loadfile" }, .{ .String = "sample.mp4" } };
-    const result = try mpv.command_node(.{ .NodeArray = &args });
-    defer mpv.free_node(result);
+    const result = try mpv.command_node(.{ .NodeArray = MpvNodeListIterator.new(&args) });
+    defer mpv.free(result);
 
     while (true) {
         const event = try mpv.wait_event(0);
-        defer event.free();
         switch (event.event_id) {
             .FileLoaded => break,
-            else => {}
+            else => {},
         }
     }
 }

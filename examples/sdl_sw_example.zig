@@ -97,7 +97,6 @@ pub fn main() !void {
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
                         const mpv_event = try mpv.wait_event(0);
-                        defer mpv_event.free();
 
                         if (mpv_event.event_id == .None) {
                             break;
