@@ -15,5 +15,5 @@ pub const MpvEventProperty = @import("./mpv_event_data_types/MpvEventProperty.zi
 pub const MpvError = @import("./mpv_error.zig").MpvError;
 pub const GenericError = @import("./generic_error.zig").GenericError;
 const types = @import("./types.zig");
-pub const MpvNodeListIterator = types.MpvNodeListIterator;
-pub const MpvNodeMapIterator = types.MpvNodeMapIterator;
+pub const MpvNodeList = types.MpvNodeList;
+pub const MpvNodeMap = types.MpvNodeMap;

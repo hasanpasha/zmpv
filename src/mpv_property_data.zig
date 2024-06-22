@@ -4,8 +4,8 @@ const c = @import("./c.zig");
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
 const types = @import("./types.zig");
-const MpvNodeListIterator = types.MpvNodeListIterator;
-const MpvNodeMapIterator = types.MpvNodeMapIterator;
+const MpvNodeList = types.MpvNodeList;
+const MpvNodeMap = types.MpvNodeMap;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,
@@ -15,8 +15,8 @@ pub const MpvPropertyData = union(MpvFormat) {
     INT64: i64,
     Double: f64,
     Node: MpvNode,
-    NodeArray: MpvNodeListIterator,
-    NodeMap: MpvNodeMapIterator,
+    NodeArray: MpvNodeList,
+    NodeMap: MpvNodeMap,
     ByteArray: []const u8,
 
     pub fn from(format: MpvFormat, data: ?*anyopaque) MpvPropertyData {
@@ -59,11 +59,11 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
             .NodeArray => value: {
                 const list_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .NodeArray = MpvNodeListIterator{ .c_list = list_ptr } };
+                break :value MpvPropertyData{ .NodeArray = MpvNodeList.from(list_ptr) };
             },
             .NodeMap => value: {
                 const map_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
-                break :value MpvPropertyData{ .NodeMap = MpvNodeMapIterator{ .c_list = map_ptr } };
+                break :value MpvPropertyData{ .NodeMap = MpvNodeMap.from(map_ptr) };
             },
             .ByteArray => value: {
                 const byte_ptr: *c.struct_mpv_byte_array = @ptrCast(@alignCast(data));

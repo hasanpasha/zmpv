@@ -9,10 +9,10 @@ const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
 const types = @import("./types.zig");
-const MpvNodeListIterator = types.MpvNodeListIterator;
-const MpvNodeMapIterator = types.MpvNodeMapIterator;
+const MpvNodeList = types.MpvNodeList;
+const MpvNodeMap = types.MpvNodeMap;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvLogLevel = @import("./mpv_event_data_types//MpvEventLogMessage.zig").MpvLogLevel;
+const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
 
 const MpvError = mpv_error.MpvError;
@@ -402,13 +402,49 @@ test "Mpv.command_node" {
     defer mpv.terminate_destroy();
 
     var args = [_]MpvNode{ .{ .String = "loadfile" }, .{ .String = "sample.mp4" } };
-    const result = try mpv.command_node(.{ .NodeArray = MpvNodeListIterator.new(&args) });
+    const result = try mpv.command_node(.{ .NodeArray = MpvNodeList.new(&args) });
     defer mpv.free(result);
 
     while (true) {
         const event = try mpv.wait_event(0);
         switch (event.event_id) {
             .FileLoaded => break,
+            else => {},
+        }
+    }
+}
+
+test "Mpv.get_property list" {
+    const mpv = try Self.create(testing.allocator, null);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    var cmd = [_][]const u8{"loadfile", "sample.mp4"};
+    try mpv.command(&cmd);
+
+    while (true) {
+        const event = try mpv.wait_event(0);
+        switch (event.event_id) {
+            .StartFile => {
+                const playlist = try mpv.get_property("playlist", .Node);
+                defer mpv.free(playlist);
+                var iter = playlist.Node.NodeArray.iterator();
+                try testing.expect(iter.size() == 1);
+                const map = iter.next().?.NodeMap;
+                var map_iter = map.iterator();
+                try testing.expect(map_iter.size() == 4);
+                const filename_pair = map_iter.next().?;
+                try testing.expect(std.mem.eql(u8, filename_pair[0], "filename"));
+                try testing.expect(std.mem.eql(u8, filename_pair[1].String, "sample.mp4"));
+                const current_pair = map_iter.next().?;
+                try testing.expect(std.mem.eql(u8, current_pair[0], "current"));
+                const playing_pair = map_iter.next().?;
+                try testing.expect(std.mem.eql(u8, playing_pair[0], "playing"));
+                const id_pair = map_iter.next().?;
+                try testing.expect(std.mem.eql(u8, id_pair[0], "id"));
+                try testing.expect(id_pair[1].INT64 == 1);
+                break;
+            },
             else => {},
         }
     }
