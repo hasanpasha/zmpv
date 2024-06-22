@@ -19,9 +19,7 @@ event_error: MpvError,
 data: MpvEventData,
 reply_userdata: u64,
 
-pub fn from(c_event: [*c]c.struct_mpv_event) Self {
-    const event: *c.mpv_event = @ptrCast(c_event);
-
+pub fn from(event: *c.mpv_event) Self {
     const event_id = MpvEventId.from(event.event_id);
 
     return Self{
