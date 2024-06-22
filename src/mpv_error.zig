@@ -27,7 +27,7 @@ pub const MpvError = error{
 
 pub fn from_mpv_c_error(errorCode: c.mpv_error) MpvError {
     return switch (errorCode) {
-        c.MPV_ERROR_SUCCESS...std.math.maxInt(c_int) => MpvError.Success,
+        c.MPV_ERROR_SUCCESS...std.math.maxInt(c.mpv_error) => MpvError.Success,
         c.MPV_ERROR_EVENT_QUEUE_FULL => MpvError.EventQueueFull,
         c.MPV_ERROR_NOMEM => MpvError.NoMem,
         c.MPV_ERROR_UNINITIALIZED => MpvError.Uninitialized,

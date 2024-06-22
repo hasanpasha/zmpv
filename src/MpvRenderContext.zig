@@ -55,7 +55,6 @@ pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) !MpvRenderP
         .data = &data,
     };
     try catch_mpv_error(c.mpv_render_context_get_info(self.context, param));
-    // std.log.debug("get_info {any}", .{data});
 
     return MpvRenderParam.from(param_type, data);
 }

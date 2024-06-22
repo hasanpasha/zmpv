@@ -22,7 +22,7 @@ reply_userdata: u64,
 pub fn from(c_event: [*c]c.struct_mpv_event) Self {
     const event: *c.mpv_event = @ptrCast(c_event);
 
-    const event_id: MpvEventId = @enumFromInt(event.event_id);
+    const event_id = MpvEventId.from(event.event_id);
 
     return Self{
         .event_id = event_id,
@@ -52,7 +52,6 @@ pub fn from(c_event: [*c]c.struct_mpv_event) Self {
             else => MpvEventData{ .None = {} },
         },
         .reply_userdata = event.reply_userdata,
-        // .allocator = allocator,
     };
 }
 

@@ -15,7 +15,7 @@ data: MpvPropertyData,
 pub fn from(data_ptr: *anyopaque) Self {
     const data = utils.cast_event_data(data_ptr, c.mpv_event_property);
 
-    const format: MpvFormat = @enumFromInt(data.format);
+    const format = MpvFormat.from(data.format);
     return Self{
         .name = std.mem.sliceTo(data.name, 0),
         .format = format,

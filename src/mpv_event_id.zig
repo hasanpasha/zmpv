@@ -22,6 +22,10 @@ pub const MpvEventId = enum(u8) {
     QueueOverflow = 24,
     Hook = 25,
 
+    pub fn from(event_id: c.mpv_event_id) MpvEventId {
+        return @enumFromInt(event_id);
+    }
+
     pub fn to_c(self: MpvEventId) c.mpv_event_id {
         return @intCast(@intFromEnum(self));
     }

@@ -16,7 +16,7 @@ pub fn from(data_ptr: *anyopaque) Self {
         .prefix = std.mem.sliceTo(log.prefix, 0),
         .level = std.mem.sliceTo(log.level, 0),
         .text = std.mem.sliceTo(log.text, 0),
-        .log_level = @enumFromInt(log.log_level),
+        .log_level = MpvLogLevel.from(log.log_level),
     };
 }
 
@@ -29,6 +29,10 @@ pub const MpvLogLevel = enum(u8) {
     V = 50,
     Debug = 60,
     Trace = 70,
+
+    pub fn from(level: c.mpv_log_level) MpvLogLevel {
+        return @enumFromInt(level);
+    }
 
     pub fn to_string(self: MpvLogLevel) []const u8 {
         return switch (self) {

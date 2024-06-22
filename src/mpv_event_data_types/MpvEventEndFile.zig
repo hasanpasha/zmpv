@@ -15,7 +15,7 @@ event_error: MpvError,
 pub fn from(data_ptr: *anyopaque) Self {
     const data = utils.cast_event_data(data_ptr, c.mpv_event_end_file);
     return Self{
-        .reason = @enumFromInt(data.reason),
+        .reason = MpvEventEndFileReason.from(data.reason),
         .playlist_entry_id = data.playlist_entry_id,
         .playlist_insert_id = data.playlist_insert_id,
         .playlist_insert_num_entries = @intCast(data.playlist_insert_num_entries),
@@ -29,6 +29,10 @@ const MpvEventEndFileReason = enum(u8) {
     Quit = 3,
     Error = 4,
     Redirect = 5,
+
+    pub fn from(reason: c.mpv_end_file_reason) MpvEventEndFileReason {
+        return @enumFromInt(reason);
+    }
 };
 
 test "MpvEventEndFile from" {
