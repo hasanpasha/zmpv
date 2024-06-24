@@ -36,7 +36,7 @@ pub fn main() !void {
     defer mpv.free(fullscreen_status);
 
     while (true) {
-        const event = try mpv.wait_event(10000);
+        const event = mpv.wait_event(10000);
         const event_id = event.event_id;
         switch (event_id) {
             .Shutdown => break,

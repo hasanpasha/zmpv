@@ -152,7 +152,7 @@ pub fn main() !void {
     try mpv.observe_property(2, "time-pos", .INT64);
 
     while (true) {
-        const event = try mpv.wait_event(10000);
+        const event = mpv.wait_event(10000);
         const event_id = event.event_id;
         switch (event_id) {
             .Shutdown => break,
