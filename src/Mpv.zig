@@ -238,7 +238,7 @@ pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!vo
     try catch_mpv_error(c.mpv_request_event(self.handle, event_id.to_c(), if (enable) 1 else 0));
 }
 
-pub fn wait_event(self: Self, timeout: f64) MpvError!MpvEvent {
+pub fn wait_event(self: Self, timeout: f64) MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 
     return MpvEvent.from(event);
@@ -328,7 +328,7 @@ test "Mpv memory leak" {
     try mpv.command_string("loadfile sample.mp4");
 
     while (true) {
-        const event = try mpv.wait_event(10000);
+        const event = mpv.wait_event(10000);
         switch (event.event_id) {
             .Shutdown => break,
             .PlaybackRestart => break,
@@ -374,7 +374,7 @@ test "Mpv.command" {
     try mpv.command(&args);
 
     while (true) {
-        const event = try mpv.wait_event(0);
+        const event = mpv.wait_event(0);
         switch (event.event_id) {
             .FileLoaded => break,
             else => {},
@@ -390,7 +390,7 @@ test "Mpv.command_string" {
     try mpv.command_string("loadfile sample.mp4");
 
     while (true) {
-        const event = try mpv.wait_event(0);
+        const event = mpv.wait_event(0);
         switch (event.event_id) {
             .FileLoaded => break,
             else => {},
@@ -407,7 +407,7 @@ test "Mpv.command_async" {
     try mpv.command_async(0, &args);
 
     while (true) {
-        const event = try mpv.wait_event(0);
+        const event = mpv.wait_event(0);
         switch (event.event_id) {
             .FileLoaded => break,
             else => {},
@@ -425,7 +425,7 @@ test "Mpv.command_node" {
     defer mpv.free(result);
 
     while (true) {
-        const event = try mpv.wait_event(0);
+        const event = mpv.wait_event(0);
         switch (event.event_id) {
             .FileLoaded => break,
             else => {},
@@ -442,7 +442,7 @@ test "Mpv.get_property list" {
     try mpv.command(&cmd);
 
     while (true) {
-        const event = try mpv.wait_event(0);
+        const event = mpv.wait_event(0);
         switch (event.event_id) {
             .StartFile => {
                 const playlist = try mpv.get_property("playlist", .Node);

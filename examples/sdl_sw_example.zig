@@ -96,7 +96,7 @@ pub fn main() !void {
                     redraw = mpv_render_ctx.update();
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
-                        const mpv_event = try mpv.wait_event(0);
+                        const mpv_event = mpv.wait_event(0);
 
                         if (mpv_event.event_id == .None) {
                             break;
