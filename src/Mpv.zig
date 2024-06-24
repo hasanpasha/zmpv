@@ -80,7 +80,7 @@ pub fn command_string(self: Self, args: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_command_string(self.handle, args.ptr));
 }
 
-/// The resulting MpvNode should be freed with `Mpv.free_node(node)`
+/// The resulting MpvNode should be freed with `self.free(node)`
 pub fn command_node(self: Self, args: MpvNode) !MpvNode {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
@@ -94,6 +94,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
     return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
 }
 
+/// The resulting MpvNode should be freed with `self.free(node)`
 pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
