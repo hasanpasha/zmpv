@@ -20,8 +20,35 @@ const GenericError = generic_error.GenericError;
 
 const Self = @This();
 
+const mpv_threading = @import("./threading.zig");
+
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
+event_callbacks: ?std.ArrayList(mpv_threading.MpvEventCallback) = null,
+event_thread: ?std.Thread = null,
+threading: bool = false,
+mutex: std.Thread.Mutex = std.Thread.Mutex{},
+
+pub fn new(allocator: std.mem.Allocator, args: struct {
+    threading: bool = false,
+}) !Self {
+    var instance = try create(allocator);
+    if (args.threading) {
+        instance.threading = true;
+        instance.event_callbacks = std.ArrayList(mpv_threading.MpvEventCallback).init(allocator);
+        // var event_handler = try Self.create_client(instance, "MpvEventLoopHandler");
+        // instance.mutex = std.Thread.Mutex{};
+        var event_handler = try allocator.create(Self);
+        // var event_handler = instance;
+        event_handler.* = instance;
+
+        event_handler.threading = true;
+        std.Thread.
+        instance.event_thread = try std.Thread.spawn(.{}, mpv_threading.event_loop, .{ event_handler });
+        instance.event_thread.?.detach();
+    }
+    return instance;
+}
 
 pub fn create(allocator: std.mem.Allocator) GenericError!Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
@@ -285,6 +312,7 @@ pub fn free(self: Self, data: anytype) void {
 
 pub usingnamespace @import("./MpvHelper.zig");
 pub usingnamespace @import("./stream_cb.zig");
+pub usingnamespace @import("./threading.zig");
 
 test "Mpv simple test" {
     const mpv = try Self.create(testing.allocator);

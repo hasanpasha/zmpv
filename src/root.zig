@@ -17,3 +17,4 @@ pub const GenericError = @import("./generic_error.zig").GenericError;
 const types = @import("./types.zig");
 pub const MpvNodeList = types.MpvNodeList;
 pub const MpvNodeMap = types.MpvNodeMap;
+pub const MpvEventCallback = @import("./threading.zig").MpvEventCallback;
