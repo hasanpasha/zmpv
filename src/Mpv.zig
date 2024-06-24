@@ -125,27 +125,22 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
     c.mpv_abort_async_command(self.handle, reply_userdata);
 }
 
-fn mpv_free_data(data_anon_ptr: *anyopaque, format: MpvFormat) void {
-    switch (format) {
-        .String, .OSDString => {
-            const str_ptr: *[*c]u8 = @ptrCast(@alignCast(data_anon_ptr));
-            const str = str_ptr.*;
-            c.mpv_free(str);
-        },
-        .Node, .NodeArray, .NodeMap => {
-            c.mpv_free_node_contents(@ptrCast(@alignCast(data_anon_ptr)));
-        },
-        else => {},
-    }
-}
-
 /// The returened value must be freed with self.free(value)
 pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
 
     try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr));
-    defer mpv_free_data(data_ptr, format);
+    defer {
+        switch (format) {
+            .String, .OSDString => {
+                c.mpv_free(output_mem);
+            },
+            .Node, .NodeArray, .NodeMap => {
+                c.mpv_free_node_contents(&output_mem);
+            }, else => {},
+        }
+    }
 
     return try MpvPropertyData.from(format, data_ptr).copy(self.allocator);
 }
