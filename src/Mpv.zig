@@ -139,6 +139,7 @@ fn mpv_free_data(data_anon_ptr: *anyopaque, format: MpvFormat) void {
     }
 }
 
+/// The returened value must be freed with self.free(value)
 pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
@@ -149,7 +150,7 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
     return try MpvPropertyData.from(format, data_ptr).copy(self.allocator);
 }
 
-/// The returened value should be freed with self.free(string)
+/// The returened value must be freed with self.free(value)
 pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     const returned_value = c.mpv_get_property_string(self.handle, name.ptr);
     if (returned_value == null) {
@@ -160,7 +161,7 @@ pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
     return try self.allocator.dupe(u8, std.mem.sliceTo(returned_value, 0));
 }
 
-/// free returned string with self.free(string);
+/// The returened value must be freed with self.free(value)
 pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
     const returned_value = c.mpv_get_property_osd_string(self.handle, name.ptr);
     if (returned_value == null) {
