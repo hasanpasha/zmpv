@@ -19,6 +19,9 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
+    const version = Mpv.client_api_version();
+    std.debug.print("version={any}.{}\n", .{version >> 16, version & 0xffff});
+
     var cmd_args = [_][]const u8{ "loadfile", filename };
     try mpv.command_async(0, &cmd_args);
 

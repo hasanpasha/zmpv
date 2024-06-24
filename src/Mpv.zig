@@ -258,6 +258,10 @@ pub fn client_id(self: Self) i64 {
     return c.mpv_client_id(self.handle);
 }
 
+pub fn client_api_version() u32 {
+    return @intCast(c.mpv_client_api_version());
+}
+
 pub fn get_time_ns(self: Self) i64 {
     return c.mpv_get_time_ns(self.handle);
 }
