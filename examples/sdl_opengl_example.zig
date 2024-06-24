@@ -16,7 +16,7 @@ pub fn main() !void {
         if (gpa.deinit() == .leak) @panic("leak");
     }
 
-    var mpv = try Mpv.create(gpa.allocator(), null);
+    var mpv = try Mpv.create(gpa.allocator());
     defer mpv.terminate_destroy();
 
     try mpv.set_option_string("vo", "libmpv");

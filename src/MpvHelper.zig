@@ -3,9 +3,20 @@ const Mpv = @import("./Mpv.zig");
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 
+/// Create an `Mpv` instance and set options if provided
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
+    const instance = try Mpv.create(allocator);
+
+    for (options) |option| {
+        try instance.set_option_string(option[0], option[1]);
+    }
+
+    return instance;
+}
+
 /// Create an `Mpv` instance and initialize it with the given options
 pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
-    var instance = try Mpv.create(allocator, options);
+    var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
 }
