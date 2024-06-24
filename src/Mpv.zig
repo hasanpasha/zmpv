@@ -223,7 +223,6 @@ pub fn request_event(self: Self, event_id: MpvEventId, enable: bool) MpvError!vo
     try catch_mpv_error(c.mpv_request_event(self.handle, event_id.to_c(), if (enable) 1 else 0));
 }
 
-/// the caller have to free allocated memory with `MpvEvent.free(event)`
 pub fn wait_event(self: Self, timeout: f64) MpvError!MpvEvent {
     const event = c.mpv_wait_event(self.handle, timeout);
 
