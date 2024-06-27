@@ -315,7 +315,7 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     }
 }
 
-pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId) !void {
+pub fn wait_for_event(mpv: *Mpv, event_id: MpvEventId) !void {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
@@ -327,7 +327,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId) !void {
 
     var received_event = std.Thread.ResetEvent{};
     const unregisterrer = try mpv.register_event_callback(MpvEventCallback{
-        .event_ids = event_ids,
+        .event_ids = &.{ event_id },
         .callback = &cb,
         .user_data = &received_event,
         .callback_cond = null,
@@ -359,11 +359,11 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {
 
 
 pub fn wait_for_playback(mpv: *Mpv) !void {
-    try mpv.wait_for_event(&.{ .EndFile });
+    try mpv.wait_for_event(.EndFile);
 }
 
 pub fn wait_until_playing(mpv: *Mpv) !void {
-    try mpv.wait_for_event(&.{ .StartFile });
+    try mpv.wait_for_event(.StartFile);
 }
 
 pub fn wait_until_pause(mpv: *Mpv) !void {
@@ -371,5 +371,5 @@ pub fn wait_until_pause(mpv: *Mpv) !void {
 }
 
 pub fn wait_for_shutdown(mpv: *Mpv) !void {
-    try mpv.wait_for_event(&.{.Shutdown});
+    try mpv.wait_for_event(.Shutdown);
 }
