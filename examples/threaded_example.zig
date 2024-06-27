@@ -29,10 +29,6 @@ pub fn main() !void {
     const filename = args[1];
 
     var mpv = try Mpv.create_with_threading(allocator);
-    defer {
-        std.log.debug("{*}", .{mpv});
-        allocator.destroy(mpv);
-    }
     try mpv.set_option_string("osc", "yes");
     try mpv.set_option_string("input-default-bindings", "yes");
     try mpv.set_option_string("input-vo-keyboard", "yes");
