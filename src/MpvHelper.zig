@@ -4,7 +4,7 @@ const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 
 /// Create an `Mpv` instance and set options if provided
-pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !*Mpv {
     const instance = try Mpv.create(allocator);
 
     for (options) |option| {
@@ -15,14 +15,14 @@ pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const str
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !Mpv {
+pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !*Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
 }
 
 /// an alternative helper function to create `MpvRenderContext`
-pub fn create_render_context(self: Mpv, params: []MpvRenderParam) !MpvRenderContext {
+pub fn create_render_context(self: *Mpv, params: []MpvRenderParam) !MpvRenderContext {
     return MpvRenderContext.create(self, params);
 }
 
