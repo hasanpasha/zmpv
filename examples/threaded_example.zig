@@ -45,11 +45,16 @@ pub fn main() !void {
     try mpv.observe_property(1, "fullscreen", .Flag);
     try mpv.observe_property(2, "time-pos", .INT64);
 
-    // try mpv.register_event_callback(MpvEventCallback {
-    //     .event_ids = &.{ .EndFile, },
-    //     .callback = &endfile_event_handler,
-    //     .user_data = null,
-    // });
+    _ = try mpv.register_event_callback(MpvEventCallback {
+        .event_ids = &.{ .EndFile, },
+        .callback = struct {
+            pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
+                _ = user_data;
+                std.log.debug("endfile: {}", .{event.data.EndFile});
+            }
+        }.cb,
+        .user_data = null,
+    });
 
     const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = &.{ .StartFile },
@@ -60,31 +65,25 @@ pub fn main() !void {
     // _ = startfile_callback_unregisterrer;
     startfile_callback_unregisterrer.unregister();
 
-    // try mpv.register_event_callback(MpvEventCallback{
-    //     .event_ids = &.{ .PropertyChange },
-    //     .callback = &property_change_handler,
-    //     .user_data = null,
-    //     .callback_cond = struct {
-    //         pub fn cb(event: MpvEvent) bool {
-    //             const property = event.data.PropertyChange;
-    //             return (std.mem.eql(u8, property.name, "fullscreen"));
-    //         }
-    //     }.cb,
-    // });
-    // try mpv.register_property_callback(MpvPropertyCallback{
-    //     .property_name = "fullscreen",
-    //     .callback = &fullscreen_observer,
-    // });
+    _ = try mpv.register_property_callback(MpvPropertyCallback{
+        .property_name = "fullscreen",
+        .callback = struct {
+            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+                _ = user_data;
+                std.log.debug("fullscreen changed: {}", .{data.Node.Flag});
+            }
+        }.cb,
+    });
 
-    // try mpv.register_property_callback(MpvPropertyCallback{
-    //     .property_name = "pause",
-    //     .callback = struct {
-    //         pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
-    //             _ = user_data;
-    //             std.log.debug("pause state: {}", .{data.Node.Flag});
-    //         }
-    //     }.cb,
-    // });
+    _ = try mpv.register_property_callback(MpvPropertyCallback{
+        .property_name = "pause",
+        .callback = struct {
+            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+                _ = user_data;
+                std.log.debug("pause state: {}", .{data.Node.Flag});
+            }
+        }.cb,
+    });
 
     const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
@@ -115,7 +114,6 @@ pub fn main() !void {
     log_handler_unregisterrer.unregister();
 
     // try mpv.wait_until_playing();
-    // var pause_args = [_][]const u8{"screenshot"};
     const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
         .command_args = &loadfile_cmd_args,
         .callback = struct {
@@ -139,19 +137,4 @@ pub fn main() !void {
     // std.log.debug("done playing", .{});
     // try mpv.wait_for_shutdown();
     // std.log.debug("everything has ended", .{});
-}
-
-fn startfile_event_handler(user_data: ?*anyopaque, event: MpvEvent) void  {
-    _ = user_data;
-    std.log.debug("startfile: {}", .{event.data.StartFile});
-}
-
-fn endfile_event_handler(user_data: ?*anyopaque, event: MpvEvent) void {
-    _ = user_data;
-    std.log.debug("endfile: {}", .{event.data.EndFile});
-}
-
-fn fullscreen_observer(user_data: ?*anyopaque, data: MpvPropertyData) void {
-    _ = user_data;
-    std.log.debug("fullscreen changed: {}", .{data.Node.Flag});
 }
