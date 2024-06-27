@@ -199,11 +199,6 @@ pub fn event_loop(mpv: *Mpv) !void {
     }
 }
 
-pub fn check_core_shutdown(mpv: Mpv) GenericError!void {
-    if (mpv.core_shutdown) return GenericError.CoreShutdown;
-
-}
-
 pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
     try mpv.check_core_shutdown();
 

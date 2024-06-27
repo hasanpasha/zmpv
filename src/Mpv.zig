@@ -289,6 +289,11 @@ pub fn error_string(err: MpvError) []const u8 {
     return std.mem.sliceTo(error_str, 0);
 }
 
+pub fn check_core_shutdown(self: Self) GenericError!void {
+    if (self.core_shutdown) return GenericError.CoreShutdown;
+
+}
+
 pub fn free(self: Self, data: anytype) void {
     switch (@TypeOf(data)) {
         MpvNode, MpvPropertyData => {
