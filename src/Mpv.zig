@@ -1,26 +1,23 @@
 const std = @import("std");
-const testing = std.testing;
-const mpv_error = @import("./mpv_error.zig");
-const generic_error = @import("./generic_error.zig");
-const MpvEvent = @import("./MpvEvent.zig");
-const utils = @import("./utils.zig");
-const catch_mpv_error = utils.catch_mpv_error;
-const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
-const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const c = @import("./c.zig");
+const MpvEvent = @import("./MpvEvent.zig");
+const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
+const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
+const MpvNode = @import("./mpv_node.zig").MpvNode;
 const types = @import("./types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
-const MpvNode = @import("./mpv_node.zig").MpvNode;
-
+const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadingInfo;
+const mpv_error = @import("./mpv_error.zig");
 const MpvError = mpv_error.MpvError;
-const GenericError = generic_error.GenericError;
+const GenericError = @import("./generic_error.zig").GenericError;
+const utils = @import("./utils.zig");
+const catch_mpv_error = utils.catch_mpv_error;
+const testing = std.testing;
 
 const Self = @This();
-
-const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadingInfo;
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
@@ -289,9 +286,9 @@ pub fn error_string(err: MpvError) []const u8 {
     return std.mem.sliceTo(error_str, 0);
 }
 
+/// Check whether the Mpv core is still alive
 pub fn check_core_shutdown(self: Self) GenericError!void {
     if (self.core_shutdown) return GenericError.CoreShutdown;
-
 }
 
 pub fn free(self: Self, data: anytype) void {
