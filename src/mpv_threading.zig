@@ -11,6 +11,13 @@ const GenericError = @import("./generic_error.zig").GenericError;
 const MpvError = @import("./mpv_error.zig").MpvError;
 const utils = @import("./utils.zig");
 
+pub fn create_with_threading(allocator: std.mem.Allocator) !*Mpv {
+    const instance_ptr = try allocator.create(Mpv);
+    instance_ptr.* = try Mpv.create(allocator);
+    instance_ptr.threading_info = try MpvThreadingInfo.new(instance_ptr);
+    return instance_ptr;
+}
+
 pub const MpvThreadingInfo = struct {
     allocator: std.mem.Allocator,
     event_handle: *Mpv,
@@ -41,6 +48,25 @@ pub const MpvThreadingInfo = struct {
             .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
         };
         return info_ptr;
+    }
+
+    pub fn free(self: *MpvThreadingInfo) void {
+        const allocator = self.allocator;
+
+        allocator.destroy(self.event_handle);
+
+        self.event_callbacks.deinit();
+
+        var properties_cbs_iterator = self.property_callbacks.valueIterator();
+        while (properties_cbs_iterator.next()) |cbs| {
+            cbs.*.deinit();
+            allocator.destroy(cbs.*);
+        }
+        self.property_callbacks.deinit();
+
+        self.command_reply_callbacks.deinit();
+
+        allocator.destroy(self);
     }
 };
 

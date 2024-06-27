@@ -15,10 +15,11 @@ pub fn main() !void {
     defer {
         if (gpa.deinit() == .leak) @panic("detected leakage");
     }
-    // const allocator = gpa.allocator();
-    const allocator = std.heap.page_allocator;
+    const allocator = gpa.allocator();
+    // const allocator = std.heap.page_allocator;
 
     const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
         std.debug.print("usage: {s} [filename]\n", .{args[0]});
@@ -27,7 +28,11 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    var mpv = try Mpv.new(allocator, .{ .threading = true });
+    var mpv = try Mpv.create_with_threading(allocator);
+    defer {
+        std.log.debug("{*}", .{mpv});
+        allocator.destroy(mpv);
+    }
     try mpv.set_option_string("osc", "yes");
     try mpv.set_option_string("input-default-bindings", "yes");
     try mpv.set_option_string("input-vo-keyboard", "yes");

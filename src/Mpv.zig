@@ -26,17 +26,6 @@ handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 threading_info: ?*MpvThreadingInfo = null,
 
-pub fn new(allocator: std.mem.Allocator, args: struct {
-    threading: bool = false,
-}) !Self {
-    const instance_ptr = try allocator.create(Self);
-    instance_ptr.* = try create(allocator);
-    if (args.threading) {
-        instance_ptr.threading_info = try MpvThreadingInfo.new(instance_ptr);
-    }
-    return instance_ptr.*;
-}
-
 pub fn create(allocator: std.mem.Allocator) GenericError!Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
     return Self{ .handle = handle, .allocator = allocator };
@@ -281,7 +270,14 @@ pub fn terminate_destroy(self: Self) void {
     //     const thread_name = thread_info.event_thread.getName(&buf) catch { return; } orelse {return;};
     //     std.log.debug("thread id: {s}", .{thread_name});
     // }
-    c.mpv_terminate_destroy(self.handle);
+    const handle = self.handle;
+    if (self.threading_info) |thread_info| {
+        // const allocator = self.allocator;
+        thread_info.free();
+        std.log.debug("{*}", .{&self});
+        // allocator.destroy(&self);
+    }
+    c.mpv_terminate_destroy(handle);
 }
 
 pub fn error_string(err: MpvError) []const u8 {
