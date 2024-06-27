@@ -12,8 +12,7 @@ const MpvError = @import("./mpv_error.zig").MpvError;
 const utils = @import("./utils.zig");
 
 pub fn create_with_threading(allocator: std.mem.Allocator) !*Mpv {
-    const instance_ptr = try allocator.create(Mpv);
-    instance_ptr.* = try Mpv.create(allocator);
+    const instance_ptr = try Mpv.create(allocator);
     instance_ptr.threading_info = try MpvThreadingInfo.new(instance_ptr);
     return instance_ptr;
 }
@@ -35,8 +34,7 @@ pub const MpvThreadingInfo = struct {
         var event_thread = try std.Thread.spawn(.{}, event_loop, .{ mpv });
         event_thread.detach();
 
-        const event_handle_ptr = try allocator.create(Mpv);
-        event_handle_ptr.* = try mpv.create_client("MpvThreadHandle");
+        const event_handle_ptr = try mpv.create_client("MpvThreadHandle");
 
         const info_ptr = try allocator.create(@This());
         info_ptr.* = MpvThreadingInfo{
@@ -52,8 +50,6 @@ pub const MpvThreadingInfo = struct {
 
     pub fn free(self: *MpvThreadingInfo) void {
         const allocator = self.allocator;
-
-        allocator.destroy(self.event_handle);
 
         self.event_callbacks.deinit();
 
