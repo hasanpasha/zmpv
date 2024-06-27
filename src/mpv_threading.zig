@@ -11,7 +11,8 @@ const GenericError = @import("./generic_error.zig").GenericError;
 const MpvError = @import("./mpv_error.zig").MpvError;
 const utils = @import("./utils.zig");
 
-pub const MpvThreadedInfo = struct {
+pub const MpvThreadingInfo = struct {
+    allocator: std.mem.Allocator,
     event_handle: *Mpv,
     event_callbacks: std.ArrayList(MpvEventCallback),
     property_callbacks: std.StringHashMap(*std.ArrayList(MpvPropertyCallback)),
@@ -20,9 +21,8 @@ pub const MpvThreadedInfo = struct {
     event_thread: std.Thread,
     mutex: std.Thread.Mutex = std.Thread.Mutex{},
     core_shutdown: bool = false,
-    // callback_events: std.ArrayList(*std.Thread.ResetEvent),
 
-    pub fn new(mpv: *Mpv) !*MpvThreadedInfo {
+    pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
         const allocator = mpv.allocator;
 
         var event_thread = try std.Thread.spawn(.{}, event_loop, .{ mpv });
@@ -32,13 +32,13 @@ pub const MpvThreadedInfo = struct {
         event_handle_ptr.* = try mpv.create_client("MpvThreadHandle");
 
         const info_ptr = try allocator.create(@This());
-        info_ptr.* = MpvThreadedInfo{
+        info_ptr.* = MpvThreadingInfo{
+            .allocator = allocator,
             .event_handle = event_handle_ptr,
             .event_thread = event_thread,
             .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
             .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
             .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
-            // .callback_events = std.ArrayList(*std.Thread.ResetEvent).init(allocator),
         };
         return info_ptr;
     }
@@ -128,6 +128,7 @@ pub fn event_iterator(mpv: Mpv) EventIterator {
 }
 
 pub fn event_loop(mpv: *Mpv) !void {
+    // wait until MpvThreadingInfo is constructed and assigned to Mpv.threading_info
     while (mpv.threading_info == null) {}
 
     var thread_info = mpv.threading_info.?;

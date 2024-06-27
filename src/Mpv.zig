@@ -20,7 +20,7 @@ const GenericError = generic_error.GenericError;
 
 const Self = @This();
 
-const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadedInfo;
+const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadingInfo;
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
