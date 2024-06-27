@@ -128,9 +128,9 @@ pub fn event_iterator(mpv: Mpv) EventIterator {
 }
 
 pub fn event_loop(mpv: *Mpv) !void {
-    while (mpv.threaded == null) {}
+    while (mpv.threading_info == null) {}
 
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     var iter = event_iterator(thread_info.event_handle.*);
     while (iter.next()) |event| {
         const eid = event.event_id;
@@ -178,7 +178,7 @@ pub fn event_loop(mpv: *Mpv) !void {
 }
 
 pub fn check_core_shutdown(mpv: Mpv) GenericError!void {
-    if (mpv.threaded) |thread_info| {
+    if (mpv.threading_info) |thread_info| {
         if (thread_info.core_shutdown) return GenericError.CoreShutdown;
     }
 
@@ -187,7 +187,7 @@ pub fn check_core_shutdown(mpv: Mpv) GenericError!void {
 pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
     try mpv.check_core_shutdown();
 
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     try thread_info.event_callbacks.append(callback);
 
     const unregisterrer = MpvEventCallbackUnregisterrer {
@@ -203,7 +203,7 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
 }
 
 pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
 
     for (0.., thread_info.event_callbacks.items) |idx, cb| {
         if (std.meta.eql(cb, callback)) {
@@ -215,7 +215,7 @@ pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
 pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !MpvPropertyCallbackUnregisterrer {
     try mpv.check_core_shutdown();
 
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
 
     const property_name = callback.property_name;
     if (!thread_info.property_callbacks.contains(property_name)) {
@@ -241,7 +241,7 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
 }
 
 pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !void {
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     if (thread_info.property_callbacks.get(callback.property_name)) |cbs| {
         for (0.., cbs.items) |idx, cb| {
             if (std.meta.eql(cb, callback)) {
@@ -252,7 +252,7 @@ pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !v
 }
 
 pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !MpvCommandReplyCallbackUnegisterrer {
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
     try thread_info.command_reply_callbacks.put(args_hash, callback);
     try thread_info.event_handle.command_async(args_hash, callback.command_args);
@@ -270,14 +270,14 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
 }
 
 pub fn unregister_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !void {
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
     thread_info.event_handle.abort_async_command(args_hash);
     _ = thread_info.command_reply_callbacks.remove(args_hash);
 }
 
 pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) !MpvLogMessageCallbackUnregisterrer {
-    var thread_info = mpv.threaded.?;
+    var thread_info = mpv.threading_info.?;
     try thread_info.event_handle.request_log_messages(callback.level);
     thread_info.log_callback = callback;
 
@@ -294,7 +294,7 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
 }
 
 pub fn unregister_log_message_handler(mpv: *Mpv) !void {
-    if (mpv.threaded) |thread_info| {
+    if (mpv.threading_info) |thread_info| {
         try mpv.request_log_messages(.None);
         thread_info.log_callback = null;
     }

@@ -20,11 +20,11 @@ const GenericError = generic_error.GenericError;
 
 const Self = @This();
 
-const MpvThreadedInfo = @import("./threading.zig").MpvThreadedInfo;
+const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadedInfo;
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
-threaded: ?*MpvThreadedInfo = null,
+threading_info: ?*MpvThreadingInfo = null,
 
 pub fn new(allocator: std.mem.Allocator, args: struct {
     threading: bool = false,
@@ -32,7 +32,7 @@ pub fn new(allocator: std.mem.Allocator, args: struct {
     const instance_ptr = try allocator.create(Self);
     instance_ptr.* = try create(allocator);
     if (args.threading) {
-        instance_ptr.threaded = try MpvThreadedInfo.new(instance_ptr);
+        instance_ptr.threading_info = try MpvThreadingInfo.new(instance_ptr);
     }
     return instance_ptr.*;
 }
@@ -304,7 +304,7 @@ pub fn free(self: Self, data: anytype) void {
 
 pub usingnamespace @import("./MpvHelper.zig");
 pub usingnamespace @import("./stream_cb.zig");
-pub usingnamespace @import("./threading.zig");
+pub usingnamespace @import("./mpv_threading.zig");
 
 test "Mpv simple test" {
     const mpv = try Self.create(testing.allocator);
