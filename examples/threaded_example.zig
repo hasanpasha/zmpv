@@ -28,11 +28,14 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    var mpv = try Mpv.create_with_threading(allocator);
-    try mpv.set_option_string("osc", "yes");
-    try mpv.set_option_string("input-default-bindings", "yes");
-    try mpv.set_option_string("input-vo-keyboard", "yes");
-    try mpv.initialize();
+    var mpv = try Mpv.new(allocator, .{
+        .start_event_thread = true,
+        .options = &.{
+            .{"osc", "yes"},
+            .{"input-default-bindings", "yes"},
+            .{"input-vo-keyboard", "yes"},
+        },
+    });
     defer mpv.terminate_destroy();
 
     const version = Mpv.client_api_version();
