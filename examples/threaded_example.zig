@@ -130,11 +130,11 @@ pub fn main() !void {
     });
     // command_callback_unregisterrer.unregister();
     _ = command_callback_unregisterrer;
-    // try mpv.wait_for_playback();
+    try mpv.wait_for_playback();
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    try mpv.wait_for_shutdown();
+    // try mpv.wait_for_shutdown();
     // std.log.debug("everything has ended", .{});
 }
