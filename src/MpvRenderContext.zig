@@ -18,7 +18,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
     return @ptrCast(c_params);
 }
 
-pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
+pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
     var context: *c.mpv_render_context = undefined;
 
     const allocator = mpv.allocator;

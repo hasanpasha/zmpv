@@ -26,21 +26,31 @@ handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 threading_info: ?*MpvThreadingInfo = null,
 
-pub fn create(allocator: std.mem.Allocator) GenericError!Self {
+pub fn create(allocator: std.mem.Allocator) !*Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
-    return Self{ .handle = handle, .allocator = allocator };
+
+    const instance_ptr = try allocator.create(Self);
+    instance_ptr.* = Self{ .handle = handle, .allocator = allocator };
+
+    return instance_ptr;
 }
 
-pub fn create_client(self: Self, name: []const u8) GenericError!Self {
+pub fn create_client(self: Self, name: []const u8) !*Self {
     const client_handle = c.mpv_create_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
-    return Self{ .handle = client_handle, .allocator = self.allocator };
+    const instance_ptr = try self.allocator.create(Self);
+    instance_ptr.* = Self{ .handle = client_handle, .allocator = self.allocator };
+
+    return instance_ptr;
 }
 
-pub fn create_weak_client(self: Self, name: []const u8) GenericError!Self {
+pub fn create_weak_client(self: Self, name: []const u8) !*Self {
     const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
-    return Self{ .handle = weak_client_handle, .allocator = self.allocator };
+    const instance_ptr = try self.allocator.create(Self);
+    instance_ptr.* = Self{ .handle = weak_client_handle, .allocator = self.allocator };
+
+    return instance_ptr;
 }
 
 pub fn initialize(self: Self) MpvError!void {
@@ -260,24 +270,17 @@ pub fn get_time_us(self: Self) i64 {
     return c.mpv_get_time_us(self.handle);
 }
 
-pub fn destroy(self: Self) void {
+pub fn destroy(self: *Self) void {
     c.mpv_destroy(self.handle);
+    self.allocator.destroy(self);
 }
 
-pub fn terminate_destroy(self: Self) void {
-    // if (self.threaded) |thread_info| {
-    //     var buf: [15:0]u8 = undefined;
-    //     const thread_name = thread_info.event_thread.getName(&buf) catch { return; } orelse {return;};
-    //     std.log.debug("thread id: {s}", .{thread_name});
-    // }
-    const handle = self.handle;
+pub fn terminate_destroy(self: *Self) void {
     if (self.threading_info) |thread_info| {
-        // const allocator = self.allocator;
         thread_info.free();
-        std.log.debug("{*}", .{&self});
-        // allocator.destroy(&self);
     }
-    c.mpv_terminate_destroy(handle);
+    c.mpv_terminate_destroy(self.handle);
+    self.allocator.destroy(self);
 }
 
 pub fn error_string(err: MpvError) []const u8 {
