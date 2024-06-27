@@ -20,34 +20,21 @@ const GenericError = generic_error.GenericError;
 
 const Self = @This();
 
-const mpv_threading = @import("./threading.zig");
+const MpvThreadedInfo = @import("./threading.zig").MpvThreadedInfo;
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
-event_callbacks: ?std.ArrayList(mpv_threading.MpvEventCallback) = null,
-event_thread: ?std.Thread = null,
-threading: bool = false,
-mutex: std.Thread.Mutex = std.Thread.Mutex{},
+threaded: ?*MpvThreadedInfo = null,
 
 pub fn new(allocator: std.mem.Allocator, args: struct {
     threading: bool = false,
 }) !Self {
-    var instance = try create(allocator);
+    const instance_ptr = try allocator.create(Self);
+    instance_ptr.* = try create(allocator);
     if (args.threading) {
-        instance.threading = true;
-        instance.event_callbacks = std.ArrayList(mpv_threading.MpvEventCallback).init(allocator);
-        // var event_handler = try Self.create_client(instance, "MpvEventLoopHandler");
-        // instance.mutex = std.Thread.Mutex{};
-        var event_handler = try allocator.create(Self);
-        // var event_handler = instance;
-        event_handler.* = instance;
-
-        event_handler.threading = true;
-        std.Thread.
-        instance.event_thread = try std.Thread.spawn(.{}, mpv_threading.event_loop, .{ event_handler });
-        instance.event_thread.?.detach();
+        instance_ptr.threaded = try MpvThreadedInfo.new(instance_ptr);
     }
-    return instance;
+    return instance_ptr.*;
 }
 
 pub fn create(allocator: std.mem.Allocator) GenericError!Self {
@@ -289,6 +276,11 @@ pub fn destroy(self: Self) void {
 }
 
 pub fn terminate_destroy(self: Self) void {
+    // if (self.threaded) |thread_info| {
+    //     var buf: [15:0]u8 = undefined;
+    //     const thread_name = thread_info.event_thread.getName(&buf) catch { return; } orelse {return;};
+    //     std.log.debug("thread id: {s}", .{thread_name});
+    // }
     c.mpv_terminate_destroy(self.handle);
 }
 

@@ -32,6 +32,15 @@ pub fn catch_mpv_error(ret_code: c_int) MpvError!void {
     }
 }
 
+pub fn hash(string: []const u8) u64 {
+    var hash_value: u64 = 5381;
+
+    for (string) |c| {
+        hash_value = ((hash_value << 5)) + c;
+    }
+    return hash_value;
+}
+
 test "zstring to cstring array" {
     const allocator = testing.allocator;
 
