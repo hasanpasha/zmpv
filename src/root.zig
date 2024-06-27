@@ -1,7 +1,7 @@
 pub const Mpv = @import("./Mpv.zig");
 pub const MpvRenderContext = @import("./MpvRenderContext.zig");
 pub const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
-pub const MpvNode = @import("./mpv_format.zig").MpvFormat;
+pub const MpvNode = @import("./mpv_node.zig").MpvNode;
 pub const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 pub const MpvEvent = @import("./MpvEvent.zig");
 pub const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
