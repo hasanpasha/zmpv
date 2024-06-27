@@ -26,6 +26,7 @@ pub const MpvThreadingInfo = struct {
     log_callback: ?MpvLogMessageCallback = null,
     event_thread: std.Thread,
     mutex: std.Thread.Mutex = std.Thread.Mutex{},
+    thread_event: ?*std.Thread.ResetEvent = null,
 
     pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
         const allocator = mpv.allocator;
@@ -194,6 +195,9 @@ pub fn event_loop(mpv: *Mpv) !void {
 
         if (eid == .Shutdown) {
             thread_info.event_handle.destroy();
+            if (thread_info.thread_event) |te| {
+                te.set();
+            }
             break;
         }
     }
@@ -326,12 +330,14 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
     }.cb;
 
     var received_event = std.Thread.ResetEvent{};
+    mpv.threading_info.?.thread_event = &received_event;
     const unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = event_ids,
         .callback = &cb,
         .user_data = &received_event,
         .callback_cond = cond_cb,
     });
+
     received_event.wait();
     unregisterrer.unregister();
 }
@@ -348,12 +354,15 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {
     }.cb;
 
     var received_event = std.Thread.ResetEvent{};
-    try mpv.register_property_callback(MpvPropertyCallback{
+    mpv.threading_info.?.thread_event = &received_event;
+    const cb_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = property_name,
         .callback = &cb,
         .user_data = &received_event,
     });
+
     received_event.wait();
+    cb_unregisterrer.unregister();
 }
 
 
