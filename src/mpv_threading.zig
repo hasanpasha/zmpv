@@ -26,7 +26,6 @@ pub const MpvThreadingInfo = struct {
     log_callback: ?MpvLogMessageCallback = null,
     event_thread: std.Thread,
     mutex: std.Thread.Mutex = std.Thread.Mutex{},
-    core_shutdown: bool = false,
 
     pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
         const allocator = mpv.allocator;
@@ -159,7 +158,7 @@ pub fn event_loop(mpv: *Mpv) !void {
         const eid = event.event_id;
         if (eid == .Shutdown) {
             thread_info.mutex.lock();
-            thread_info.core_shutdown = true;
+            mpv.core_shutdown = true;
             thread_info.mutex.unlock();
         }
 
@@ -201,9 +200,7 @@ pub fn event_loop(mpv: *Mpv) !void {
 }
 
 pub fn check_core_shutdown(mpv: Mpv) GenericError!void {
-    if (mpv.threading_info) |thread_info| {
-        if (thread_info.core_shutdown) return GenericError.CoreShutdown;
-    }
+    if (mpv.core_shutdown) return GenericError.CoreShutdown;
 
 }
 
