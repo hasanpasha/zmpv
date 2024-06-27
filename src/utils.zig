@@ -41,6 +41,12 @@ pub fn hash(string: []const u8) u64 {
     return hash_value;
 }
 
+pub fn string_array_hash(allocator: std.mem.Allocator, array: []const []const u8) !u64 {
+    const args = try std.mem.concat(allocator, u8, array);
+    defer allocator.free(args);
+    return hash(args);
+}
+
 test "zstring to cstring array" {
     const allocator = testing.allocator;
 

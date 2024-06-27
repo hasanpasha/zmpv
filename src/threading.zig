@@ -96,6 +96,23 @@ pub const MpvLogMessageCallback = struct {
     }
 };
 
+pub fn MpvCallbackUnregisterrer(T: type) type {
+    return struct {
+        mpv: *Mpv,
+        data: T,
+        unregisterrer_func: *const fn (*Mpv, T) void,
+
+        pub fn unregister(self: @This()) void {
+            self.unregisterrer_func(self.mpv, self.data);
+        }
+    };
+}
+
+const MpvEventCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvEventCallback);
+const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCallback);
+const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
+const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
+
 pub const EventIterator = struct {
     handle: Mpv,
 
@@ -146,11 +163,9 @@ pub fn event_loop(mpv: *Mpv) !void {
 
         if (eid == .CommandReply) {
             const key = event.reply_userdata;
-            std.log.debug("command-reply: {}", .{key});
             const cmd_error = event.event_error;
             const result = event.data.CommandReply.result;
             if (thread_info.command_reply_callbacks.get(key)) |cb| {
-                std.log.debug("calling on command reply cb", .{});
                 cb.call(cmd_error, result);
             }
         }
@@ -169,71 +184,116 @@ pub fn check_core_shutdown(mpv: Mpv) GenericError!void {
 
 }
 
-pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
-    for (callback.event_ids) |id| {
-        try mpv.request_event(id, true);
-    }
+pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
     try mpv.check_core_shutdown();
-    if (mpv.threaded) |thread_info| {
-        try thread_info.event_callbacks.append(callback);
-    }
+
+    var thread_info = mpv.threaded.?;
+    try thread_info.event_callbacks.append(callback);
+
+    const unregisterrer = MpvEventCallbackUnregisterrer {
+        .mpv = mpv,
+        .data = callback,
+        .unregisterrer_func = struct {
+            pub fn cb(inner_mpv: *Mpv, inner_cb: MpvEventCallback) void {
+                inner_mpv.unregister_event_callback(inner_cb) catch {};
+            }
+        }.cb,
+    };
+    return unregisterrer;
 }
 
 pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
-    if (mpv.threaded) |thread_info| {
-        for (0.., thread_info.event_callbacks.items) |idx, cb| {
-            if (std.meta.eql(cb, callback)) {
-                try thread_info.event_callbacks.swapRemove(idx);
-            }
+    var thread_info = mpv.threaded.?;
+
+    for (0.., thread_info.event_callbacks.items) |idx, cb| {
+        if (std.meta.eql(cb, callback)) {
+            _ = thread_info.event_callbacks.swapRemove(idx);
         }
     }
 }
 
-pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !void {
+pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !MpvPropertyCallbackUnregisterrer {
     try mpv.check_core_shutdown();
-    if (mpv.threaded) |thread_info| {
-        const property_name = callback.property_name;
-        if (!thread_info.property_callbacks.contains(property_name)) {
-            const allocator = mpv.allocator;
-            const list_ptr = try allocator.create(std.ArrayList(MpvPropertyCallback));
-            list_ptr.* = std.ArrayList(MpvPropertyCallback).init(allocator);
-            try thread_info.property_callbacks.put(property_name, list_ptr);
-        }
-        var property_observers = thread_info.property_callbacks.get(property_name).?;
-        try property_observers.append(callback);
-        try thread_info.event_handle.observe_property(utils.hash(property_name), property_name, .Node);
+
+    var thread_info = mpv.threaded.?;
+
+    const property_name = callback.property_name;
+    if (!thread_info.property_callbacks.contains(property_name)) {
+        const allocator = mpv.allocator;
+        const list_ptr = try allocator.create(std.ArrayList(MpvPropertyCallback));
+        list_ptr.* = std.ArrayList(MpvPropertyCallback).init(allocator);
+        try thread_info.property_callbacks.put(property_name, list_ptr);
     }
+    var property_observers = thread_info.property_callbacks.get(property_name).?;
+    try property_observers.append(callback);
+    try thread_info.event_handle.observe_property(utils.hash(property_name), property_name, .Node);
+
+    const unregisterrer = MpvPropertyCallbackUnregisterrer {
+        .mpv = mpv,
+        .data = callback,
+        .unregisterrer_func = struct {
+            pub fn cb(inner_mpv: *Mpv, inner_callback: MpvPropertyCallback) void {
+                inner_mpv.unregister_property_callback(inner_callback) catch {};
+            }
+        }.cb,
+    };
+    return unregisterrer;
 }
 
 pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !void {
-    if (mpv.threaded) |thread_info| {
-        for (0.., thread_info.property_callbacks.items) |idx, cb| {
+    var thread_info = mpv.threaded.?;
+    if (thread_info.property_callbacks.get(callback.property_name)) |cbs| {
+        for (0.., cbs.items) |idx, cb| {
             if (std.meta.eql(cb, callback)) {
-                try thread_info.property_callbacks.swapRemove(idx);
+                _ = cbs.swapRemove(idx);
             }
         }
     }
 }
 
-pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !void {
-    if (mpv.threaded) |thread_info| {
-        const allocator = mpv.allocator;
-        const args = try std.mem.concat(allocator, u8, callback.command_args);
-        defer allocator.free(args);
-        const args_hash = utils.hash(args);
-        try thread_info.command_reply_callbacks.put(args_hash, callback);
-        try mpv.command_async(args_hash, callback.command_args);
-    }
+pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !MpvCommandReplyCallbackUnegisterrer {
+    var thread_info = mpv.threaded.?;
+    const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
+    try thread_info.command_reply_callbacks.put(args_hash, callback);
+    try thread_info.event_handle.command_async(args_hash, callback.command_args);
+
+    const unregisterrer = MpvCommandReplyCallbackUnegisterrer {
+        .mpv = mpv,
+        .data = callback,
+        .unregisterrer_func = struct {
+            pub fn cb(inner_mpv: *Mpv, inner_callback: MpvCommandReplyCallback) void {
+                inner_mpv.unregister_command_reply_callback(inner_callback) catch {};
+            }
+        }.cb,
+    };
+    return unregisterrer;
 }
 
-pub fn register_log_handler(mpv: *Mpv, callback: MpvLogMessageCallback) !void {
-    if (mpv.threaded) |thread_info| {
-        try thread_info.event_handle.request_log_messages(callback.level);
-        thread_info.log_callback = callback;
-    }
+pub fn unregister_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !void {
+    var thread_info = mpv.threaded.?;
+    const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
+    thread_info.event_handle.abort_async_command(args_hash);
+    _ = thread_info.command_reply_callbacks.remove(args_hash);
 }
 
-pub fn unregister_log_handler(mpv: *Mpv) !void {
+pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) !MpvLogMessageCallbackUnregisterrer {
+    var thread_info = mpv.threaded.?;
+    try thread_info.event_handle.request_log_messages(callback.level);
+    thread_info.log_callback = callback;
+
+    const unregisterrer = MpvLogMessageCallbackUnregisterrer {
+        .mpv = mpv,
+        .data = {},
+        .unregisterrer_func = struct {
+            pub fn cb(inner_mpv: *Mpv, _: void) void {
+                inner_mpv.unregister_log_message_handler() catch {};
+            }
+        }.cb,
+    };
+    return unregisterrer;
+}
+
+pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     if (mpv.threaded) |thread_info| {
         try mpv.request_log_messages(.None);
         thread_info.log_callback = null;
@@ -251,14 +311,14 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId) !void {
     }.cb;
 
     var received_event = std.Thread.ResetEvent{};
-    try mpv.register_event_callback(MpvEventCallback{
+    const unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = event_ids,
         .callback = &cb,
         .user_data = &received_event,
         .callback_cond = null,
     });
-    // try mpv.threaded.?.callback_events.append(&received_event);
     received_event.wait();
+    unregisterrer.unregister();
 }
 
 pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {

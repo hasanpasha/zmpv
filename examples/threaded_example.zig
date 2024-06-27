@@ -37,8 +37,8 @@ pub fn main() !void {
     const version = Mpv.client_api_version();
     std.debug.print("version={any}.{}\n", .{version >> 16, version & 0xffff});
 
-    var cmd_args = [_][]const u8{ "loadfile", filename };
-    try mpv.command_async(0, &cmd_args);
+    var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
+    // try mpv.command_async(0, &cmd_args);
 
     try mpv.request_log_messages(.Info);
 
@@ -51,12 +51,14 @@ pub fn main() !void {
     //     .user_data = null,
     // });
 
-    try mpv.register_event_callback(MpvEventCallback{
+    const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = &.{ .StartFile },
         .callback = &startfile_event_handler,
         .user_data = null,
         .callback_cond = null,
     });
+    // _ = startfile_callback_unregisterrer;
+    startfile_callback_unregisterrer.unregister();
 
     // try mpv.register_event_callback(MpvEventCallback{
     //     .event_ids = &.{ .PropertyChange },
@@ -84,22 +86,24 @@ pub fn main() !void {
     //     }.cb,
     // });
 
-    // try mpv.register_property_callback(MpvPropertyCallback{
-    //     .property_name = "time-pos",
-    //     .callback = struct {
-    //         pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
-    //             _ = user_data;
-    //             switch (data) {
-    //                 .Node => |value| {
-    //                     std.log.debug("time-pos: {}", .{value.Double});
-    //                 }, else => {},
-    //             }
-    //         }
-    //     }.cb,
-    // });
+    const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
+        .property_name = "time-pos",
+        .callback = struct {
+            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+                _ = user_data;
+                switch (data) {
+                    .Node => |value| {
+                        std.log.debug("time-pos: {}", .{value.Double});
+                    }, else => {},
+                }
+            }
+        }.cb,
+    });
+    time_pos_callback_unregisterrer.unregister();
+    // _ = time_pos_callback_unregisterrer;
 
-    try mpv.register_log_handler(.{
-        .level = .Debug,
+    const log_handler_unregisterrer = try mpv.register_log_message_handler(.{
+        .level = .V,
         .callback = struct {
             pub fn cb(level: MpvLogLevel, prefix: []const u8, text: []const u8, user_data: ?*anyopaque) void {
                 _ = user_data;
@@ -108,12 +112,12 @@ pub fn main() !void {
             }
         }.cb,
     });
+    log_handler_unregisterrer.unregister();
 
-
-    try mpv.wait_until_playing();
-    var pause_args = [_][]const u8{"screenshot"};
-    try mpv.register_command_reply_callback(.{
-        .command_args = &pause_args,
+    // try mpv.wait_until_playing();
+    // var pause_args = [_][]const u8{"screenshot"};
+    const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
+        .command_args = &loadfile_cmd_args,
         .callback = struct {
             pub fn cb(cmd_error: MpvError, result: MpvNode, user_data: ?*anyopaque) void {
                 _ = user_data;
@@ -126,6 +130,8 @@ pub fn main() !void {
             }
         }.cb,
     });
+    // command_callback_unregisterrer.unregister();
+    _ = command_callback_unregisterrer;
     try mpv.wait_for_playback();
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
