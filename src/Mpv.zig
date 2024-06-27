@@ -22,7 +22,7 @@ const Self = @This();
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 threading_info: ?*MpvThreadingInfo = null,
-core_shutdown: bool = false,
+core_shutdown: bool = true,
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
