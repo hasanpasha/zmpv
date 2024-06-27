@@ -16,7 +16,6 @@ pub fn main() !void {
         if (gpa.deinit() == .leak) @panic("detected leakage");
     }
     const allocator = gpa.allocator();
-    // const allocator = std.heap.page_allocator;
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
@@ -38,17 +37,7 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    const version = Mpv.client_api_version();
-    std.debug.print("version={any}.{}\n", .{version >> 16, version & 0xffff});
-
-    var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
-    // try mpv.command_async(0, &cmd_args);
-
-    try mpv.request_log_messages(.Info);
-
-    try mpv.observe_property(1, "fullscreen", .Flag);
-    try mpv.observe_property(2, "time-pos", .INT64);
-
+    
     _ = try mpv.register_event_callback(MpvEventCallback {
         .event_ids = &.{ .EndFile, },
         .callback = struct {
@@ -120,8 +109,10 @@ pub fn main() !void {
             }
         }.cb,
     });
-    log_handler_unregisterrer.unregister();
+    // log_handler_unregisterrer.unregister();
+    _ = log_handler_unregisterrer;
 
+    var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
     // try mpv.wait_until_playing();
     const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
         .command_args = &loadfile_cmd_args,
@@ -139,11 +130,11 @@ pub fn main() !void {
     });
     // command_callback_unregisterrer.unregister();
     _ = command_callback_unregisterrer;
-    try mpv.wait_for_playback();
+    // try mpv.wait_for_playback();
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    // try mpv.wait_for_shutdown();
+    try mpv.wait_for_shutdown();
     // std.log.debug("everything has ended", .{});
 }
