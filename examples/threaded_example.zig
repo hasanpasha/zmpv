@@ -58,7 +58,12 @@ pub fn main() !void {
 
     const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = &.{ .StartFile },
-        .callback = &startfile_event_handler,
+        .callback = struct {
+            pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
+                _ = user_data;
+                std.log.debug("startfile: {}", .{event});
+            }
+        }.cb,
         .user_data = null,
         .callback_cond = null,
     });
