@@ -138,6 +138,12 @@ pub fn main() !void {
     // }.cb);
     // std.log.debug("seeked", .{});
 
+    _ = try mpv.wait_for_property("fullscreen", struct {
+        pub fn cb(data: MpvPropertyData) bool {
+            return data.Node.Flag;
+        }
+    }.cb);
+
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
     // try skip_silence(mpv);

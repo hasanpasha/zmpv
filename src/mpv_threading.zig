@@ -397,26 +397,57 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
 
 }
 
-pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {
+pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, cond_cb: ?*const fn (MpvPropertyData) bool) !MpvPropertyData {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
-            _ = data;
-            var received_event: *std.Thread.ResetEvent = @ptrCast(@alignCast(user_data.?));
-            received_event.set();
+            const data_struct = struct {*ResetEvent, *?MpvPropertyData, ?*const fn (MpvPropertyData) bool };
+            const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
+            var received_event: *ResetEvent = data_ptr.*[0];
+            const property_data_ptr: *?MpvPropertyData = data_ptr.*[1];
+            const cond_fn: ?*const fn (MpvPropertyData) bool = data_ptr.*[2];
+
+            if (cond_fn) |func| {
+                if (func(data)) {
+                    property_data_ptr.* = data;
+                    received_event.set();
+                }
+            } else {
+                property_data_ptr.* = data;
+                received_event.set();
+            }
         }
     }.cb;
 
-    var received_event = std.Thread.ResetEvent{};
-    mpv.threading_info.?.thread_event = &received_event;
-    const cb_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
+    const data_struct = struct {*ResetEvent, *?MpvPropertyData, ?*const fn (MpvPropertyData) bool };
+    const sent_data_ptr = try mpv.allocator.create(data_struct);
+    const property_data_ptr = try mpv.allocator.create(?MpvPropertyData);
+    property_data_ptr.* = null;
+    var received_event = ResetEvent{};
+    sent_data_ptr.* = data_struct{&received_event, property_data_ptr, cond_cb};
+    defer {
+        mpv.allocator.destroy(property_data_ptr);
+        mpv.allocator.destroy(sent_data_ptr);
+    }
+
+    const unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = property_name,
         .callback = &cb,
-        .user_data = &received_event,
+        .user_data = @ptrCast(sent_data_ptr),
     });
+    defer unregisterrer.unregister();
+
+    mpv.threading_info.?.thread_event = &received_event;
+    defer mpv.threading_info.?.thread_event = null;
 
     received_event.wait();
-    cb_unregisterrer.unregister();
+
+    if (property_data_ptr.*) |pd| {
+        return pd;
+    }
+    else {
+        return GenericError.NullValue;
+    }
 }
 
 
@@ -433,8 +464,8 @@ pub fn wait_until_playing(mpv: *Mpv) !MpvEvent {
     return try mpv.wait_for_event(&.{.StartFile}, null);
 }
 
-pub fn wait_until_pause(mpv: *Mpv) !void {
-    try mpv.wait_for_property("core-idle");
+pub fn wait_until_pause(mpv: *Mpv) !MpvPropertyData {
+    return try mpv.wait_for_property("core-idle", null);
 }
 
 pub fn wait_for_shutdown(mpv: *Mpv) !MpvEvent {
