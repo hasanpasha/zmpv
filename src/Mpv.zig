@@ -315,8 +315,7 @@ test "Mpv memory leak" {
     const mpv = try Self.create(testing.allocator);
     try mpv.initialize();
     defer mpv.terminate_destroy();
-    // try mpv.loadfile("sample.mp4", .{});
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.loadfile("sample.mp4", .{});
 
     while (true) {
         const event = mpv.wait_event(10000);
