@@ -40,7 +40,7 @@ pub fn main() !void {
     _ = try mpv.register_event_callback(MpvEventCallback {
         .event_ids = &.{ .EndFile, },
         .callback = struct {
-            pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
+            pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
                 _ = user_data;
                 std.log.debug("endfile: {}", .{event.data.EndFile});
             }
@@ -51,7 +51,7 @@ pub fn main() !void {
     const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = &.{ .StartFile },
         .callback = struct {
-            pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
+            pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
                 _ = user_data;
                 std.log.debug("startfile: {}", .{event});
             }
@@ -64,7 +64,7 @@ pub fn main() !void {
     _ = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "fullscreen",
         .callback = struct {
-            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
                 _ = user_data;
                 std.log.debug("fullscreen changed: {}", .{data.Node.Flag});
             }
@@ -74,7 +74,7 @@ pub fn main() !void {
     _ = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "pause",
         .callback = struct {
-            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
                 _ = user_data;
                 std.log.debug("pause state: {}", .{data.Node.Flag});
             }
@@ -84,7 +84,7 @@ pub fn main() !void {
     const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
         .callback = struct {
-            pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
                 _ = user_data;
                 switch (data) {
                     .Node => |value| {

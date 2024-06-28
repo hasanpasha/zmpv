@@ -70,7 +70,7 @@ pub const MpvThreadingInfo = struct {
 
 pub const MpvEventCallback = struct {
     event_ids: []const MpvEventId,
-    callback: *const fn (?*anyopaque, MpvEvent) void,
+    callback: *const fn (MpvEvent, ?*anyopaque) void,
     user_data: ?*anyopaque = null,
     cond_cb: ?*const fn (MpvEvent) bool = null,
 
@@ -80,10 +80,10 @@ pub const MpvEventCallback = struct {
             if (registerd_event_id == event_id) {
                 if (self.cond_cb) |cond| {
                    if (cond(event)) {
-                       self.callback(self.user_data, event);
+                       self.callback(event, self.user_data);
                    }
                 } else {
-                   self.callback(self.user_data, event);
+                   self.callback(event, self.user_data);
                 }
             }
         }
@@ -92,17 +92,17 @@ pub const MpvEventCallback = struct {
 
 pub const MpvPropertyCallback = struct {
     property_name: []const u8,
-    callback: *const fn (?*anyopaque, MpvPropertyData) void,
+    callback: *const fn (MpvPropertyData, ?*anyopaque) void,
     user_data: ?*anyopaque = null,
     cond_cb: ?*const fn (MpvPropertyData) bool = null,
 
     pub fn call(self: MpvPropertyCallback, property_event: MpvEventProperty) void {
         if (self.cond_cb) |cond| {
             if (cond(property_event.data)) {
-                self.callback(self.user_data, property_event.data);
+                self.callback(property_event.data, self.user_data);
             }
         } else {
-            self.callback(self.user_data, property_event.data);
+            self.callback(property_event.data, self.user_data);
         }
     }
 };
@@ -360,7 +360,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
     const cb = struct {
-        pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
+        pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
             const data_struct = struct {*ResetEvent,*?MpvEvent};
             const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
             var received_event: *ResetEvent = data_ptr.*[0];
@@ -421,7 +421,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
     const cb = struct {
-        pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
+        pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
             const data_struct = struct {*ResetEvent, *?MpvPropertyData};
             const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
             var received_event: *ResetEvent = data_ptr.*[0];
