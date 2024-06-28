@@ -464,28 +464,32 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     }
 }
 
+pub fn wait_until_playing(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvPropertyData {
+    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout,
+    .cond_cb = struct {
+        pub fn cb(data: MpvPropertyData) bool {
+            return (!data.Node.Flag);
+        }
+    }.cb});
+}
 
+pub fn wait_until_paused(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvPropertyData {
+    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout,
+    .cond_cb = struct {
+        pub fn cb(data: MpvPropertyData) bool {
+            return (data.Node.Flag);
+        }
+    }.cb});
+}
 
 pub fn wait_for_playback(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEvent {
-    return try mpv.wait_for_event(&.{.EndFile}, .{ .cond_cb = struct {
-        pub fn cb(event: MpvEvent) bool {
-            return (event.data.EndFile.reason == .Eof);
-        }
-    }.cb, .timeout = args.timeout});
-}
-
-pub fn wait_until_playing(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
-}) !MpvEvent {
-    return try mpv.wait_for_event(&.{.StartFile}, .{ .timeout = args.timeout });
-}
-
-pub fn wait_until_pause(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
-}) !MpvPropertyData {
-    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout });
+    return try mpv.wait_for_event(&.{.EndFile}, .{ .timeout = args.timeout });
 }
 
 pub fn wait_for_shutdown(mpv: *Mpv, args: struct {

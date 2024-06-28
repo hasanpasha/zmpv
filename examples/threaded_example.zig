@@ -138,13 +138,21 @@ pub fn main() !void {
     // }.cb);
     // std.log.debug("seeked", .{});
 
-    _ = mpv.wait_for_property("fullscreen", .{ .cond_cb = struct {
-        pub fn cb(data: MpvPropertyData) bool {
-            return data.Node.Flag;
-        }
-    }.cb, .timeout = 5}) catch |err| {
-        std.log.err("error waiting for fullscreen=true property: {}", .{err});
-    };
+    // const property = try mpv.wait_for_property("pause", .{
+    //     .cond_cb = struct {
+    //         pub fn cb(data: MpvPropertyData) bool {
+    //             return data.Node.Flag;
+    //         }
+    //     }.cb,
+    //     // .timeout = 5
+    // }); // catch |err| {
+    //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
+    // // };
+    // std.log.debug("waited property: {}", .{property});
+    _ = try mpv.wait_until_playing(.{});
+    std.log.debug("playing started", .{});
+    _ = try mpv.wait_until_paused(.{});
+    std.log.debug("paused", .{});
 
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
@@ -169,20 +177,22 @@ fn skip_silence(mpv: *Mpv) !void {
     try mpv.request_log_messages(.Debug);
     try mpv.set_property_string("af", "lavfi=[silencedetect=n=-20dB:d=1]");
     try mpv.set_property("speed", .INT64, .{ .INT64 = 100 });
-    const result = try mpv.wait_for_event(&.{ .LogMessage }, struct {
-        pub fn cb(event: MpvEvent) bool {
-            const log = event.data.LogMessage;
-            const text = log.text[0..(log.text.len-1)];
-            var iter = std.mem.split(u8, text, " ");
-            while (iter.next()) |tok| {
-                if (std.mem.eql(u8, tok, "silence_end:")) {
-                    std.log.debug("found silence end: {s}", .{iter.peek().?});
-                    return true;
+    const result = try mpv.wait_for_event(&.{ .LogMessage }, .{ 
+        .cond_cb = struct {
+            pub fn cb(event: MpvEvent) bool {
+                const log = event.data.LogMessage;
+                const text = log.text[0..(log.text.len-1)];
+                var iter = std.mem.split(u8, text, " ");
+                while (iter.next()) |tok| {
+                    if (std.mem.eql(u8, tok, "silence_end:")) {
+                        std.log.debug("found silence end: {s}", .{iter.peek().?});
+                        return true;
+                    }
                 }
+                return false;
             }
-            return false;
-        }
-    }.cb);
+        }.cb,
+    });
     std.log.debug("got seek result", .{});
     var iter = std.mem.split(u8, result.data.LogMessage.text, " ");
     while (iter.next()) |tok| {
@@ -191,8 +201,8 @@ fn skip_silence(mpv: *Mpv) !void {
             const pos_dup = try mpv.allocator.dupe(u8, pos);
             defer mpv.allocator.free(pos_dup);
             // std.log.debug("seek to: {s}", .{pos});
-            try mpv.set_property_string("time-pos", "105.766");
-            // try mpv.set_property_string("time-pos", pos);
+            // try mpv.set_property_string("time-pos", "105.766");
+            try mpv.set_property_string("time-pos", pos);
         }
     }
     try mpv.request_log_messages(.None);
