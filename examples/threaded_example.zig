@@ -138,11 +138,13 @@ pub fn main() !void {
     // }.cb);
     // std.log.debug("seeked", .{});
 
-    _ = try mpv.wait_for_property("fullscreen", struct {
+    _ = mpv.wait_for_property("fullscreen", .{ .cond_cb = struct {
         pub fn cb(data: MpvPropertyData) bool {
             return data.Node.Flag;
         }
-    }.cb);
+    }.cb, .timeout = 5}) catch |err| {
+        std.log.err("error waiting for fullscreen=true property: {}", .{err});
+    };
 
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
@@ -156,7 +158,7 @@ pub fn main() !void {
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    const shutdown_evt = mpv.wait_for_shutdown() catch |err| {
+    const shutdown_evt = mpv.wait_for_shutdown(.{ .timeout = null }) catch |err| {
         std.log.err("error waiting for shutdown: {}", .{err});
         std.process.exit(2);
     };

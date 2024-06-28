@@ -328,7 +328,10 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     }
 }
 
-pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const fn (MpvEvent) bool) !MpvEvent {
+pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
+    cond_cb: ?*const fn (MpvEvent) bool = null,
+    timeout: ?u32 = null,
+}) !MpvEvent {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
@@ -364,7 +367,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
     const event_ptr = try mpv.allocator.create(?MpvEvent);
     event_ptr.* = null;
     var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{&received_event, event_ptr, cond_cb};
+    sent_data_ptr.* = data_struct{&received_event, event_ptr, args.cond_cb};
     defer {
         mpv.allocator.destroy(event_ptr);
         mpv.allocator.destroy(sent_data_ptr);
@@ -386,7 +389,11 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
         }
     }
 
-    received_event.wait();
+    if (args.timeout) |timeout| {
+        try received_event.timedWait(@as(u64, timeout*@as(u64, 1e9)));
+    } else {
+        received_event.wait();
+    }
 
     if (event_ptr.*) |ev| {
         return ev;
@@ -397,7 +404,10 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
 
 }
 
-pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, cond_cb: ?*const fn (MpvPropertyData) bool) !MpvPropertyData {
+pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
+    cond_cb: ?*const fn (MpvPropertyData) bool = null,
+    timeout: ?u32 = null,
+}) !MpvPropertyData {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(user_data: ?*anyopaque, data: MpvPropertyData) void {
@@ -424,7 +434,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, cond_cb: ?*const 
     const property_data_ptr = try mpv.allocator.create(?MpvPropertyData);
     property_data_ptr.* = null;
     var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{&received_event, property_data_ptr, cond_cb};
+    sent_data_ptr.* = data_struct{&received_event, property_data_ptr, args.cond_cb};
     defer {
         mpv.allocator.destroy(property_data_ptr);
         mpv.allocator.destroy(sent_data_ptr);
@@ -440,7 +450,11 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, cond_cb: ?*const 
     mpv.threading_info.?.thread_event = &received_event;
     defer mpv.threading_info.?.thread_event = null;
 
-    received_event.wait();
+    if (args.timeout) |timeout| {
+        try received_event.timedWait(@as(u64, timeout*@as(u64, 1e9)));
+    } else {
+        received_event.wait();
+    }
 
     if (property_data_ptr.*) |pd| {
         return pd;
@@ -452,22 +466,30 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, cond_cb: ?*const 
 
 
 
-pub fn wait_for_playback(mpv: *Mpv) !MpvEvent {
-    return try mpv.wait_for_event(&.{.EndFile}, struct {
+pub fn wait_for_playback(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvEvent {
+    return try mpv.wait_for_event(&.{.EndFile}, .{ .cond_cb = struct {
         pub fn cb(event: MpvEvent) bool {
             return (event.data.EndFile.reason == .Eof);
         }
-    }.cb);
+    }.cb, .timeout = args.timeout});
 }
 
-pub fn wait_until_playing(mpv: *Mpv) !MpvEvent {
-    return try mpv.wait_for_event(&.{.StartFile}, null);
+pub fn wait_until_playing(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvEvent {
+    return try mpv.wait_for_event(&.{.StartFile}, .{ .timeout = args.timeout });
 }
 
-pub fn wait_until_pause(mpv: *Mpv) !MpvPropertyData {
-    return try mpv.wait_for_property("core-idle", null);
+pub fn wait_until_pause(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvPropertyData {
+    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout });
 }
 
-pub fn wait_for_shutdown(mpv: *Mpv) !MpvEvent {
-    return try mpv.wait_for_event(&.{.Shutdown}, null);
+pub fn wait_for_shutdown(mpv: *Mpv, args: struct {
+    timeout: ?u32 = null,
+}) !MpvEvent {
+    return try mpv.wait_for_event(&.{.Shutdown}, .{ .timeout = args.timeout });
 }
