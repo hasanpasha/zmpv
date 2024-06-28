@@ -214,12 +214,9 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
     try mpv.check_core_shutdown();
 
     var thread_info = mpv.threading_info.?;
-    if (thread_info.mutex.tryLock()) {
-        try thread_info.event_callbacks.append(callback);
-        thread_info.mutex.unlock();
-    } else {
-        return error.FailedLocking;
-    }
+    thread_info.mutex.lock();
+    try thread_info.event_callbacks.append(callback);
+    thread_info.mutex.unlock();
 
     const unregisterrer = MpvEventCallbackUnregisterrer {
         .mpv = mpv,
@@ -331,18 +328,18 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     }
 }
 
-pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const fn (MpvEvent) bool) !?MpvEvent {
+pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const fn (MpvEvent) bool) !MpvEvent {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(user_data: ?*anyopaque, event: MpvEvent) void {
             const data_struct = struct {
                 *ResetEvent,
-                *MpvEvent,
+                *?MpvEvent,
                 ?*const fn (MpvEvent) bool,
             };
             const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
             var received_event: *ResetEvent = data_ptr.*[0];
-            const event_ptr: *MpvEvent = data_ptr.*[1];
+            const event_ptr: *?MpvEvent = data_ptr.*[1];
             const cond_fn: ?*const fn (MpvEvent) bool = data_ptr.*[2];
 
             if (cond_fn) |func| {
@@ -360,17 +357,12 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
 
     const data_struct = struct {
         *ResetEvent,
-        *MpvEvent,
+        *?MpvEvent,
         ?*const fn (MpvEvent) bool,
     };
     const sent_data_ptr = try mpv.allocator.create(data_struct);
-    const event_ptr = try mpv.allocator.create(MpvEvent);
-    event_ptr.* = MpvEvent {
-        .data = MpvEventData { .None = {} },
-        .event_error = MpvError.NoMem,
-        .event_id = .None,
-        .reply_userdata = 0xC0FFEE,
-    };
+    const event_ptr = try mpv.allocator.create(?MpvEvent);
+    event_ptr.* = null;
     var received_event = ResetEvent{};
     sent_data_ptr.* = data_struct{&received_event, event_ptr, cond_cb};
     defer {
@@ -386,12 +378,23 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, cond_cb: ?*const
     defer unregisterrer.unregister();
 
     mpv.threading_info.?.thread_event = &received_event;
-    defer mpv.threading_info.?.thread_event = null;
+    defer {
+        if (event_ptr.*) |ev| {
+            if (ev.event_id != .Shutdown) {
+                mpv.threading_info.?.thread_event = null;
+            }
+        }
+    }
 
     received_event.wait();
 
-    if (event_ptr.*.event_error == MpvError.NoMem and event_ptr.*.reply_userdata == 0xC0FFEE) return null;
-    return event_ptr.*;
+    if (event_ptr.*) |ev| {
+        return ev;
+    }
+    else {
+        return GenericError.NullValue;
+    }
+
 }
 
 pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {
@@ -418,7 +421,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8) !void {
 
 
 
-pub fn wait_for_playback(mpv: *Mpv) !?MpvEvent {
+pub fn wait_for_playback(mpv: *Mpv) !MpvEvent {
     return try mpv.wait_for_event(&.{.EndFile}, struct {
         pub fn cb(event: MpvEvent) bool {
             return (event.data.EndFile.reason == .Eof);
@@ -426,7 +429,7 @@ pub fn wait_for_playback(mpv: *Mpv) !?MpvEvent {
     }.cb);
 }
 
-pub fn wait_until_playing(mpv: *Mpv) !?MpvEvent {
+pub fn wait_until_playing(mpv: *Mpv) !MpvEvent {
     return try mpv.wait_for_event(&.{.StartFile}, null);
 }
 
@@ -434,6 +437,6 @@ pub fn wait_until_pause(mpv: *Mpv) !void {
     try mpv.wait_for_property("core-idle");
 }
 
-pub fn wait_for_shutdown(mpv: *Mpv) !?MpvEvent {
+pub fn wait_for_shutdown(mpv: *Mpv) !MpvEvent {
     return try mpv.wait_for_event(&.{.Shutdown}, null);
 }

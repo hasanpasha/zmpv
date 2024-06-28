@@ -37,7 +37,6 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    
     _ = try mpv.register_event_callback(MpvEventCallback {
         .event_ids = &.{ .EndFile, },
         .callback = struct {
@@ -139,18 +138,23 @@ pub fn main() !void {
     // }.cb);
     // std.log.debug("seeked", .{});
 
-
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
     // try skip_silence(mpv);
     // try skip_silence(mpv);
-    _ = try mpv.wait_for_playback();
+    // _ = mpv.wait_for_playback() catch |err| {
+    //     std.log.err("error waiting for playback: {}", .{err});
+    //     std.process.exit(1);
+    // };
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    // _ = try mpv.wait_for_shutdown();
-    // std.log.debug("everything has ended", .{});
+    const shutdown_evt = mpv.wait_for_shutdown() catch |err| {
+        std.log.err("error waiting for shutdown: {}", .{err});
+        std.process.exit(2);
+    };
+    std.log.debug("everything has ended: {}", .{shutdown_evt});
 }
 
 fn skip_silence(mpv: *Mpv) !void {
@@ -171,18 +175,16 @@ fn skip_silence(mpv: *Mpv) !void {
             return false;
         }
     }.cb);
-    if (result) |val| {
-        std.log.debug("got seek result", .{});
-        var iter = std.mem.split(u8, val.data.LogMessage.text, " ");
-        while (iter.next()) |tok| {
-            if (std.mem.eql(u8, tok, "silence_end:")) {
-                const pos = iter.peek().?;
-                // const pos_dup = try mpv.allocator.dupe(u8, pos);
-                // defer mpv.allocator.free(pos_dup);
-                std.log.debug("seek to: {s}", .{pos});
-                // try mpv.set_property_string("time-pos", pos_dup);
-                try mpv.set_property_string("time-pos", pos);
-            }
+    std.log.debug("got seek result", .{});
+    var iter = std.mem.split(u8, result.data.LogMessage.text, " ");
+    while (iter.next()) |tok| {
+        if (std.mem.eql(u8, tok, "silence_end:")) {
+            const pos = iter.peek().?;
+            const pos_dup = try mpv.allocator.dupe(u8, pos);
+            defer mpv.allocator.free(pos_dup);
+            // std.log.debug("seek to: {s}", .{pos});
+            try mpv.set_property_string("time-pos", "105.766");
+            // try mpv.set_property_string("time-pos", pos);
         }
     }
     try mpv.request_log_messages(.None);
