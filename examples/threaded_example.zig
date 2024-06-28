@@ -5,6 +5,7 @@ const MpvError = zmpv.MpvError;
 const MpvLogLevel = zmpv.MpvEventLogMessage.MpvLogLevel;
 const MpvNode = zmpv.MpvNode;
 const MpvEvent = zmpv.MpvEvent;
+const MpvEventProperty = zmpv.MpvEventProperty;
 const MpvEventId = zmpv.MpvEventId;
 const MpvEventCallback = zmpv.MpvEventCallback;
 const MpvPropertyCallback = zmpv.MpvPropertyCallback;
@@ -64,9 +65,9 @@ pub fn main() !void {
     _ = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "fullscreen",
         .callback = struct {
-            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
+            pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
                 _ = user_data;
-                std.log.debug("fullscreen changed: {}", .{data.Node.Flag});
+                std.log.debug("fullscreen changed: {}", .{event.data.Node.Flag});
             }
         }.cb,
     });
@@ -74,9 +75,9 @@ pub fn main() !void {
     _ = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "pause",
         .callback = struct {
-            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
+            pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
                 _ = user_data;
-                std.log.debug("pause state: {}", .{data.Node.Flag});
+                std.log.debug("pause state: {}", .{event.data.Node.Flag});
             }
         }.cb,
     });
@@ -84,9 +85,9 @@ pub fn main() !void {
     const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
         .callback = struct {
-            pub fn cb(data: MpvPropertyData, user_data: ?*anyopaque) void {
+            pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
                 _ = user_data;
-                switch (data) {
+                switch (event.data) {
                     .Node => |value| {
                         std.log.debug("time-pos: {}", .{value.Double});
                     }, else => {},
@@ -140,8 +141,8 @@ pub fn main() !void {
 
     // const property = try mpv.wait_for_property("pause", .{
     //     .cond_cb = struct {
-    //         pub fn cb(data: MpvPropertyData) bool {
-    //             return data.Node.Flag;
+    //         pub fn cb(event: MpvEventProperty) bool {
+    //             return event.data.Node.Flag;
     //         }
     //     }.cb,
     //     // .timeout = 5
