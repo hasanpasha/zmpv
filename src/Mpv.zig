@@ -275,9 +275,6 @@ pub fn destroy(self: *Self) void {
 }
 
 pub fn terminate_destroy(self: *Self) void {
-    if (self.threading_info) |thread_info| {
-        thread_info.free();
-    }
     c.mpv_terminate_destroy(self.handle);
     self.allocator.destroy(self);
 }
@@ -302,7 +299,6 @@ pub fn free(self: Self, data: anytype) void {
         },
         else => {},
     }
-    std.log.debug("{any}", .{@TypeOf(data)});
 }
 
 pub usingnamespace @import("./MpvHelper.zig");

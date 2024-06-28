@@ -58,7 +58,6 @@ pub fn main() !void {
             }
         }.cb,
         .user_data = null,
-        .callback_cond = null,
     });
     // _ = startfile_callback_unregisterrer;
     startfile_callback_unregisterrer.unregister();
@@ -109,32 +108,85 @@ pub fn main() !void {
             }
         }.cb,
     });
-    // log_handler_unregisterrer.unregister();
-    _ = log_handler_unregisterrer;
+    log_handler_unregisterrer.unregister();
+    // _ = log_handler_unregisterrer;
 
     var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
+    try mpv.command_async(0, &loadfile_cmd_args);
+    // try mpv.command(&loadfile_cmd_args);
     // try mpv.wait_until_playing();
-    const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
-        .command_args = &loadfile_cmd_args,
-        .callback = struct {
-            pub fn cb(cmd_error: MpvError, result: MpvNode, user_data: ?*anyopaque) void {
-                _ = user_data;
-                if (cmd_error == MpvError.Success) {
-                    std.log.debug("command result: {}", .{result});
-                } else {
-                    std.log.debug("error running command: {}", .{cmd_error});
-                }
-                // _ = cmd_error;
-            }
-        }.cb,
-    });
+    // const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
+    //     .command_args = &loadfile_cmd_args,
+    //     .callback = struct {
+    //         pub fn cb(cmd_error: MpvError, result: MpvNode, user_data: ?*anyopaque) void {
+    //             _ = user_data;
+    //             if (cmd_error == MpvError.Success) {
+    //                 // std.log.debug("command result: {}", .{result});
+    //             } else {
+    //                 // std.log.debug("error running command: {}", .{cmd_error});
+    //             }
+    //             // _ = cmd_error;
+    //         }
+    //     }.cb,
+    // });
     // command_callback_unregisterrer.unregister();
-    _ = command_callback_unregisterrer;
-    try mpv.wait_for_playback();
+    // _ = command_callback_unregisterrer;
+
+    // _ = try mpv.wait_for_event(&.{ .Seek }, struct {
+    //     pub fn cb(event: MpvEvent) bool {
+    //         return (event.event_error == MpvError.Success);
+    //     }
+    // }.cb);
+    // std.log.debug("seeked", .{});
+
+
+    // try skip_silence(mpv);
+    // std.log.debug("finished skipping", .{});
+    // try skip_silence(mpv);
+    // try skip_silence(mpv);
+    _ = try mpv.wait_for_playback();
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    // try mpv.wait_for_shutdown();
+    // _ = try mpv.wait_for_shutdown();
     // std.log.debug("everything has ended", .{});
+}
+
+fn skip_silence(mpv: *Mpv) !void {
+    try mpv.request_log_messages(.Debug);
+    try mpv.set_property_string("af", "lavfi=[silencedetect=n=-20dB:d=1]");
+    try mpv.set_property("speed", .INT64, .{ .INT64 = 100 });
+    const result = try mpv.wait_for_event(&.{ .LogMessage }, struct {
+        pub fn cb(event: MpvEvent) bool {
+            const log = event.data.LogMessage;
+            const text = log.text[0..(log.text.len-1)];
+            var iter = std.mem.split(u8, text, " ");
+            while (iter.next()) |tok| {
+                if (std.mem.eql(u8, tok, "silence_end:")) {
+                    std.log.debug("found silence end: {s}", .{iter.peek().?});
+                    return true;
+                }
+            }
+            return false;
+        }
+    }.cb);
+    if (result) |val| {
+        std.log.debug("got seek result", .{});
+        var iter = std.mem.split(u8, val.data.LogMessage.text, " ");
+        while (iter.next()) |tok| {
+            if (std.mem.eql(u8, tok, "silence_end:")) {
+                const pos = iter.peek().?;
+                // const pos_dup = try mpv.allocator.dupe(u8, pos);
+                // defer mpv.allocator.free(pos_dup);
+                std.log.debug("seek to: {s}", .{pos});
+                // try mpv.set_property_string("time-pos", pos_dup);
+                try mpv.set_property_string("time-pos", pos);
+            }
+        }
+    }
+    try mpv.request_log_messages(.None);
+    try mpv.set_property("speed", .INT64, .{ .INT64 = 1 });
+    try mpv.set_property_string("af", "");
+    std.log.debug("returning", .{});
 }
