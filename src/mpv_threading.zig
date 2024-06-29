@@ -12,6 +12,7 @@ const GenericError = @import("./generic_error.zig").GenericError;
 const MpvError = @import("./mpv_error.zig").MpvError;
 const utils = @import("./utils.zig");
 const ResetEvent = std.Thread.ResetEvent;
+const testing = std.testing;
 
 pub fn create_with_threading(allocator: std.mem.Allocator) !*Mpv {
     const instance_ptr = try Mpv.create(allocator);
@@ -524,4 +525,59 @@ pub fn wait_for_shutdown(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEvent {
     return try mpv.wait_for_event(&.{.Shutdown}, .{ .timeout = args.timeout });
+}
+
+test "threaded: simple" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .start_event_thread=true,
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    try mpv.loadfile("sample.mp4", .{});
+
+    _ = try std.Thread.spawn(.{}, struct {
+        pub fn cb(player: *Mpv) void {
+            std.time.sleep(1*1e9);
+            player.command_string("quit") catch {};
+        }
+    }.cb, .{ mpv });
+
+    _ = try mpv.wait_for_shutdown(.{});
+}
+
+test "threaded: register_event" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .start_event_thread=true,
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    var callback_event = ResetEvent{};
+    _ = try mpv.register_event_callback(MpvEventCallback{
+        .event_ids = &.{ MpvEventId.FileLoaded },
+        .callback = struct {
+            pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
+                _ = event;
+                const called_ptr: *ResetEvent = @ptrCast(@alignCast(user_data));
+                called_ptr.set();
+            }
+        }.cb,
+        .user_data = @ptrCast(&callback_event)
+    });
+    try mpv.loadfile("sample.mp4", .{});
+    try callback_event.timedWait(1*1e9);
+
+    _ = try std.Thread.spawn(.{}, struct {
+        pub fn cb(player: *Mpv) void {
+            std.time.sleep(1*1e9);
+            player.command_string("quit") catch {};
+        }
+    }.cb, .{ mpv });
+
+    _ = try mpv.wait_for_shutdown(.{});
 }
