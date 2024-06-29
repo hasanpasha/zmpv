@@ -423,13 +423,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
         received_event.wait();
     }
 
-    if (event_ptr.*) |ev| {
-        return ev;
-    }
-    else {
-        return GenericError.NullValue;
-    }
-
+    return event_ptr.* orelse return GenericError.NullValue;
 }
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
@@ -481,12 +475,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
         received_event.wait();
     }
 
-    if (property_data_ptr.*) |pd| {
-        return pd;
-    }
-    else {
-        return GenericError.NullValue;
-    }
+    return property_data_ptr.* orelse return GenericError.NullValue;
 }
 
 /// Wait until the playback has started
