@@ -392,10 +392,8 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
 
     mpv.threading_info.?.thread_event = &received_event;
     defer {
-        if (event_ptr.*) |ev| {
-            if (ev.event_id != .Shutdown) {
-                mpv.threading_info.?.thread_event = null;
-            }
+        if (!mpv.core_shutdown) {
+            mpv.threading_info.?.thread_event = null;
         }
     }
 
