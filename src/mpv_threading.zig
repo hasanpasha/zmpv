@@ -299,6 +299,10 @@ pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !v
             if (std.meta.eql(cb, callback)) {
                 _ = cbs.swapRemove(idx);
             }
+
+            if (cbs.items.len == 0) {
+                try thread_info.event_handle.unobserve_property(utils.hash(callback.property_name));
+            }
         }
     }
 }
