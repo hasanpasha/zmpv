@@ -62,7 +62,7 @@ pub fn main() !void {
     // _ = startfile_callback_unregisterrer;
     startfile_callback_unregisterrer.unregister();
 
-    _ = try mpv.register_property_callback(MpvPropertyCallback{
+    const fullscreen_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "fullscreen",
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
@@ -71,8 +71,9 @@ pub fn main() !void {
             }
         }.cb,
     });
+    fullscreen_unregisterrer.unregister();
 
-    _ = try mpv.register_property_callback(MpvPropertyCallback{
+    const pause_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "pause",
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
@@ -81,6 +82,7 @@ pub fn main() !void {
             }
         }.cb,
     });
+    pause_unregisterrer.unregister();
 
     const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
@@ -150,16 +152,16 @@ pub fn main() !void {
     //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
     // // };
     // std.log.debug("waited property: {}", .{property});
-    _ = try mpv.wait_until_playing(.{});
-    std.log.debug("playing started", .{});
-    _ = try mpv.wait_until_paused(.{});
-    std.log.debug("paused", .{});
+    // _ = try mpv.wait_until_playing(.{});
+    // std.log.debug("playing started", .{});
+    // _ = try mpv.wait_until_paused(.{});
+    // std.log.debug("paused", .{});
 
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
     // try skip_silence(mpv);
     // try skip_silence(mpv);
-    // _ = mpv.wait_for_playback() catch |err| {
+    // _ = mpv.wait_for_playback(.{}) catch |err| {
     //     std.log.err("error waiting for playback: {}", .{err});
     //     std.process.exit(1);
     // };

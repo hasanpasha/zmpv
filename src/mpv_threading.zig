@@ -224,6 +224,7 @@ pub fn event_loop(mpv: *Mpv) !void {
     }
 }
 
+/// Register a callback that will be called on the specified event occurance.
 pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
@@ -245,6 +246,7 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
     return unregisterrer;
 }
 
+/// Unregister event callback.
 pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
     std.debug.assert(mpv.threading_info != null);
     var thread_info = mpv.threading_info.?;
@@ -256,6 +258,7 @@ pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
     }
 }
 
+/// Register a callback that will be called on the specified property event occurance.
 pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !MpvPropertyCallbackUnregisterrer {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
@@ -285,6 +288,7 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
     return unregisterrer;
 }
 
+/// Unregister property callback.
 pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !void {
     std.debug.assert(mpv.threading_info != null);
     var thread_info = mpv.threading_info.?;
@@ -297,6 +301,7 @@ pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !v
     }
 }
 
+/// Register a callback that will be called when the async command is finished.
 pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !MpvCommandReplyCallbackUnegisterrer {
     std.debug.assert(mpv.threading_info != null);
 
@@ -317,6 +322,7 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
     return unregisterrer;
 }
 
+/// Unregister the async command callback. and abort the command if it's still not done.
 pub fn unregister_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallback) !void {
     std.debug.assert(mpv.threading_info != null);
 
@@ -326,6 +332,7 @@ pub fn unregister_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCal
     _ = thread_info.command_reply_callbacks.remove(args_hash);
 }
 
+/// Register a callback that all of Mpv log messages will be passed to. only one callback can be set.
 pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) !MpvLogMessageCallbackUnregisterrer {
     std.debug.assert(mpv.threading_info != null);
 
@@ -345,6 +352,7 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
     return unregisterrer;
 }
 
+/// Unregister the current log message callback and set the log level to `.None`
 pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     std.debug.assert(mpv.threading_info != null);
 
@@ -353,6 +361,9 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
     thread_info.log_callback = null;
 }
 
+/// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
+/// returns `GenericError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
+/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
     timeout: ?u32 = null,
@@ -412,6 +423,9 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
 
 }
 
+/// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
+/// returns `GenericError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
+/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
     timeout: ?u32 = null,
@@ -466,6 +480,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     }
 }
 
+/// Wait until the playback has started
 pub fn wait_until_playing(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEventProperty {
@@ -477,6 +492,7 @@ pub fn wait_until_playing(mpv: *Mpv, args: struct {
     }.cb});
 }
 
+/// Wait until the current playback is paused or done
 pub fn wait_until_paused(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEventProperty {
@@ -488,12 +504,14 @@ pub fn wait_until_paused(mpv: *Mpv, args: struct {
     }.cb});
 }
 
+/// Wait until the current playback is finished
 pub fn wait_for_playback(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEvent {
     return try mpv.wait_for_event(&.{.EndFile}, .{ .timeout = args.timeout });
 }
 
+/// Wait until the core shutdown.
 pub fn wait_for_shutdown(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEvent {
