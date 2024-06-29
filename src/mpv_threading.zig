@@ -281,7 +281,9 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
         .data = callback,
         .unregisterrer_func = struct {
             pub fn cb(inner_mpv: *Mpv, inner_callback: MpvPropertyCallback) void {
-                inner_mpv.unregister_property_callback(inner_callback) catch {};
+                inner_mpv.unregister_property_callback(inner_callback) catch |err| {
+                    std.log.err("error while unregisterring event callback: {}", .{err});
+                };
             }
         }.cb,
     };
@@ -315,7 +317,9 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
         .data = callback,
         .unregisterrer_func = struct {
             pub fn cb(inner_mpv: *Mpv, inner_callback: MpvCommandReplyCallback) void {
-                inner_mpv.unregister_command_reply_callback(inner_callback) catch {};
+                inner_mpv.unregister_command_reply_callback(inner_callback) catch |err| {
+                    std.log.err("error while unregisterring property callback: {}", .{err});
+                };
             }
         }.cb,
     };
