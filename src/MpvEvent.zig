@@ -53,6 +53,19 @@ pub fn from(event: *c.mpv_event) Self {
     };
 }
 
+pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+    return Self{
+        .event_id = self.event_id,
+        .event_error = self.event_error,
+        .reply_userdata = self.reply_userdata,
+        .data = try self.data.copy(allocator),
+    };
+}
+
+pub fn free(self: Self, allocator: std.mem.Allocator) void {
+    self.data.free(allocator);
+}
+
 pub const MpvEventData = union(enum) {
     None: void,
     LogMessage: MpvEventLogMessage,
@@ -63,6 +76,29 @@ pub const MpvEventData = union(enum) {
     ClientMessage: MpvEventClientMessage,
     PropertyChange: MpvEventProperty,
     Hook: MpvEventHook,
+
+    pub fn copy(self: MpvEventData, allocator: std.mem.Allocator) !MpvEventData {
+        return switch (self) {
+            .LogMessage => |log| .{ .LogMessage = try log.copy(allocator) },
+            .GetPropertyReply => |property| .{ .GetPropertyReply = try property.copy(allocator) },
+            .CommandReply => |reply| .{ .CommandReply = try reply.copy(allocator) },
+            .ClientMessage => |message| .{ .ClientMessage = try message.copy(allocator) },
+            .PropertyChange => |property| .{ .PropertyChange = try property.copy(allocator) },
+            .Hook => |hook| .{ .Hook = try hook.copy(allocator) },
+            else => self,
+        };
+    }
+
+    pub fn free(self: MpvEventData, allocator: std.mem.Allocator) void {
+        switch (self) {
+            .LogMessage => |log| log.free(allocator),
+            .GetPropertyReply, .PropertyChange => |property| property.free(allocator),
+            .CommandReply => |command_reply| command_reply.free(allocator),
+            .ClientMessage => |message| message.free(allocator),
+            .Hook => |hook| hook.free(allocator),
+            else => {},
+        }
+    }
 };
 
 test "MpvEvent from" {
@@ -88,4 +124,28 @@ test "MpvEvent from" {
     try testing.expect(std.mem.eql(u8, z_data.level, "v"));
     try testing.expect(std.mem.eql(u8, z_data.prefix, "simple"));
     try testing.expect(std.mem.eql(u8, z_data.text, "this is a test log"));
+}
+
+test "MpvEvent copy" {
+    const allocator = testing.allocator;
+
+    const event = Self {
+        .event_id = .LogMessage,
+        .event_error = MpvError.Success,
+        .reply_userdata = 0,
+        .data = .{ .LogMessage = .{
+            .log_level = .V,
+            .level = "v",
+            .prefix = "something",
+            .text = "log text",
+        }},
+    };
+
+    const event_copy = try event.copy(allocator);
+    defer event_copy.free(allocator);
+
+    const log_copy = event_copy.data.LogMessage;
+    try testing.expectEqualStrings("v", log_copy.level);
+    try testing.expectEqualStrings("something", log_copy.prefix);
+    try testing.expectStringEndsWith("log text", log_copy.text);
 }
