@@ -20,6 +20,21 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
+pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+    return .{
+        .log_level = self.log_level,
+        .level = try allocator.dupe(u8, self.level),
+        .prefix = try allocator.dupe(u8, self.prefix),
+        .text = try allocator.dupe(u8, self.text),
+    };
+}
+
+pub fn free(self: Self, allocator: std.mem.Allocator) void {
+    allocator.free(self.level);
+    allocator.free(self.prefix);
+    allocator.free(self.text);
+}
+
 pub const MpvLogLevel = enum(u8) {
     None = 0,
     Fatal = 10,
@@ -62,3 +77,23 @@ test "MpvEventLogMessage from" {
     try testing.expect(std.mem.eql(u8, z_log.prefix, "simple"));
     try testing.expect(std.mem.eql(u8, z_log.text, "this is a test log"));
 }
+
+test "MpvEventLogMessage copy" {
+    const allocator = testing.allocator;
+
+    const log = Self {
+        .log_level = .Debug,
+        .level = "debug",
+        .prefix = "hey",
+        .text = "this is the log",
+    };
+    const log_copy = try log.copy(allocator);
+    defer log_copy.free(allocator);
+
+    try testing.expect(log_copy.log_level == .Debug);
+    try testing.expectEqualStrings("debug", log_copy.level);
+    try testing.expectEqualStrings("hey", log_copy.prefix);
+    try testing.expectEqualStrings("this is the log", log_copy.text);
+}
+
+

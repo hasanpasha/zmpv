@@ -17,6 +17,17 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
+pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+    return Self{
+        .id = self.id,
+        .name = try allocator.dupe(u8, self.name),
+    };
+}
+
+pub fn free(self: Self, allocator: std.mem.Allocator) void {
+    allocator.free(self.name);
+}
+
 test "MpvEventHook from" {
     var event_hook = c.mpv_event_hook{
         .id = 1,
@@ -26,4 +37,18 @@ test "MpvEventHook from" {
 
     try testing.expect(z_hook.id == 1);
     try testing.expect(std.mem.eql(u8, z_hook.name, "on_load"));
+}
+
+test "MpvEventHook copy" {
+    const allocator = testing.allocator;
+
+    const hook = Self{
+        .id = 69,
+        .name = "on_update"
+    };
+    const hook_copy = try hook.copy(allocator);
+    defer hook_copy.free(allocator);
+
+    try testing.expect(hook_copy.id == 69);
+    try testing.expectEqualStrings("on_update", hook_copy.name);
 }
