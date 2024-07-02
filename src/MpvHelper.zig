@@ -101,6 +101,17 @@ pub fn frame_step(self: Mpv) !void {
     try self.command_string("frame-step");
 }
 
+pub fn frame_back_step(self: Mpv) !void {
+    try self.command_string("frame-back-step");
+}
+
+pub fn property_add(self: Mpv, name: []const u8, args: struct {
+    value: []const u8 = "1",
+}) !void {
+    var cmd_args = [_][]const u8{"add", name, args.value};
+    try self.command(&cmd_args);
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,
@@ -264,6 +275,64 @@ test "MpvHelper frame-step" {
             const pause_p = try mpv.get_property_string("pause");
             defer mpv.free(pause_p);
             try testing.expectEqualStrings("yes", pause_p);
+            try mpv.command_string("quit");
+        }
+    }
+}
+
+test "MpvHelper frame-back-step" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var stepped = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !stepped) {
+                try mpv.frame_back_step();
+                stepped = true;
+                std.time.sleep(SLEEP_AMOUNT*3);
+            }
+        }
+        if (stepped) {
+            const pause_p = try mpv.get_property_string("pause");
+            defer mpv.free(pause_p);
+            try testing.expectEqualStrings("yes", pause_p);
+            try mpv.command_string("quit");
+        }
+    }
+}
+
+test "MpvHelper add" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var added = false;
+    var checked_add = false;
+    var time_pos: i64 = 0;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !added) {
+                time_pos = event.data.PropertyChange.data.INT64;
+                try mpv.property_add("time-pos", .{ .value = "50" });
+                added = true;
+                std.time.sleep(SLEEP_AMOUNT*3);
+            }
+            if (added and !checked_add) {
+                const current_time_pos = try mpv.get_property("time-pos", .INT64);
+                defer mpv.free(current_time_pos);
+                try testing.expect((time_pos+50) == current_time_pos.INT64);
+                checked_add = true;
+            }
+        }
+        if (added and checked_add) {
             try mpv.command_string("quit");
         }
     }
