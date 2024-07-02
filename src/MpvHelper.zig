@@ -140,11 +140,22 @@ pub fn loadfile(self: Mpv, filename: []const u8, args: struct {
     try self.command(cmd_args.items);
 }
 
+pub const CycleDirection = enum {
+    Up,
+    Down,
+
+    pub fn to_string(self: CycleDirection) []const u8 {
+        return switch (self) {
+            .Up => "up",
+            .Down => "down",
+        };
+    }
+};
+
 pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
-    direction: enum { Up, Down } = .Up,
+    direction: CycleDirection = .Up,
 }) !void {
-    const direction_str = if (args.direction == .Up) "up" else "down";
-    var cmd_args = [_][]const u8{ "cycle", property_name, direction_str };
+    var cmd_args = [_][]const u8{ "cycle", property_name, args.direction.to_string() };
     try self.command(&cmd_args);
 }
 
