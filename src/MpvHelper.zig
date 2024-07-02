@@ -97,6 +97,10 @@ pub fn revert_seek(self: Mpv, args: struct {
     try self.command(cmd_args.items);
 }
 
+pub fn frame_step(self: Mpv) !void {
+    try self.command_string("frame-step");
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,
@@ -237,6 +241,32 @@ test "MpvHelper revert_seek" {
     }
     try testing.expect(seeked);
     try testing.expect(reverted);
+}
+
+test "MpvHelper frame-step" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var stepped = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !stepped) {
+                try mpv.frame_step();
+                stepped = true;
+                std.time.sleep(SLEEP_AMOUNT);
+            }
+        }
+        if (stepped) {
+            const pause_p = try mpv.get_property_string("pause");
+            defer mpv.free(pause_p);
+            try testing.expectEqualStrings("yes", pause_p);
+            try mpv.command_string("quit");
+        }
+    }
 }
 
 test "MpvHelper cycle" {
