@@ -220,6 +220,7 @@ pub fn event_loop(mpv: *Mpv) !void {
                 te.set();
             }
             thread_info.free();
+            mpv.threading_info = null;
             break;
         }
     }
