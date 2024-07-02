@@ -76,3 +76,24 @@ pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
     var cmd_args = [_][]const u8{ "cycle", property_name, direction_str };
     try self.command(&cmd_args);
 }
+
+pub fn quit(self: Mpv, args: struct {
+    code: ?u8 = null,
+}) !void {
+    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
+    defer cmd_args.deinit();
+    var code_str: []u8 = undefined;
+
+    try cmd_args.append("quit");
+    if (args.code) |code| {
+        code_str = try std.fmt.allocPrint(self.allocator, "{}", .{code});
+        try cmd_args.append(code_str);
+    }
+    defer {
+        if (args.code != null) {
+            self.allocator.free(code_str);
+        }
+    }
+
+    try self.command(cmd_args.items);
+}
