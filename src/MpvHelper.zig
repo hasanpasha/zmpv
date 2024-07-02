@@ -112,6 +112,11 @@ pub fn property_add(self: Mpv, name: []const u8, args: struct {
     try self.command(&cmd_args);
 }
 
+pub fn property_multiply(self: Mpv, name: []const u8, factor: []const u8) !void {
+    var cmd_args = [_][]const u8{"multiply", name, factor};
+    try self.command(&cmd_args);
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,
@@ -268,7 +273,7 @@ test "MpvHelper frame-step" {
             if (event.data.PropertyChange.format == .INT64 and !stepped) {
                 try mpv.frame_step();
                 stepped = true;
-                std.time.sleep(SLEEP_AMOUNT*3);
+                std.time.sleep(SLEEP_AMOUNT*5);
             }
         }
         if (stepped) {
@@ -333,6 +338,35 @@ test "MpvHelper add" {
             }
         }
         if (added and checked_add) {
+            try mpv.command_string("quit");
+        }
+    }
+}
+
+test "MpvHelper multiply" {
+    // return error.SkipZigTest;
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var multiplied = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !multiplied) {
+                const current_speed = try mpv.get_property("speed", .INT64);
+                defer mpv.free(current_speed);
+                try mpv.property_multiply("speed", "3");
+                std.time.sleep(SLEEP_AMOUNT*3);
+                const after_current_speed = try mpv.get_property("speed", .INT64);
+                defer mpv.free(current_speed);
+                try testing.expect((current_speed.INT64*3) == after_current_speed.INT64);
+                multiplied = true;
+            }
+        }
+        if (multiplied) {
             try mpv.command_string("quit");
         }
     }
