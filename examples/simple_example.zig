@@ -56,6 +56,8 @@ pub fn main() !void {
                             std.log.debug("[time-pos] {}", .{time_pos});
                             if (!seeked) {
                                 try mpv.seek("50", .{ .reference = .Absolute, .precision = .Percent });
+                                std.time.sleep(5*1e8);
+                                try mpv.revert_seek(.{});
                                 seeked = true;
                             }
                         },

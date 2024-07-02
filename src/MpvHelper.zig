@@ -69,6 +69,33 @@ pub fn seek(self: Mpv, target: []const u8, args: struct {
     try self.command(&cmd_args);
 }
 
+pub const RevertSeekFlag = enum {
+    Mark,
+    MarkPermanent,
+
+    pub fn to_string(self: RevertSeekFlag) []const u8 {
+        return switch (self) {
+            .Mark => "mark",
+            .MarkPermanent => "mark-permanent",
+        };
+    }
+};
+
+pub fn revert_seek(self: Mpv, args: struct {
+    flag: ?RevertSeekFlag = null,
+}) !void {
+    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
+    defer cmd_args.deinit();
+
+    try cmd_args.append("revert_seek");
+
+    if (args.flag) |flag| {
+        try cmd_args.append(flag.to_string());
+    }
+
+    try self.command(cmd_args.items);
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,
