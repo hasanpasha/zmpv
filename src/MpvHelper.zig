@@ -1,7 +1,9 @@
 const std = @import("std");
 const Mpv = @import("./Mpv.zig");
+const GenericError = @import("./generic_error.zig").GenericError;
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const utils = @import("./utils.zig");
 const testing = std.testing;
 
 /// Create an `Mpv` instance and set options if provided
@@ -177,6 +179,47 @@ pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
 }) !void {
     var cmd_args = [_][]const u8{ "cycle", property_name, args.direction.to_string() };
     try self.command(&cmd_args);
+}
+
+pub const ScreenshotInclude = enum {
+    Subtitles,
+    Video,
+    Window,
+
+    pub fn to_string(self: ScreenshotInclude) []const u8{
+        return switch (self) {
+            .Subtitles => "subtitles",
+            .Video => "video",
+            .Window => "window",
+        };
+    }
+};
+
+pub fn screenshot(self: Mpv, args: struct {
+    include: ScreenshotInclude = .Subtitles,
+    each_frame: bool = false,
+}) !u64 {
+    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
+    defer cmd_args.deinit();
+    var flag_str: []const u8 = undefined;
+
+    try cmd_args.append("screenshot");
+    if (args.each_frame) {
+        flag_str = try std.fmt.allocPrint(self.allocator, "{s}+each-frame", .{args.include.to_string()});
+    } else {
+        flag_str = args.include.to_string();
+    }
+    try cmd_args.append(flag_str);
+
+    defer {
+        if (args.each_frame) {
+            self.allocator.free(flag_str);
+        }
+    }
+    // TODO: return "screenshot" hash value
+    const command_reply_code = 969696;
+    try self.command_async(command_reply_code, cmd_args.items);
+    return command_reply_code;
 }
 
 pub fn quit(self: Mpv, args: struct {
@@ -412,6 +455,37 @@ test "MpvHelper loadfile" {
         if (event.reply_userdata == 6969 and !quited) {
             try mpv.command_string("quit");
             quited = true;
+        }
+    }
+}
+
+test "MpvHelper screenshot" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var screenshoted = false;
+    var screenshot_reply: u64 = 0;
+    var done = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969 and !screenshoted) {
+            if (event.data.PropertyChange.format == .INT64) {
+                screenshot_reply = try mpv.screenshot(.{});
+                screenshoted = true;
+            }
+        }
+        if (event.reply_userdata == screenshot_reply and screenshoted and !done) {
+            const path_node = event.data.CommandReply.result;
+            switch (path_node) {
+                .String => done = true,
+                else => {}
+            }
+        }
+        if (done) {
+            try mpv.quit(.{});
         }
     }
 }
