@@ -169,6 +169,9 @@ pub fn quit(self: Mpv, args: struct {
     try self.command(cmd_args.items);
 }
 
+// tests
+const SLEEP_AMOUNT: u64 = 1*1e7;
+
 test "MpvHelper seek" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
@@ -184,7 +187,7 @@ test "MpvHelper seek" {
                 try mpv.seek("1", .{});
                 std.log.debug("seeked", .{});
                 seeked = true;
-                std.time.sleep(5*1e8);
+                std.time.sleep(SLEEP_AMOUNT);
             }
             if (seeked) {
                 try mpv.command_string("quit");
@@ -209,12 +212,12 @@ test "MpvHelper revert_seek" {
             if (event.data.PropertyChange.format == .INT64 and !seeked) {
                 try mpv.seek("1", .{});
                 seeked = true;
-                std.time.sleep(5*1e8);
+                std.time.sleep(SLEEP_AMOUNT);
             }
             if (seeked and !reverted) {
                 try mpv.revert_seek(.{});
                 reverted = true;
-                std.time.sleep(5*1e8);
+                std.time.sleep(SLEEP_AMOUNT);
             }
             if (seeked and reverted) {
                 try mpv.command_string("quit");
@@ -239,7 +242,7 @@ test "MpvHelper cycle" {
             if (event.data.PropertyChange.format == .INT64 and !paused) {
                 try mpv.cycle("pause", .{});
                 paused = true;
-                std.time.sleep(5*1e8);
+                std.time.sleep(SLEEP_AMOUNT);
             }
             if (paused) {
                 const pause_p = try mpv.get_property_string("pause");
