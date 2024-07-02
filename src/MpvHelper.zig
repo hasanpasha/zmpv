@@ -26,6 +26,49 @@ pub fn create_render_context(self: *Mpv, params: []MpvRenderParam) !MpvRenderCon
     return MpvRenderContext.create(self, params);
 }
 
+// Mpv commands
+
+pub const SeekReference = enum {
+    Relative,
+    Absolute,
+
+    pub fn to_string(self: SeekReference) []const u8 {
+        return switch (self) {
+            .Relative => "relative",
+            .Absolute => "absolute",
+        };
+    }
+};
+
+pub const SeekPrecision = enum {
+    Keyframes,
+    Percent,
+    Exact,
+
+    pub fn to_string(self: SeekPrecision) []const u8 {
+        return switch (self) {
+            .Keyframes => "keyframes",
+            .Percent => "percent",
+            .Exact => "exact",
+        };
+    }
+};
+
+pub fn seek(self: Mpv, target: []const u8, args: struct {
+    reference: SeekReference = .Relative,
+    precision: SeekPrecision = .Keyframes,
+}) !void {
+    const flag_str = try std.fmt.allocPrint(self.allocator, "{s}{s}{s}", .{
+        args.reference.to_string(),
+        if (args.precision == .Percent) "-" else "+",
+        args.precision.to_string()
+    });
+    defer self.allocator.free(flag_str);
+
+    var cmd_args = [_][]const u8{"seek", target, flag_str};
+    try self.command(&cmd_args);
+}
+
 pub const LoadfileFlag = enum {
     Replace,
     Append,

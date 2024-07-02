@@ -35,6 +35,7 @@ pub fn main() !void {
     std.log.debug("fullscreen={}", .{fullscreen_status.Node.Flag});
     defer mpv.free(fullscreen_status);
 
+    var seeked = false;
     while (true) {
         const event = mpv.wait_event(10000);
         const event_id = event.event_id;
@@ -53,6 +54,10 @@ pub fn main() !void {
                     switch (property.data) {
                         .INT64 => |time_pos| {
                             std.log.debug("[time-pos] {}", .{time_pos});
+                            if (!seeked) {
+                                try mpv.seek("50", .{ .reference = .Absolute, .precision = .Percent });
+                                seeked = true;
+                            }
                         },
                         else => {},
                     }
