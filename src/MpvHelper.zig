@@ -257,7 +257,7 @@ test "MpvHelper frame-step" {
             if (event.data.PropertyChange.format == .INT64 and !stepped) {
                 try mpv.frame_step();
                 stepped = true;
-                std.time.sleep(SLEEP_AMOUNT);
+                std.time.sleep(SLEEP_AMOUNT*3);
             }
         }
         if (stepped) {
