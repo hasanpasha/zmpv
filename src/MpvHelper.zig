@@ -2,6 +2,7 @@ const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const testing = std.testing;
 
 /// Create an `Mpv` instance and set options if provided
 pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !*Mpv {
@@ -166,4 +167,104 @@ pub fn quit(self: Mpv, args: struct {
     }
 
     try self.command(cmd_args.items);
+}
+
+test "MpvHelper seek" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var seeked = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !seeked) {
+                try mpv.seek("1", .{});
+                std.log.debug("seeked", .{});
+                seeked = true;
+                std.time.sleep(5*1e8);
+            }
+            if (seeked) {
+                try mpv.command_string("quit");
+            }
+        }
+    }
+    try testing.expect(seeked);
+}
+
+test "MpvHelper revert_seek" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var seeked = false;
+    var reverted = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !seeked) {
+                try mpv.seek("1", .{});
+                seeked = true;
+                std.time.sleep(5*1e8);
+            }
+            if (seeked and !reverted) {
+                try mpv.revert_seek(.{});
+                reverted = true;
+                std.time.sleep(5*1e8);
+            }
+            if (seeked and reverted) {
+                try mpv.command_string("quit");
+            }
+        }
+    }
+    try testing.expect(seeked);
+    try testing.expect(reverted);
+}
+
+test "MpvHelper cycle" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var paused = false;
+    while (true) {
+        const event = mpv.wait_event(-1);
+        if (event.event_id == .EndFile) break;
+        if (event.reply_userdata == 6969) {
+            if (event.data.PropertyChange.format == .INT64 and !paused) {
+                try mpv.cycle("pause", .{});
+                paused = true;
+                std.time.sleep(5*1e8);
+            }
+            if (paused) {
+                const pause_p = try mpv.get_property_string("pause");
+                defer mpv.free(pause_p);
+                try testing.expectEqualStrings("yes", pause_p);
+                try mpv.command_string("quit");
+            }
+        }
+    }
+    try testing.expect(paused);
+}
+
+test "MpvHelper quit" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var quited = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969 and !quited) {
+            try mpv.quit(.{});
+            quited = true;
+        }
+    }
 }
