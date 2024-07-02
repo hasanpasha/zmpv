@@ -355,7 +355,9 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
         .data = {},
         .unregisterrer_func = struct {
             pub fn cb(inner_mpv: *Mpv, _: void) void {
-                inner_mpv.unregister_log_message_handler() catch {};
+                inner_mpv.unregister_log_message_handler() catch |err| {
+                    std.log.err("error while unregistering log message handler: {}", .{err});
+                };
             }
         }.cb,
     };
