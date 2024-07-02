@@ -152,12 +152,14 @@ pub fn main() !void {
     //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
     // // };
     // std.log.debug("waited property: {}", .{property});
-    // _ = try mpv.wait_until_playing(.{});
-    // std.log.debug("playing started", .{});
-    // _ = try mpv.wait_until_paused(.{});
-    // std.log.debug("paused", .{});
+    const pause_property = try mpv.wait_until_playing(.{});
+    const pause_property_copy = try pause_property.copy(mpv.allocator);
+    defer pause_property_copy.free(mpv.allocator);
+    std.log.debug("playing started: {}", .{pause_property_copy});
+    _ = try mpv.wait_until_paused(.{});
+    std.log.debug("paused", .{});
 
-    try skip_silence(mpv);
+    // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
     // try skip_silence(mpv);
     // _ = mpv.wait_for_playback(.{}) catch |err| {
