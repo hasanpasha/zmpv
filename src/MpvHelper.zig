@@ -252,6 +252,23 @@ test "MpvHelper cycle" {
     try testing.expect(paused);
 }
 
+test "MpvHelper loadfile" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.loadfile("sample.mp4", .{});
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var quited = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969 and !quited) {
+            try mpv.command_string("quit");
+            quited = true;
+        }
+    }
+}
+
 test "MpvHelper quit" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
