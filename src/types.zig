@@ -218,7 +218,7 @@ pub const MpvNodeMap = struct {
         return map;
     }
 
-    /// Must be freed with with `MpvNodeMap.free_owned_hashmap`
+    /// Must be freed with with `MpvNodeMap.free_owned_hashmap` before calling `.deinit()` on it.
     pub fn to_owned_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
         var map = std.StringHashMap(MpvNode).init(allocator);
 
@@ -229,6 +229,7 @@ pub const MpvNodeMap = struct {
         return map;
     }
 
+    /// Free the allocated key strings and Value `MapNode`
     pub fn free_owned_hashmap(map: std.StringHashMap(MpvNode), allocator: std.mem.Allocator) void {
         var iter = map.iterator();
         while (iter.next()) |pair| {
