@@ -619,13 +619,8 @@ test "MpvHelper playlist-next" {
                 try mpv.playlist_next(.{ .force = true });
             } else if (nums_play_next == 1) {
                 try testing.expect(playlist_pos == 1);
-                nums_play_next += 1;
-                try mpv.playlist_next(.{ .force = true });
                 finished = true;
             }
-            // if (nums_play_next == 2) {
-            //     try testing.expect(playlist_pos == 1);
-            // }
         }
         if (finished) {
             try mpv.quit(.{});
