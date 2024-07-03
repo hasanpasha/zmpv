@@ -101,6 +101,17 @@ pub const MpvNodeList = struct {
             else => {},
         }
     }
+
+    pub fn to_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+        var array = std.ArrayList(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |node| {
+            try array.append(node);
+        }
+
+        return array;
+    }
 };
 
 pub const MpvNodeMap = struct {

@@ -432,6 +432,9 @@ test "Mpv.get_property list" {
                 const playlist = try mpv.get_property("playlist", .Node);
                 defer mpv.free(playlist);
                 var iter = playlist.Node.NodeArray.iterator();
+                var array = try playlist.Node.NodeArray.to_arraylist(mpv.allocator);
+                defer array.deinit();
+                try testing.expect(array.items.len == 1);
                 try testing.expect(iter.size() == 1);
                 const map = iter.next().?.NodeMap;
                 var map_iter = map.iterator();
