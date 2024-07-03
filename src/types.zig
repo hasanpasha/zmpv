@@ -217,4 +217,23 @@ pub const MpvNodeMap = struct {
         }
         return map;
     }
+
+    /// Must be freed with with `MpvNodeMap.free_owned_hashmap`
+    pub fn to_owned_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+        var map = std.StringHashMap(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |pair| {
+            try map.put(try allocator.dupe(u8, pair[0]),try pair[1].copy(allocator));
+        }
+        return map;
+    }
+
+    pub fn free_owned_hashmap(map: std.StringHashMap(MpvNode), allocator: std.mem.Allocator) void {
+        var iter = map.iterator();
+        while (iter.next()) |pair| {
+            allocator.free(pair.key_ptr.*);
+            pair.value_ptr.free(allocator);
+        }
+    }
 };

@@ -436,8 +436,9 @@ test "Mpv.get_property list" {
                 const map = iter.next().?.NodeMap;
                 var map_iter = map.iterator();
                 try testing.expect(map_iter.size() == 4);
-                var hashmap = try map.to_hashmap(mpv.allocator);
+                var hashmap = try map.to_owned_hashmap(mpv.allocator);
                 defer hashmap.deinit();
+                defer MpvNodeMap.free_owned_hashmap(hashmap, mpv.allocator);
                 const filename = hashmap.get("filename");
                 try testing.expect(filename != null);
                 try testing.expectEqualStrings("sample.mp4" ,filename.?.String);
