@@ -233,6 +233,13 @@ pub fn playlist_next(self: Mpv, args: struct {
     try self.command(&cmd_args);
 }
 
+pub fn playlist_prev(self: Mpv, args: struct {
+    force: bool = false,
+}) !void {
+    var cmd_args = [_][]const u8{ "playlist-prev", if (args.force) "force" else "weak" };
+    try self.command(&cmd_args);
+}
+
 pub fn quit(self: Mpv, args: struct {
     code: ?u8 = null,
 }) !void {
@@ -619,6 +626,46 @@ test "MpvHelper playlist-next" {
                 try mpv.playlist_next(.{ .force = true });
             } else if (nums_play_next == 1) {
                 try testing.expect(playlist_pos == 1);
+                finished = true;
+            }
+        }
+        if (finished) {
+            try mpv.quit(.{});
+        }
+    }
+}
+
+test "MpvHelper playlist-prev" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    const base_filename = "sample.mp4";
+    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
+    defer {
+        std.fs.cwd().deleteFile(playlist_path) catch {};
+        remove_file_with_extension(".bak", allocator, .{}) catch {};
+    }
+    var load_cmd = [_][]const u8{ "loadlist", playlist_path };
+    try mpv.command(&load_cmd);
+    try mpv.observe_property(6969, "playlist-current-pos", .INT64);
+    var nums_play_next: u8 = 0;
+    var finished = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            const playlist_pos = event.data.PropertyChange.data.INT64;
+            if (nums_play_next == 0) {
+                try testing.expect(playlist_pos == 0);
+                nums_play_next += 1;
+                try mpv.command_string("playlist-next");
+            } else if (nums_play_next == 1) {
+                try testing.expect(playlist_pos == 1);
+                nums_play_next += 1;
+                try mpv.playlist_prev(.{});
+            } else if (nums_play_next == 2) {
+                try testing.expect(playlist_pos == 0);
                 finished = true;
             }
         }
