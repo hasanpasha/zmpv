@@ -217,6 +217,13 @@ pub fn screenshot(self: Mpv, args: struct {
     return try self.command_ret(&cmd_args);
 }
 
+pub fn screenshot_to_file(self: Mpv, filename: []const u8, args: struct {
+    include: ScreenshotInclude = .Subtitles,
+}) !void {
+    var cmd_args = [_][]const u8{ "screenshot-to-file", filename, args.include.to_string() };
+    try self.command(&cmd_args);
+}
+
 pub fn quit(self: Mpv, args: struct {
     code: ?u8 = null,
 }) !void {
@@ -516,6 +523,39 @@ test "MpvHelper screenshot" {
     }
     // clean up saved files
     try clean_saved_screen_shots(".", allocator);
+}
+
+test "MpvHelper screenshot-to-file" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    const custom_screenshot_filename = "hender.jpg";
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .Double);
+    var screenshoted = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969 and !screenshoted) {
+            if (event.data.PropertyChange.format == .Double) {
+                const time_pos = event.data.PropertyChange.data.Double;
+                if (!screenshoted and time_pos > 0.3) {
+                    try mpv.screenshot_to_file(custom_screenshot_filename, .{});
+                    screenshoted = true;
+                }
+
+                if (time_pos > 1.0) {
+                    try testing.expect(screenshoted);
+                }
+            }
+        }
+        if (screenshoted) {
+            try mpv.quit(.{});
+        }
+    }
+    // clean up saved files
+    try std.fs.cwd().deleteFile(custom_screenshot_filename);
 }
 
 test "MpvHelper quit" {
