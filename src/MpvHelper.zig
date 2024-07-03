@@ -1,6 +1,7 @@
 const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const GenericError = @import("./generic_error.zig").GenericError;
+const MpvNode = @import("./mpv_node.zig").MpvNode;
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const utils = @import("./utils.zig");
@@ -186,7 +187,7 @@ pub const ScreenshotInclude = enum {
     Video,
     Window,
 
-    pub fn to_string(self: ScreenshotInclude) []const u8{
+    pub fn to_string(self: ScreenshotInclude) []const u8 {
         return switch (self) {
             .Subtitles => "subtitles",
             .Video => "video",
@@ -195,31 +196,25 @@ pub const ScreenshotInclude = enum {
     }
 };
 
+/// The returned node must be freed with `self.free(node)`
 pub fn screenshot(self: Mpv, args: struct {
     include: ScreenshotInclude = .Subtitles,
     each_frame: bool = false,
-}) !u64 {
-    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
-    defer cmd_args.deinit();
+}) !MpvNode {
     var flag_str: []const u8 = undefined;
-
-    try cmd_args.append("screenshot");
     if (args.each_frame) {
         flag_str = try std.fmt.allocPrint(self.allocator, "{s}+each-frame", .{args.include.to_string()});
     } else {
         flag_str = args.include.to_string();
     }
-    try cmd_args.append(flag_str);
 
     defer {
         if (args.each_frame) {
             self.allocator.free(flag_str);
         }
     }
-    // TODO: return "screenshot" hash value
-    const command_reply_code = 969696;
-    try self.command_async(command_reply_code, cmd_args.items);
-    return command_reply_code;
+    var cmd_args = [_][]const u8{ "screenshot", flag_str };
+    return try self.command_ret(&cmd_args);
 }
 
 pub fn quit(self: Mpv, args: struct {
@@ -464,27 +459,44 @@ test "MpvHelper screenshot" {
     defer mpv.terminate_destroy();
 
     try mpv.command_string("loadfile sample.mp4");
-    try mpv.observe_property(6969, "time-pos", .INT64);
+    try mpv.observe_property(6969, "time-pos", .Double);
     var screenshoted = false;
-    var screenshot_reply: u64 = 0;
-    var done = false;
+    var stopped = false;
     while (true) {
         const event = mpv.wait_event(0);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969 and !screenshoted) {
-            if (event.data.PropertyChange.format == .INT64) {
-                screenshot_reply = try mpv.screenshot(.{});
-                screenshoted = true;
+            if (event.data.PropertyChange.format == .Double) {
+                const time_pos = event.data.PropertyChange.data.Double;
+                if (!screenshoted and time_pos > 0.3) {
+                    const screenshot_ret = try mpv.screenshot(.{ .each_frame = true });
+                    defer mpv.free(screenshot_ret);
+                    var screenshot_info = screenshot_ret.NodeMap;
+                    var iter = screenshot_info.iterator();
+                    const filename_pair = iter.next().?;
+                    try testing.expectEqualStrings("filename", filename_pair[0]);
+                    try testing.expectStringStartsWith(filename_pair[1].String, "mpv");
+                    try testing.expectStringEndsWith(filename_pair[1].String, ".jpg");
+                    try testing.expect(!screenshoted);
+                    try testing.expect(!stopped);
+                    screenshoted = true;
+                }
+
+                if (screenshoted and !stopped) {
+                    const screenshot_ret = try mpv.screenshot(.{});
+                    defer mpv.free(screenshot_ret);
+                    try testing.expect(time_pos > 0.3);
+                    try testing.expect(screenshoted);
+                    stopped = true;
+                }
+
+                if (time_pos > 1.2) {
+                    try testing.expect(screenshoted);
+                    try testing.expect(stopped);
+                }
             }
         }
-        if (event.reply_userdata == screenshot_reply and screenshoted and !done) {
-            const path_node = event.data.CommandReply.result;
-            switch (path_node) {
-                .String => done = true,
-                else => {}
-            }
-        }
-        if (done) {
+        if (screenshoted and stopped) {
             try mpv.quit(.{});
         }
     }
