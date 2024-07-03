@@ -436,6 +436,11 @@ test "Mpv.get_property list" {
                 const map = iter.next().?.NodeMap;
                 var map_iter = map.iterator();
                 try testing.expect(map_iter.size() == 4);
+                var hashmap = try map.to_hashmap(mpv.allocator);
+                defer hashmap.deinit();
+                const filename = hashmap.get("filename");
+                try testing.expect(filename != null);
+                try testing.expectEqualStrings("sample.mp4" ,filename.?.String);
                 const filename_pair = map_iter.next().?;
                 try testing.expect(std.mem.eql(u8, filename_pair[0], "filename"));
                 try testing.expect(std.mem.eql(u8, filename_pair[1].String, "sample.mp4"));

@@ -207,4 +207,14 @@ pub const MpvNodeMap = struct {
             else => {},
         }
     }
+
+    pub fn to_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+        var map = std.StringHashMap(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |pair| {
+            try map.put(pair[0], pair[1]);
+        }
+        return map;
+    }
 };
