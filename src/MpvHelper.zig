@@ -226,6 +226,13 @@ pub fn screenshot_to_file(self: Mpv, filename: []const u8, args: struct {
     try self.command(&cmd_args);
 }
 
+pub fn playlist_next(self: Mpv, args: struct {
+    force: bool = false,
+}) !void {
+    var cmd_args = [_][]const u8{ "playlist-next", if (args.force) "force" else "weak" };
+    try self.command(&cmd_args);
+}
+
 pub fn quit(self: Mpv, args: struct {
     code: ?u8 = null,
 }) !void {
@@ -463,17 +470,22 @@ test "MpvHelper loadfile" {
     }
 }
 
-fn clean_saved_screen_shots(path: []const u8, allocator: std.mem.Allocator) !void {
-    var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
+fn remove_file_with_extension(extension: []const u8, allocator: std.mem.Allocator, args: struct {
+    path: []const u8 = ".",
+}) !void {
+    var dir = try std.fs.cwd().openDir(args.path, .{ .iterate = true });
     var walker = try dir.walk(allocator);
     defer walker.deinit();
     while (try walker.next()) |entry| {
         const ext = std.fs.path.extension(entry.basename);
-        if (std.mem.eql(u8, ext, ".jpg")) {
-            try testing.expectStringEndsWith(entry.basename, ".jpg");
+        if (std.mem.eql(u8, ext, extension)) {
             try dir.deleteFile(entry.path);
         }
     }
+}
+
+fn clean_saved_screen_shots(path: []const u8, allocator: std.mem.Allocator) !void {
+    try remove_file_with_extension(".jpg", allocator, .{ .path = path });
 }
 
 test "MpvHelper screenshot" {
@@ -558,6 +570,67 @@ test "MpvHelper screenshot-to-file" {
     }
     // clean up saved files
     try std.fs.cwd().deleteFile(custom_screenshot_filename);
+}
+
+fn create_playlist(base_file_path: []const u8, allocator: std.mem.Allocator, args: struct {
+    size: usize = 1,
+    playlist_filename: []const u8 = "playlist.txt",
+}) ![]const u8 {
+    const file = try std.fs.cwd().createFile(
+        args.playlist_filename,
+        .{ .read = true },
+    );
+    defer file.close();
+
+    for (0..args.size) |idx| {
+        const symlink = try std.fmt.allocPrint(allocator, "{}-{s}.bak", .{ idx, base_file_path });
+        defer allocator.free(symlink);
+        try std.fs.cwd().symLink(base_file_path, symlink, .{});
+        _ = try file.writer().print("{s}\n", .{symlink});
+    }
+
+    return args.playlist_filename;
+}
+
+test "MpvHelper playlist-next" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    const base_filename = "sample.mp4";
+    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
+    defer {
+        std.fs.cwd().deleteFile(playlist_path) catch {};
+        remove_file_with_extension(".bak", allocator, .{}) catch {};
+    }
+    var load_cmd = [_][]const u8{ "loadlist", playlist_path };
+    try mpv.command(&load_cmd);
+    try mpv.observe_property(6969, "playlist-current-pos", .INT64);
+    var nums_play_next: u8 = 0;
+    var finished = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969) {
+            const playlist_pos = event.data.PropertyChange.data.INT64;
+            if (nums_play_next == 0) {
+                try testing.expect(playlist_pos == 0);
+                nums_play_next += 1;
+                try mpv.playlist_next(.{ .force = true });
+            } else if (nums_play_next == 1) {
+                try testing.expect(playlist_pos == 1);
+                nums_play_next += 1;
+                try mpv.playlist_next(.{ .force = true });
+                finished = true;
+            }
+            // if (nums_play_next == 2) {
+            //     try testing.expect(playlist_pos == 1);
+            // }
+        }
+        if (finished) {
+            try mpv.quit(.{});
+        }
+    }
 }
 
 test "MpvHelper quit" {
