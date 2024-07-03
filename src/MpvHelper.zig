@@ -454,8 +454,22 @@ test "MpvHelper loadfile" {
     }
 }
 
+fn clean_saved_screen_shots(path: []const u8, allocator: std.mem.Allocator) !void {
+    var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
+    var walker = try dir.walk(allocator);
+    defer walker.deinit();
+    while (try walker.next()) |entry| {
+        const ext = std.fs.path.extension(entry.basename);
+        if (std.mem.eql(u8, ext, ".jpg")) {
+            try testing.expectStringEndsWith(entry.basename, ".jpg");
+            try dir.deleteFile(entry.path);
+        }
+    }
+}
+
 test "MpvHelper screenshot" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command_string("loadfile sample.mp4");
@@ -500,6 +514,8 @@ test "MpvHelper screenshot" {
             try mpv.quit(.{});
         }
     }
+    // clean up saved files
+    try clean_saved_screen_shots(".", allocator);
 }
 
 test "MpvHelper quit" {
