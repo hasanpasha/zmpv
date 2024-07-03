@@ -217,6 +217,8 @@ pub fn screenshot(self: Mpv, args: struct {
     return try self.command_ret(&cmd_args);
 }
 
+// TODO: wrap `screenshot-raw` command
+
 pub fn screenshot_to_file(self: Mpv, filename: []const u8, args: struct {
     include: ScreenshotInclude = .Subtitles,
 }) !void {
