@@ -65,11 +65,11 @@ pub fn seek(self: Mpv, target: []const u8, args: struct {
     const flag_str = try std.fmt.allocPrint(self.allocator, "{s}{s}{s}", .{
         args.reference.to_string(),
         if (args.precision == .Percent) "-" else "+",
-        args.precision.to_string()
+        args.precision.to_string(),
     });
     defer self.allocator.free(flag_str);
 
-    var cmd_args = [_][]const u8{"seek", target, flag_str};
+    var cmd_args = [_][]const u8{ "seek", target, flag_str };
     try self.command(&cmd_args);
 }
 
@@ -111,12 +111,12 @@ pub fn frame_back_step(self: Mpv) !void {
 pub fn property_add(self: Mpv, name: []const u8, args: struct {
     value: []const u8 = "1",
 }) !void {
-    var cmd_args = [_][]const u8{"add", name, args.value};
+    var cmd_args = [_][]const u8{ "add", name, args.value };
     try self.command(&cmd_args);
 }
 
 pub fn property_multiply(self: Mpv, name: []const u8, factor: []const u8) !void {
-    var cmd_args = [_][]const u8{"multiply", name, factor};
+    var cmd_args = [_][]const u8{ "multiply", name, factor };
     try self.command(&cmd_args);
 }
 
@@ -239,7 +239,7 @@ pub fn quit(self: Mpv, args: struct {
 }
 
 // tests
-const SLEEP_AMOUNT: u64 = 1*1e7;
+const SLEEP_AMOUNT: u64 = 1 * 1e7;
 
 test "MpvHelper seek" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
@@ -311,7 +311,7 @@ test "MpvHelper frame-step" {
             if (event.data.PropertyChange.format == .INT64 and !stepped) {
                 try mpv.frame_step();
                 stepped = true;
-                std.time.sleep(SLEEP_AMOUNT*5);
+                std.time.sleep(SLEEP_AMOUNT * 5);
             }
         }
         if (stepped) {
@@ -337,7 +337,7 @@ test "MpvHelper frame-back-step" {
             if (event.data.PropertyChange.format == .INT64 and !stepped) {
                 try mpv.frame_back_step();
                 stepped = true;
-                std.time.sleep(SLEEP_AMOUNT*3);
+                std.time.sleep(SLEEP_AMOUNT * 3);
             }
         }
         if (stepped) {
@@ -366,12 +366,12 @@ test "MpvHelper add" {
                 time_pos = event.data.PropertyChange.data.INT64;
                 try mpv.property_add("time-pos", .{ .value = "50" });
                 added = true;
-                std.time.sleep(SLEEP_AMOUNT*3);
+                std.time.sleep(SLEEP_AMOUNT * 3);
             }
             if (added and !checked_add) {
                 const current_time_pos = try mpv.get_property("time-pos", .INT64);
                 defer mpv.free(current_time_pos);
-                try testing.expect((time_pos+50) == current_time_pos.INT64);
+                try testing.expect((time_pos + 50) == current_time_pos.INT64);
                 checked_add = true;
             }
         }
@@ -397,10 +397,10 @@ test "MpvHelper multiply" {
                 const current_speed = try mpv.get_property("speed", .INT64);
                 defer mpv.free(current_speed);
                 try mpv.property_multiply("speed", "3");
-                std.time.sleep(SLEEP_AMOUNT*3);
+                std.time.sleep(SLEEP_AMOUNT * 3);
                 const after_current_speed = try mpv.get_property("speed", .INT64);
                 defer mpv.free(current_speed);
-                try testing.expect((current_speed.INT64*3) == after_current_speed.INT64);
+                try testing.expect((current_speed.INT64 * 3) == after_current_speed.INT64);
                 multiplied = true;
             }
         }
