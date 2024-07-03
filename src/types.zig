@@ -112,6 +112,25 @@ pub const MpvNodeList = struct {
 
         return array;
     }
+
+    /// Must be freed with `MpvNodeList.free_owned_arraylist` before calling `.deinit()` on it.
+    pub fn to_owned_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+        var array = std.ArrayList(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |node| {
+            try array.append(try node.copy(allocator));
+        }
+
+        return array;
+    }
+
+    /// free the allocated `MpvNode`s
+    pub fn free_owned_arraylist(array: std.ArrayList(MpvNode), allocator: std.mem.Allocator) void {
+        for (array.items) |node| {
+            node.free(allocator);
+        }
+    }
 };
 
 pub const MpvNodeMap = struct {
