@@ -16,6 +16,16 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
+pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+    return .{
+        .result = try self.result.copy(allocator),
+    };
+}
+
+pub fn free(self: Self, allocator: std.mem.Allocator) void {
+    self.result.free(allocator);
+}
+
 test "MpvEventCommand from" {
     const command_result = c.mpv_node{
         .format = c.MPV_FORMAT_DOUBLE,
@@ -28,3 +38,16 @@ test "MpvEventCommand from" {
 
     try testing.expect(z_command.result.Double == 3.14);
 }
+
+test "MpvEventCommand copy" {
+    const allocator = testing.allocator;
+
+    const command_reply = Self {
+        .result = .{ .String = "done" },
+    };
+    const command_reply_copy = try command_reply.copy(allocator);
+    defer command_reply_copy.free(allocator);
+
+    try testing.expectEqualStrings("done", command_reply_copy.result.String);
+}
+

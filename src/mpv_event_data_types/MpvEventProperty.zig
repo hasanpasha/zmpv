@@ -23,6 +23,19 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
+pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+    return .{
+        .name = try allocator.dupe(u8, self.name),
+        .format = self.format,
+        .data = try self.data.copy(allocator),
+    };
+}
+
+pub fn free(self: Self, allocator: std.mem.Allocator) void {
+    allocator.free(self.name);
+    self.data.free(allocator);
+}
+
 test "MpvEventProperty from" {
     var property_data: c_int = 0;
     var property_event = c.mpv_event_property{
@@ -35,4 +48,20 @@ test "MpvEventProperty from" {
     try testing.expect(z_property.format == .Flag);
     try testing.expect(z_property.data.Flag == false);
     try testing.expect(std.mem.eql(u8, z_property.name, "fullscreen"));
+}
+
+test "MpvEventProperty copy" {
+    const allocator = testing.allocator;
+
+    const property = Self {
+        .name = "pause",
+        .format = .String,
+        .data = .{ .String = "yes" },
+    };
+    const property_copy = try property.copy(allocator);
+    defer property_copy.free(allocator);
+
+    try testing.expect(property.format == .String);
+    try testing.expectEqualStrings("pause", property_copy.name);
+    try testing.expectEqualStrings("yes", property_copy.data.String);
 }
