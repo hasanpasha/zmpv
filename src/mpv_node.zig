@@ -27,7 +27,7 @@ pub const MpvNode = union(enum) {
             .NodeArray => MpvNode{ .NodeArray = MpvNodeList.from(node_ptr.u.list) },
             .NodeMap => MpvNode{ .NodeMap = MpvNodeMap.from(node_ptr.u.list) },
             .ByteArray => MpvNode{ .ByteArray = value: {
-                if (node_ptr.u.ba.*.size == 0) {
+                if (node_ptr.u.ba.*.data == null) {
                     break :value &.{};
                 }
                 const casted_bytes_data: [*:0]const u8 = @ptrCast(node_ptr.u.ba.*.data);

@@ -67,7 +67,7 @@ pub const MpvPropertyData = union(MpvFormat) {
             },
             .ByteArray => value: {
                 const byte_ptr: *c.struct_mpv_byte_array = @ptrCast(@alignCast(data));
-                if (byte_ptr.size == 0) {
+                if (byte_ptr.data == null) {
                     break :value MpvPropertyData{ .ByteArray = &.{} };
                 }
                 const casted_bytes_data: [*:0]const u8 = @ptrCast(byte_ptr.data);
