@@ -142,7 +142,7 @@ pub const MpvNodeMap = struct {
 
     const Self = @This();
     const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
-    pub const Element = struct { []u8, MpvNode };
+    pub const Element = struct { []const u8, MpvNode };
 
     pub fn new(list: []const Element) Self {
         return .{
@@ -210,7 +210,7 @@ pub const MpvNodeMap = struct {
 
         var idx: usize = 0;
         while (iter.next()) |pair| : (idx += 1) {
-            node_keys[idx] = pair[0].ptr;
+            node_keys[idx] = @constCast(pair[0].ptr);
             node_values[idx] = (try pair[1].to_c(allocator)).*;
         }
 
