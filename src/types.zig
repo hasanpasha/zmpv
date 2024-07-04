@@ -9,7 +9,7 @@ pub const MpvNodeList = struct {
 
     const Self = @This();
     const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
-    const Element = MpvNode;
+    pub const Element = MpvNode;
 
     pub fn new(list: []const Element) Self {
         return .{
@@ -142,7 +142,7 @@ pub const MpvNodeMap = struct {
 
     const Self = @This();
     const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
-    const Element = struct { []u8, MpvNode };
+    pub const Element = struct { []u8, MpvNode };
 
     pub fn new(list: []const Element) Self {
         return .{
