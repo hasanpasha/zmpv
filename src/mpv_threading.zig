@@ -181,37 +181,39 @@ pub fn event_loop(mpv: *Mpv) !void {
             threading_info.mutex.unlock();
         }
 
-        if (eid == .PropertyChange) {
-            const property = event.data.PropertyChange;
-            if (threading_info.mutex.tryLock()) {
-                if (threading_info.property_callbacks.get(property.name)) |cbs| {
-                    for (cbs.items) |cb| {
-                        cb.call(property);
+        switch (event.data) {
+            .PropertyChange, .GetPropertyReply => |property| {
+                if (threading_info.mutex.tryLock()) {
+                    if (threading_info.property_callbacks.get(property.name)) |cbs| {
+                        for (cbs.items) |cb| {
+                            cb.call(property);
+                        }
                     }
+                    threading_info.mutex.unlock();
                 }
-                threading_info.mutex.unlock();
-            }
-        }
-
-        if (eid == .LogMessage) {
-            if (threading_info.mutex.tryLock()) {
-                if (threading_info.log_callback) |cb| {
-                    cb.call(event.data.LogMessage);
+            },
+            .LogMessage => |log| {
+                if (threading_info.mutex.tryLock()) {
+                    if (threading_info.log_callback) |cb| {
+                        cb.call(log);
+                    }
+                    threading_info.mutex.unlock();
                 }
-                threading_info.mutex.unlock();
-            }
-        }
-
-        if (eid == .CommandReply) {
-            const key = event.reply_userdata;
-            const cmd_error = event.event_error;
-            const result = event.data.CommandReply.result;
-            if (threading_info.mutex.tryLock()) {
-                if (threading_info.command_reply_callbacks.get(key)) |cb| {
-                    cb.call(cmd_error, result);
+            },
+            .CommandReply => |reply| {
+                const key = event.reply_userdata;
+                const cmd_error = event.event_error;
+                const result = reply.result;
+                if (threading_info.mutex.tryLock()) {
+                    if (threading_info.command_reply_callbacks.get(key)) |cb| {
+                        cb.call(cmd_error, result);
+                    }
+                    threading_info.mutex.unlock();
                 }
-                threading_info.mutex.unlock();
-            }
+            },
+            .ClientMessage => {}, // TODO: implement callback handler for client messages
+            .Hook => {}, // TODO: same!
+            else => {},
         }
 
         if (eid == .Shutdown) {
