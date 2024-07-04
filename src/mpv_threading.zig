@@ -34,7 +34,7 @@ pub const MpvThreadingInfo = struct {
     pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
         const allocator = mpv.allocator;
 
-        var event_thread = try std.Thread.spawn(.{}, event_loop, .{ mpv });
+        var event_thread = try std.Thread.spawn(.{}, event_loop, .{mpv});
         event_thread.detach();
 
         const event_handle_ptr = try mpv.create_client("MpvThreadHandle");
@@ -80,11 +80,11 @@ pub const MpvEventCallback = struct {
         for (self.event_ids) |registerd_event_id| {
             if (registerd_event_id == event_id) {
                 if (self.cond_cb) |cond| {
-                   if (cond(event)) {
-                       self.callback(event, self.user_data);
-                   }
+                    if (cond(event)) {
+                        self.callback(event, self.user_data);
+                    }
                 } else {
-                   self.callback(event, self.user_data);
+                    self.callback(event, self.user_data);
                 }
             }
         }
@@ -236,7 +236,7 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
     try threading_info.event_callbacks.append(callback);
     threading_info.mutex.unlock();
 
-    const unregisterrer = MpvEventCallbackUnregisterrer {
+    const unregisterrer = MpvEventCallbackUnregisterrer{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -278,7 +278,7 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
     try property_observers.append(callback);
     try threading_info.event_handle.observe_property(utils.hash(property_name), property_name, .Node);
 
-    const unregisterrer = MpvPropertyCallbackUnregisterrer {
+    const unregisterrer = MpvPropertyCallbackUnregisterrer{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -318,7 +318,7 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
     try threading_info.command_reply_callbacks.put(args_hash, callback);
     try threading_info.event_handle.command_async(args_hash, callback.command_args);
 
-    const unregisterrer = MpvCommandReplyCallbackUnegisterrer {
+    const unregisterrer = MpvCommandReplyCallbackUnegisterrer{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -350,7 +350,7 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
     try threading_info.event_handle.request_log_messages(callback.level);
     threading_info.log_callback = callback;
 
-    const unregisterrer = MpvLogMessageCallbackUnregisterrer {
+    const unregisterrer = MpvLogMessageCallbackUnregisterrer{
         .mpv = mpv,
         .data = {},
         .unregisterrer_func = struct {
@@ -384,7 +384,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
-            const data_struct = struct {*ResetEvent,*?MpvEvent};
+            const data_struct = struct { *ResetEvent, *?MpvEvent };
             const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
             var received_event: *ResetEvent = data_ptr.*[0];
             const event_ptr: *?MpvEvent = data_ptr.*[1];
@@ -394,12 +394,12 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
         }
     }.cb;
 
-    const data_struct = struct {*ResetEvent, *?MpvEvent};
+    const data_struct = struct { *ResetEvent, *?MpvEvent };
     const sent_data_ptr = try mpv.allocator.create(data_struct);
     const event_ptr = try mpv.allocator.create(?MpvEvent);
     event_ptr.* = null;
     var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{&received_event, event_ptr};
+    sent_data_ptr.* = data_struct{ &received_event, event_ptr };
     defer {
         mpv.allocator.destroy(event_ptr);
         mpv.allocator.destroy(sent_data_ptr);
@@ -421,7 +421,7 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
     }
 
     if (args.timeout) |timeout| {
-        try received_event.timedWait(@as(u64, timeout*@as(u64, 1e9)));
+        try received_event.timedWait(@as(u64, timeout * @as(u64, 1e9)));
     } else {
         received_event.wait();
     }
@@ -440,7 +440,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
-            const data_struct = struct {*ResetEvent, *?MpvEventProperty};
+            const data_struct = struct { *ResetEvent, *?MpvEventProperty };
             const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
             var received_event: *ResetEvent = data_ptr.*[0];
             const property_data_ptr: *?MpvEventProperty = data_ptr.*[1];
@@ -450,12 +450,12 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
         }
     }.cb;
 
-    const data_struct = struct {*ResetEvent, *?MpvEventProperty};
+    const data_struct = struct { *ResetEvent, *?MpvEventProperty };
     const sent_data_ptr = try mpv.allocator.create(data_struct);
     const property_data_ptr = try mpv.allocator.create(?MpvEventProperty);
     property_data_ptr.* = null;
     var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{&received_event, property_data_ptr};
+    sent_data_ptr.* = data_struct{ &received_event, property_data_ptr };
     defer {
         mpv.allocator.destroy(property_data_ptr);
         mpv.allocator.destroy(sent_data_ptr);
@@ -473,7 +473,7 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     defer mpv.threading_info.?.thread_event = null;
 
     if (args.timeout) |timeout| {
-        try received_event.timedWait(@as(u64, timeout*@as(u64, 1e9)));
+        try received_event.timedWait(@as(u64, timeout * @as(u64, 1e9)));
     } else {
         received_event.wait();
     }
@@ -485,24 +485,22 @@ pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
 pub fn wait_until_playing(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEventProperty {
-    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout,
-    .cond_cb = struct {
+    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout, .cond_cb = struct {
         pub fn cb(event: MpvEventProperty) bool {
             return (!event.data.Node.Flag);
         }
-    }.cb});
+    }.cb });
 }
 
 /// Wait until the current playback is paused or done
 pub fn wait_until_paused(mpv: *Mpv, args: struct {
     timeout: ?u32 = null,
 }) !MpvEventProperty {
-    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout,
-    .cond_cb = struct {
+    return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout, .cond_cb = struct {
         pub fn cb(event: MpvEventProperty) bool {
             return (event.data.Node.Flag);
         }
-    }.cb});
+    }.cb });
 }
 
 /// Wait until the current playback is finished
@@ -523,7 +521,7 @@ test "threaded: simple" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
-        .start_event_thread=true,
+        .start_event_thread = true,
         .options = &.{},
     });
     defer mpv.terminate_destroy();
@@ -532,10 +530,10 @@ test "threaded: simple" {
 
     _ = try std.Thread.spawn(.{}, struct {
         pub fn cb(player: *Mpv) void {
-            std.time.sleep(1*1e9);
+            std.time.sleep(1 * 1e9);
             player.command_string("quit") catch {};
         }
-    }.cb, .{ mpv });
+    }.cb, .{mpv});
 
     _ = try mpv.wait_for_shutdown(.{});
 }
@@ -544,32 +542,28 @@ test "threaded: register_event" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
-        .start_event_thread=true,
+        .start_event_thread = true,
         .options = &.{},
     });
     defer mpv.terminate_destroy();
 
     var callback_event = ResetEvent{};
-    _ = try mpv.register_event_callback(MpvEventCallback{
-        .event_ids = &.{ MpvEventId.FileLoaded },
-        .callback = struct {
-            pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
-                _ = event;
-                const called_ptr: *ResetEvent = @ptrCast(@alignCast(user_data));
-                called_ptr.set();
-            }
-        }.cb,
-        .user_data = @ptrCast(&callback_event)
-    });
+    _ = try mpv.register_event_callback(MpvEventCallback{ .event_ids = &.{MpvEventId.FileLoaded}, .callback = struct {
+        pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
+            _ = event;
+            const called_ptr: *ResetEvent = @ptrCast(@alignCast(user_data));
+            called_ptr.set();
+        }
+    }.cb, .user_data = @ptrCast(&callback_event) });
     try mpv.loadfile("sample.mp4", .{});
-    try callback_event.timedWait(1*1e9);
+    try callback_event.timedWait(1 * 1e9);
 
     _ = try std.Thread.spawn(.{}, struct {
         pub fn cb(player: *Mpv) void {
-            std.time.sleep(1*1e9);
+            std.time.sleep(1 * 1e9);
             player.command_string("quit") catch {};
         }
-    }.cb, .{ mpv });
+    }.cb, .{mpv});
 
     _ = try mpv.wait_for_shutdown(.{});
 }
