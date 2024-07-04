@@ -32,19 +32,10 @@ pub fn catch_mpv_error(ret_code: c_int) MpvError!void {
     }
 }
 
-pub fn hash(string: []const u8) u64 {
-    var hash_value: u64 = 5381;
-
-    for (string) |c| {
-        hash_value = ((hash_value << 5)) + c;
-    }
-    return hash_value;
-}
-
 pub fn string_array_hash(allocator: std.mem.Allocator, array: []const []const u8) !u64 {
     const args = try std.mem.concat(allocator, u8, array);
     defer allocator.free(args);
-    return hash(args);
+    return std.hash.Fnv1a_64.hash(args);
 }
 
 test "zstring to cstring array" {

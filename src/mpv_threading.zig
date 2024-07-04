@@ -276,7 +276,7 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
     }
     var property_observers = threading_info.property_callbacks.get(property_name).?;
     try property_observers.append(callback);
-    try threading_info.event_handle.observe_property(utils.hash(property_name), property_name, .Node);
+    try threading_info.event_handle.observe_property(std.hash.Fnv1a_64.hash(property_name), property_name, .Node);
 
     const unregisterrer = MpvPropertyCallbackUnregisterrer{
         .mpv = mpv,
@@ -303,7 +303,7 @@ pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !v
             }
 
             if (cbs.items.len == 0) {
-                try threading_info.event_handle.unobserve_property(utils.hash(callback.property_name));
+                try threading_info.event_handle.unobserve_property(std.hash.Fnv1a_64.hash(callback.property_name));
             }
         }
     }
