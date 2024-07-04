@@ -236,7 +236,7 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
     try threading_info.event_callbacks.append(callback);
     threading_info.mutex.unlock();
 
-    const unregisterrer = MpvEventCallbackUnregisterrer{
+    return .{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -245,7 +245,6 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
             }
         }.cb,
     };
-    return unregisterrer;
 }
 
 /// Unregister event callback.
@@ -278,7 +277,7 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
     try property_observers.append(callback);
     try threading_info.event_handle.observe_property(std.hash.Fnv1a_64.hash(property_name), property_name, .Node);
 
-    const unregisterrer = MpvPropertyCallbackUnregisterrer{
+    return .{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -289,7 +288,6 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
             }
         }.cb,
     };
-    return unregisterrer;
 }
 
 /// Unregister property callback.
@@ -318,7 +316,7 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
     try threading_info.command_reply_callbacks.put(args_hash, callback);
     try threading_info.event_handle.command_async(args_hash, callback.command_args);
 
-    const unregisterrer = MpvCommandReplyCallbackUnegisterrer{
+    return .{
         .mpv = mpv,
         .data = callback,
         .unregisterrer_func = struct {
@@ -329,7 +327,6 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
             }
         }.cb,
     };
-    return unregisterrer;
 }
 
 /// Unregister the async command callback. and abort the command if it's still not done.
@@ -350,7 +347,7 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
     try threading_info.event_handle.request_log_messages(callback.level);
     threading_info.log_callback = callback;
 
-    const unregisterrer = MpvLogMessageCallbackUnregisterrer{
+    return .{
         .mpv = mpv,
         .data = {},
         .unregisterrer_func = struct {
@@ -361,7 +358,6 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
             }
         }.cb,
     };
-    return unregisterrer;
 }
 
 /// Unregister the current log message callback and set the log level to `.None`
