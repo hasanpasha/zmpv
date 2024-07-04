@@ -8,7 +8,7 @@ pub const MpvNodeList = struct {
     value: T,
 
     const Self = @This();
-    const T = union(enum) {CValue: *c.mpv_node_list, ZigValue: []const Element};
+    const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
     const Element = MpvNode;
 
     pub fn new(list: []const Element) Self {
@@ -35,7 +35,7 @@ pub const MpvNodeList = struct {
                 },
                 .ZigValue => |value| {
                     node = value[it.index];
-                }
+                },
             }
             it.index += 1;
 
@@ -44,8 +44,12 @@ pub const MpvNodeList = struct {
 
         pub fn size(self: *Iterator) usize {
             switch (self.value) {
-                .CValue => |value| { return @intCast(value.num); },
-                .ZigValue => |value| { return value.len; },
+                .CValue => |value| {
+                    return @intCast(value.num);
+                },
+                .ZigValue => |value| {
+                    return value.len;
+                },
             }
         }
     };
@@ -137,7 +141,7 @@ pub const MpvNodeMap = struct {
     value: T,
 
     const Self = @This();
-    const T = union(enum) {CValue: *c.mpv_node_list, ZigValue: []const Element};
+    const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
     const Element = struct { []u8, MpvNode };
 
     pub fn new(list: []const Element) Self {
@@ -167,7 +171,7 @@ pub const MpvNodeMap = struct {
                 },
                 .ZigValue => |value| {
                     pair = value[it.index];
-                }
+                },
             }
             it.index += 1;
 
@@ -176,8 +180,12 @@ pub const MpvNodeMap = struct {
 
         pub fn size(self: *Iterator) usize {
             switch (self.value) {
-                .CValue => |value| { return @intCast(value.num); },
-                .ZigValue => |value| { return value.len; },
+                .CValue => |value| {
+                    return @intCast(value.num);
+                },
+                .ZigValue => |value| {
+                    return value.len;
+                },
             }
         }
     };
@@ -254,7 +262,7 @@ pub const MpvNodeMap = struct {
 
         var iter = self.iterator();
         while (iter.next()) |pair| {
-            try map.put(try allocator.dupe(u8, pair[0]),try pair[1].copy(allocator));
+            try map.put(try allocator.dupe(u8, pair[0]), try pair[1].copy(allocator));
         }
         return map;
     }
