@@ -8,8 +8,8 @@ pub const MpvNodeList = struct {
     value: T,
 
     const Self = @This();
-    const T = union(enum) {CValue: *c.mpv_node_list, ZigValue: []const Element};
-    const Element = MpvNode;
+    const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
+    pub const Element = MpvNode;
 
     pub fn new(list: []const Element) Self {
         return .{
@@ -35,7 +35,7 @@ pub const MpvNodeList = struct {
                 },
                 .ZigValue => |value| {
                     node = value[it.index];
-                }
+                },
             }
             it.index += 1;
 
@@ -44,8 +44,12 @@ pub const MpvNodeList = struct {
 
         pub fn size(self: *Iterator) usize {
             switch (self.value) {
-                .CValue => |value| { return @intCast(value.num); },
-                .ZigValue => |value| { return value.len; },
+                .CValue => |value| {
+                    return @intCast(value.num);
+                },
+                .ZigValue => |value| {
+                    return value.len;
+                },
             }
         }
     };
@@ -101,14 +105,44 @@ pub const MpvNodeList = struct {
             else => {},
         }
     }
+
+    pub fn to_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+        var array = std.ArrayList(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |node| {
+            try array.append(node);
+        }
+
+        return array;
+    }
+
+    /// Must be freed with `MpvNodeList.free_owned_arraylist` before calling `.deinit()` on it.
+    pub fn to_owned_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+        var array = std.ArrayList(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |node| {
+            try array.append(try node.copy(allocator));
+        }
+
+        return array;
+    }
+
+    /// free the allocated `MpvNode`s
+    pub fn free_owned_arraylist(array: std.ArrayList(MpvNode), allocator: std.mem.Allocator) void {
+        for (array.items) |node| {
+            node.free(allocator);
+        }
+    }
 };
 
 pub const MpvNodeMap = struct {
     value: T,
 
     const Self = @This();
-    const T = union(enum) {CValue: *c.mpv_node_list, ZigValue: []const Element};
-    const Element = struct { []u8, MpvNode };
+    const T = union(enum) { CValue: *c.mpv_node_list, ZigValue: []const Element };
+    pub const Element = struct { []const u8, MpvNode };
 
     pub fn new(list: []const Element) Self {
         return .{
@@ -137,7 +171,7 @@ pub const MpvNodeMap = struct {
                 },
                 .ZigValue => |value| {
                     pair = value[it.index];
-                }
+                },
             }
             it.index += 1;
 
@@ -146,8 +180,12 @@ pub const MpvNodeMap = struct {
 
         pub fn size(self: *Iterator) usize {
             switch (self.value) {
-                .CValue => |value| { return @intCast(value.num); },
-                .ZigValue => |value| { return value.len; },
+                .CValue => |value| {
+                    return @intCast(value.num);
+                },
+                .ZigValue => |value| {
+                    return value.len;
+                },
             }
         }
     };
@@ -172,7 +210,7 @@ pub const MpvNodeMap = struct {
 
         var idx: usize = 0;
         while (iter.next()) |pair| : (idx += 1) {
-            node_keys[idx] = pair[0].ptr;
+            node_keys[idx] = @constCast(pair[0].ptr);
             node_values[idx] = (try pair[1].to_c(allocator)).*;
         }
 
@@ -205,6 +243,36 @@ pub const MpvNodeMap = struct {
                 allocator.free(value);
             },
             else => {},
+        }
+    }
+
+    pub fn to_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+        var map = std.StringHashMap(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |pair| {
+            try map.put(pair[0], pair[1]);
+        }
+        return map;
+    }
+
+    /// Must be freed with with `MpvNodeMap.free_owned_hashmap` before calling `.deinit()` on it.
+    pub fn to_owned_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+        var map = std.StringHashMap(MpvNode).init(allocator);
+
+        var iter = self.iterator();
+        while (iter.next()) |pair| {
+            try map.put(try allocator.dupe(u8, pair[0]), try pair[1].copy(allocator));
+        }
+        return map;
+    }
+
+    /// Free the allocated key strings and Value `MapNode`
+    pub fn free_owned_hashmap(map: std.StringHashMap(MpvNode), allocator: std.mem.Allocator) void {
+        var iter = map.iterator();
+        while (iter.next()) |pair| {
+            allocator.free(pair.key_ptr.*);
+            pair.value_ptr.free(allocator);
         }
     }
 };
