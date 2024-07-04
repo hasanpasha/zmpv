@@ -20,7 +20,7 @@ pub fn main() !void {
     defer mpv.terminate_destroy();
 
     const version = Mpv.client_api_version();
-    std.debug.print("version={any}.{}\n", .{version >> 16, version & 0xffff});
+    std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
 
     var cmd_args = [_][]const u8{ "loadfile", filename };
     try mpv.command_async(0, &cmd_args);
@@ -55,8 +55,9 @@ pub fn main() !void {
                         .INT64 => |time_pos| {
                             std.log.debug("[time-pos] {}", .{time_pos});
                             if (!seeked) {
+                                try mpv.run("ls", &.{"-la"});
                                 try mpv.seek("50", .{ .reference = .Absolute, .precision = .Percent });
-                                std.time.sleep(5*1e8);
+                                std.time.sleep(5 * 1e8);
                                 try mpv.revert_seek(.{});
                                 seeked = true;
                             }

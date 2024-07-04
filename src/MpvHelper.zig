@@ -240,6 +240,14 @@ pub fn playlist_prev(self: Mpv, args: struct {
     try self.command(&cmd_args);
 }
 
+pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) !void {
+    var cmd_args = std.ArrayList([]const u8).init(self.allocator);
+    defer cmd_args.deinit();
+    try cmd_args.appendSlice(&.{ "run", command });
+    try cmd_args.appendSlice(command_args);
+    try self.command(cmd_args.items);
+}
+
 pub fn quit(self: Mpv, args: struct {
     code: ?u8 = null,
 }) !void {
@@ -671,6 +679,25 @@ test "MpvHelper playlist-prev" {
         }
         if (finished) {
             try mpv.quit(.{});
+        }
+    }
+}
+
+test "MpvHelper run" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.run("/bin/sh", &.{ "-c", "echo ${title}" });
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var ran = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (event.reply_userdata == 6969 and !ran) {
+            ran = true;
+        } else if (ran) {
+            try mpv.command_string("quit");
         }
     }
 }
