@@ -2,6 +2,9 @@ const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const GenericError = @import("./generic_error.zig").GenericError;
 const MpvNode = @import("./mpv_node.zig").MpvNode;
+const types = @import("./types.zig");
+const MpvNodeList = types.MpvNodeList;
+const MpvNodeMap = types.MpvNodeMap;
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const utils = @import("./utils.zig");
@@ -246,6 +249,96 @@ pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) !vo
     try cmd_args.appendSlice(&.{ "run", command });
     try cmd_args.appendSlice(command_args);
     try self.command(cmd_args.items);
+}
+
+pub const SubprocessCommandResult = struct {
+    status: i64,
+    stdout: []u8,
+    stderr: []u8,
+    killed_by_us: bool,
+    allocator: std.mem.Allocator,
+
+    pub fn from_node_map(node_map: MpvNodeMap, allocator: std.mem.Allocator) !SubprocessCommandResult {
+        var hash_map = try node_map.to_hashmap(allocator);
+        defer hash_map.deinit();
+
+        return .{
+            .status = hash_map.get("status").?.INT64,
+            .stdout = try allocator.dupe(u8, hash_map.get("stdout").?.ByteArray),
+            .stderr = try allocator.dupe(u8, hash_map.get("stderr").?.ByteArray),
+            .killed_by_us = hash_map.get("killed_by_us").?.Flag,
+            .allocator = allocator,
+        };
+    }
+
+    pub fn free(self: @This()) void {
+        self.allocator.free(self.stdout);
+        self.allocator.free(self.stderr);
+    }
+
+    pub fn format(self: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        return writer.print("SubprocessCommandResult{{ status = {}, stdout = \"{s}\", stderr = \"{s}\", killed_by_us: {} }}", .{
+            self.status,
+            self.stdout,
+            self.stderr,
+            self.killed_by_us,
+        });
+    }
+};
+
+/// The result should be free by calling `.free()` on it.
+pub fn subprocess(self: Mpv, command: []const []const u8, args: struct {
+    playback_only: bool = true,
+    capture_size: i64 = 64 * 1e6,
+    capture_stdout: bool = false,
+    capture_stderr: bool = false,
+    detach: bool = false,
+    env: []const []const u8 = &.{},
+    stdin_data: []const u8 = "",
+    passthrough_stdin: bool = false,
+    /// This is not part of the mpv command arguments but is used by this function
+    /// itself to determine whether to run the command asynchronously or not.
+    sync: bool = true,
+}) !union {
+    value: SubprocessCommandResult,
+    reply_code: u64,
+} {
+    var cmd_args = std.ArrayList(MpvNodeMap.Element).init(self.allocator);
+    defer cmd_args.deinit();
+
+    var command_args = std.ArrayList(MpvNodeList.Element).init(self.allocator);
+    defer command_args.deinit();
+    for (command) |arg| {
+        try command_args.append(.{ .String = arg });
+    }
+    try cmd_args.append(.{ "name", MpvNode{ .String = "subprocess" } });
+    try cmd_args.append(.{ "args", MpvNode{ .NodeArray = MpvNodeList.new(command_args.items) } });
+    try cmd_args.append(.{ "playback_only", MpvNode{ .Flag = args.playback_only } });
+    try cmd_args.append(.{ "capture_size", MpvNode{ .INT64 = args.capture_size } });
+    try cmd_args.append(.{ "capture_stdout", MpvNode{ .Flag = args.capture_stdout } });
+    try cmd_args.append(.{ "capture_stderr", MpvNode{ .Flag = args.capture_stderr } });
+    try cmd_args.append(.{ "detach", MpvNode{ .Flag = args.detach } });
+    var envs = std.ArrayList(MpvNodeList.Element).init(self.allocator);
+    defer envs.deinit();
+    for (args.env) |env| {
+        try envs.append(.{ .String = env });
+    }
+    try cmd_args.append(.{ "env", MpvNode{ .NodeArray = MpvNodeList.new(envs.items) } });
+    try cmd_args.append(.{ "stdin_data", MpvNode{ .String = args.stdin_data } });
+    try cmd_args.append(.{ "passthrough_stdin", MpvNode{ .Flag = args.passthrough_stdin } });
+
+    const cmd_args_node = MpvNode{ .NodeMap = MpvNodeMap.new(cmd_args.items) };
+    if (args.sync) {
+        const node = try self.command_node(cmd_args_node);
+        defer self.free(node);
+        return .{ .value = try SubprocessCommandResult.from_node_map(node.NodeMap, self.allocator) };
+    } else {
+        const str = try std.mem.concat(self.allocator, u8, command);
+        defer self.allocator.free(str);
+        const reply_code = std.hash.Fnv1a_64.hash(str);
+        try self.command_node_async(reply_code, cmd_args_node);
+        return .{ .reply_code = reply_code };
+    }
 }
 
 pub fn quit(self: Mpv, args: struct {
@@ -702,6 +795,60 @@ test "MpvHelper run" {
     //         try mpv.command_string("quit");
     //     }
     // }
+}
+
+test "MpvHelper subprocess" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    try mpv.command_string("loadfile sample.mp4");
+    try mpv.observe_property(6969, "time-pos", .INT64);
+    var should_quit = false;
+    var result_code: ?u64 = null;
+    var done_sync = false;
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
+        if (result_code) |code| {
+            if (code == event.reply_userdata) {
+                const data = event.data.CommandReply.result.NodeMap;
+                const result = try SubprocessCommandResult.from_node_map(data, allocator);
+                defer result.free();
+                try testing.expectEqualStrings("hello", result.stdout);
+                try testing.expectEqualStrings("", result.stderr);
+                try testing.expect(result.killed_by_us == false);
+                try testing.expect(result.status == 0);
+                should_quit = true;
+            }
+        }
+        if (event.reply_userdata == 6969) {
+            if (!done_sync) {
+                const result = (try mpv.subprocess(&.{ "/bin/sh", "-c", "sleep 1 && printf hello" }, .{
+                    .capture_stdout = true,
+                    .capture_stderr = true,
+                    .detach = true,
+                    .sync = true,
+                })).value;
+                defer result.free();
+                try testing.expectEqualStrings("hello", result.stdout);
+                try testing.expectEqualStrings("", result.stderr);
+                try testing.expect(result.killed_by_us == false);
+                try testing.expect(result.status == 0);
+                done_sync = true;
+            }
+            result_code = (try mpv.subprocess(&.{ "/bin/sh", "-c", "sleep 1 && printf hello" }, .{
+                .capture_stdout = true,
+                .capture_stderr = true,
+                .capture_size = 1e9,
+                .detach = true,
+                .sync = false,
+            })).reply_code;
+        }
+        if (should_quit) {
+            try mpv.command_string("quit");
+        }
+    }
 }
 
 test "MpvHelper quit" {
