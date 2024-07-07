@@ -14,9 +14,66 @@ const utils = @import("./utils.zig");
 const ResetEvent = std.Thread.ResetEvent;
 const testing = std.testing;
 
-pub fn create_with_threading(allocator: std.mem.Allocator) !*Mpv {
+const Self = @This();
+
+mpv_handle: *Mpv,
+mpv_event_handle: *Mpv,
+event_callbacks: std.ArrayList(MpvEventCallback),
+property_callbacks: std.StringHashMap(*std.ArrayList(MpvPropertyCallback)),
+command_reply_callbacks: std.AutoHashMap(u64, MpvCommandReplyCallback),
+log_callback: ?MpvLogMessageCallback = null,
+// event_thread: std.Thread,
+mutex: std.Thread.Mutex = std.Thread.Mutex{},
+futures: std.ArrayList(*Future),
+allocator: std.mem.Allocator,
+
+pub fn init(mpv: *Mpv) !*Self {
+    const allocator = mpv.allocator;
+
+    const instance_ptr = try allocator.create(@This());
+    instance_ptr.* = Self{
+        .mpv_handle = mpv,
+        .mpv_event_handle = try mpv.create_client("MpvThreadHandle"),
+        // .event_thread = event_thread,
+        .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
+        .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
+        .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
+        .futures = std.ArrayList(*Future).init(allocator),
+        .allocator = allocator,
+    };
+    var event_thread = try std.Thread.spawn(.{}, event_loop, .{instance_ptr});
+    event_thread.detach();
+    return instance_ptr;
+}
+
+pub fn deinit(self: *Self) void {
+    const allocator = self.allocator;
+    var mutux = self.mutex;
+
+    mutux.lock();
+    defer mutux.unlock();
+
+    // allocator.destroy(self.thread_event);
+
+    self.event_callbacks.deinit();
+
+    var properties_cbs_iterator = self.property_callbacks.valueIterator();
+    while (properties_cbs_iterator.next()) |cbs| {
+        cbs.*.deinit();
+        allocator.destroy(cbs.*);
+    }
+    self.property_callbacks.deinit();
+
+    self.command_reply_callbacks.deinit();
+
+    self.event_handle.destroy();
+
+    allocator.destroy(self);
+}
+
+pub fn create_with_threading(allocator: std.mem.Allocator) !*Self {
     const instance_ptr = try Mpv.create(allocator);
-    instance_ptr.threading_info = try MpvThreadingInfo.new(instance_ptr);
+    instance_ptr.threading_info = try Self.init(instance_ptr);
     return instance_ptr;
 }
 
@@ -78,67 +135,6 @@ pub const Future = struct {
 
     pub fn cancel(self: *@This()) void {
         self.set_error(FutureError.Canceled);
-    }
-};
-
-pub const MpvThreadingInfo = struct {
-    allocator: std.mem.Allocator,
-    event_handle: *Mpv,
-    event_callbacks: std.ArrayList(MpvEventCallback),
-    property_callbacks: std.StringHashMap(*std.ArrayList(MpvPropertyCallback)),
-    command_reply_callbacks: std.AutoHashMap(u64, MpvCommandReplyCallback),
-    log_callback: ?MpvLogMessageCallback = null,
-    event_thread: std.Thread,
-    mutex: std.Thread.Mutex = std.Thread.Mutex{},
-    // thread_event: ResetEvent,
-    futures: std.ArrayList(*Future),
-
-    pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
-        const allocator = mpv.allocator;
-
-        var event_thread = try std.Thread.spawn(.{}, event_loop, .{mpv});
-        event_thread.detach();
-
-        // var reset_event = ResetEvent{};
-
-        const info_ptr = try allocator.create(@This());
-        info_ptr.* = MpvThreadingInfo{
-            .allocator = allocator,
-            .event_handle = try mpv.create_client("MpvThreadHandle"),
-            .event_thread = event_thread,
-            .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
-            .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
-            .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
-            .futures = std.ArrayList(*Future).init(allocator),
-            // .thread_event = reset_event,
-            // .thread_event = ResetEvent{},
-        };
-        return info_ptr;
-    }
-
-    pub fn free(self: *MpvThreadingInfo) void {
-        const allocator = self.allocator;
-        var mutux = self.mutex;
-
-        mutux.lock();
-        defer mutux.unlock();
-
-        // allocator.destroy(self.thread_event);
-
-        self.event_callbacks.deinit();
-
-        var properties_cbs_iterator = self.property_callbacks.valueIterator();
-        while (properties_cbs_iterator.next()) |cbs| {
-            cbs.*.deinit();
-            allocator.destroy(cbs.*);
-        }
-        self.property_callbacks.deinit();
-
-        self.command_reply_callbacks.deinit();
-
-        self.event_handle.destroy();
-
-        allocator.destroy(self);
     }
 };
 

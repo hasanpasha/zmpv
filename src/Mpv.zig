@@ -50,7 +50,6 @@ pub fn create_weak_client(self: Self, name: []const u8) !*Self {
 
 pub fn initialize(self: *Self) MpvError!void {
     try catch_mpv_error(c.mpv_initialize(self.handle));
-    self.core_shutdown = false;
 }
 
 pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
