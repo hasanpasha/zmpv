@@ -9,7 +9,6 @@ const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
 const MpvFormat = @import("./mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
-const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadingInfo;
 const mpv_error = @import("./mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const GenericError = @import("./generic_error.zig").GenericError;
@@ -21,8 +20,6 @@ const Self = @This();
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
-threading_info: ?*MpvThreadingInfo = null,
-core_shutdown: bool = true,
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
@@ -284,11 +281,6 @@ pub fn error_string(err: MpvError) []const u8 {
     return std.mem.sliceTo(error_str, 0);
 }
 
-/// Check whether the Mpv core is still alive
-pub fn check_core_shutdown(self: Self) GenericError!void {
-    if (self.core_shutdown) return GenericError.CoreShutdown;
-}
-
 pub fn free(self: Self, data: anytype) void {
     switch (@TypeOf(data)) {
         MpvNode, MpvPropertyData => {
@@ -303,7 +295,6 @@ pub fn free(self: Self, data: anytype) void {
 
 pub usingnamespace @import("./MpvHelper.zig");
 pub usingnamespace @import("./stream_cb.zig");
-pub usingnamespace @import("./mpv_threading.zig");
 
 test "Mpv simple test" {
     const mpv = try Self.create(testing.allocator);
