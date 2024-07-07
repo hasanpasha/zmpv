@@ -31,15 +31,17 @@ pub fn main() !void {
     var mpv = try Mpv.new(allocator, .{
         .start_event_thread = true,
         .options = &.{
-            .{"osc", "yes"},
-            .{"input-default-bindings", "yes"},
-            .{"input-vo-keyboard", "yes"},
+            .{ "osc", "yes" },
+            .{ "input-default-bindings", "yes" },
+            .{ "input-vo-keyboard", "yes" },
         },
     });
     defer mpv.terminate_destroy();
 
-    _ = try mpv.register_event_callback(MpvEventCallback {
-        .event_ids = &.{ .EndFile, },
+    _ = try mpv.register_event_callback(MpvEventCallback{
+        .event_ids = &.{
+            .EndFile,
+        },
         .callback = struct {
             pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
                 _ = user_data;
@@ -50,7 +52,7 @@ pub fn main() !void {
     });
 
     const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
-        .event_ids = &.{ .StartFile },
+        .event_ids = &.{.StartFile},
         .callback = struct {
             pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
                 _ = user_data;
@@ -92,7 +94,8 @@ pub fn main() !void {
                 switch (event.data) {
                     .Node => |value| {
                         std.log.debug("time-pos: {}", .{value.Double});
-                    }, else => {},
+                    },
+                    else => {},
                 }
             }
         }.cb,
@@ -106,7 +109,7 @@ pub fn main() !void {
             pub fn cb(level: MpvLogLevel, prefix: []const u8, text: []const u8, user_data: ?*anyopaque) void {
                 _ = user_data;
                 _ = level;
-                std.log.debug("[{s}] \"{s}\"", .{prefix, text[0..(text.len-1)]});
+                std.log.debug("[{s}] \"{s}\"", .{ prefix, text[0..(text.len - 1)] });
             }
         }.cb,
     });
@@ -152,12 +155,20 @@ pub fn main() !void {
     //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
     // // };
     // std.log.debug("waited property: {}", .{property});
-    const pause_property = try mpv.wait_until_playing(.{});
-    const pause_property_copy = try pause_property.copy(mpv.allocator);
-    defer pause_property_copy.free(mpv.allocator);
-    std.log.debug("playing started: {}", .{pause_property_copy});
-    _ = try mpv.wait_until_paused(.{});
-    std.log.debug("paused", .{});
+    _ = try mpv.wait_until_playing(.{});
+    // const pause_property_copy = try pause_property.copy(mpv.allocator);
+    // defer pause_property_copy.free(mpv.allocator);
+    // std.log.debug("playing started: {}", .{pause_property_copy});
+    // _ = try mpv.wait_until_paused(.{});
+    // std.log.debug("paused", .{});
+    _ = try mpv.wait_for_property("fullscreen", .{
+        .cond_cb = struct {
+            pub fn cb(event: MpvEventProperty) bool {
+                return (event.data.Node.Flag);
+            }
+        }.cb,
+    });
+    std.log.debug("stopped waiting fullscreen", .{});
 
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
@@ -175,17 +186,18 @@ pub fn main() !void {
         std.process.exit(2);
     };
     std.log.debug("everything has ended: {}", .{shutdown_evt});
+    // _ = try mpv.wait_until_playing(.{});
 }
 
 fn skip_silence(mpv: *Mpv) !void {
     try mpv.request_log_messages(.Debug);
     try mpv.set_property_string("af", "lavfi=[silencedetect=n=-20dB:d=1]");
     try mpv.set_property("speed", .INT64, .{ .INT64 = 100 });
-    const result = try mpv.wait_for_event(&.{ .LogMessage }, .{ 
+    const result = try mpv.wait_for_event(&.{.LogMessage}, .{
         .cond_cb = struct {
             pub fn cb(event: MpvEvent) bool {
                 const log = event.data.LogMessage;
-                const text = log.text[0..(log.text.len-1)];
+                const text = log.text[0..(log.text.len - 1)];
                 var iter = std.mem.split(u8, text, " ");
                 while (iter.next()) |tok| {
                     if (std.mem.eql(u8, tok, "silence_end:")) {

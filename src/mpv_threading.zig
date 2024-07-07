@@ -20,6 +20,67 @@ pub fn create_with_threading(allocator: std.mem.Allocator) !*Mpv {
     return instance_ptr;
 }
 
+pub const Future = struct {
+    value: ?*anyopaque = null,
+    error_value: anyerror = error.Success,
+    reset_event: *ResetEvent,
+    arena: std.heap.ArenaAllocator,
+
+    const FutureError = error {
+        Canceled,
+    };
+
+    pub fn new(allocator: std.mem.Allocator) !*@This() {
+        var arena = std.heap.ArenaAllocator.init(allocator);
+
+        const this = try arena.allocator().create(@This());
+        var reset_event = ResetEvent{};
+        this.* = .{
+            .reset_event = &reset_event,
+            .arena = arena,
+        };
+        return this;
+    }
+
+    pub fn free(self: *@This()) void {
+        self.arena.deinit();
+    }
+
+    pub fn wait_result(self: @This(), timeout: ?u64) !*anyopaque {
+        if (timeout) |t| {
+            try self.reset_event.timedWait(t);
+        } else {
+            self.reset_event.wait();
+        }
+
+        return self.value orelse self.error_value;
+    }
+
+    fn set(self: @This()) void {
+        if (!self.reset_event.isSet()) {
+            self.reset_event.set();
+        }
+    }
+
+    pub fn set_result(self: *@This(), value: anytype) !void {
+        var arena = self.arena;
+        const value_ptr = try arena.allocator().create(@TypeOf(value));
+        value_ptr.* = value;
+
+        self.value = value_ptr;
+        self.set();
+    }
+
+    pub fn set_error(self: *@This(), error_value: anyerror) void {
+        self.error_value = error_value;
+        self.set();
+    }
+
+    pub fn cancel(self: *@This()) void {
+        self.set_error(FutureError.Canceled);
+    }
+};
+
 pub const MpvThreadingInfo = struct {
     allocator: std.mem.Allocator,
     event_handle: *Mpv,
@@ -29,7 +90,8 @@ pub const MpvThreadingInfo = struct {
     log_callback: ?MpvLogMessageCallback = null,
     event_thread: std.Thread,
     mutex: std.Thread.Mutex = std.Thread.Mutex{},
-    thread_event: ?*ResetEvent = null,
+    // thread_event: ResetEvent,
+    futures: std.ArrayList(*Future),
 
     pub fn new(mpv: *Mpv) !*MpvThreadingInfo {
         const allocator = mpv.allocator;
@@ -37,22 +99,31 @@ pub const MpvThreadingInfo = struct {
         var event_thread = try std.Thread.spawn(.{}, event_loop, .{mpv});
         event_thread.detach();
 
-        const event_handle_ptr = try mpv.create_client("MpvThreadHandle");
+        // var reset_event = ResetEvent{};
 
         const info_ptr = try allocator.create(@This());
         info_ptr.* = MpvThreadingInfo{
             .allocator = allocator,
-            .event_handle = event_handle_ptr,
+            .event_handle = try mpv.create_client("MpvThreadHandle"),
             .event_thread = event_thread,
             .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
             .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
             .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
+            .futures = std.ArrayList(*Future).init(allocator),
+            // .thread_event = reset_event,
+            // .thread_event = ResetEvent{},
         };
         return info_ptr;
     }
 
     pub fn free(self: *MpvThreadingInfo) void {
         const allocator = self.allocator;
+        var mutux = self.mutex;
+
+        mutux.lock();
+        defer mutux.unlock();
+
+        // allocator.destroy(self.thread_event);
 
         self.event_callbacks.deinit();
 
@@ -64,6 +135,8 @@ pub const MpvThreadingInfo = struct {
         self.property_callbacks.deinit();
 
         self.command_reply_callbacks.deinit();
+
+        self.event_handle.destroy();
 
         allocator.destroy(self);
     }
@@ -164,6 +237,10 @@ pub fn event_loop(mpv: *Mpv) !void {
     while (mpv.threading_info == null) {}
 
     var threading_info = mpv.threading_info.?;
+    defer {
+        threading_info.free();
+        mpv.threading_info = null;
+    }
     var iter = event_iterator(threading_info.event_handle.*);
     while (iter.next()) |event| {
         const eid = event.event_id;
@@ -183,33 +260,38 @@ pub fn event_loop(mpv: *Mpv) !void {
 
         switch (event.data) {
             .PropertyChange, .GetPropertyReply => |property| {
-                if (threading_info.mutex.tryLock()) {
-                    if (threading_info.property_callbacks.get(property.name)) |cbs| {
-                        for (cbs.items) |cb| {
-                            cb.call(property);
-                        }
+                // if (threading_info.mutex.tryLock()) {
+                threading_info.mutex.lock();
+                defer threading_info.mutex.unlock();
+                if (threading_info.property_callbacks.get(property.name)) |cbs| {
+                    for (cbs.items) |cb| {
+                        cb.call(property);
                     }
-                    threading_info.mutex.unlock();
                 }
+                // }
             },
             .LogMessage => |log| {
-                if (threading_info.mutex.tryLock()) {
-                    if (threading_info.log_callback) |cb| {
-                        cb.call(log);
-                    }
-                    threading_info.mutex.unlock();
+                threading_info.mutex.lock();
+                defer threading_info.mutex.unlock();
+                // if (threading_info.mutex.tryLock()) {
+                if (threading_info.log_callback) |cb| {
+                    cb.call(log);
                 }
+                // threading_info.mutex.unlock();
+                // }
             },
             .CommandReply => |reply| {
                 const key = event.reply_userdata;
                 const cmd_error = event.event_error;
                 const result = reply.result;
-                if (threading_info.mutex.tryLock()) {
-                    if (threading_info.command_reply_callbacks.get(key)) |cb| {
-                        cb.call(cmd_error, result);
-                    }
-                    threading_info.mutex.unlock();
+                threading_info.mutex.lock();
+                defer threading_info.mutex.unlock();
+                // if (threading_info.mutex.tryLock()) {
+                if (threading_info.command_reply_callbacks.get(key)) |cb| {
+                    cb.call(cmd_error, result);
                 }
+                // threading_info.mutex.unlock();
+                // }
             },
             .ClientMessage => {}, // TODO: implement callback handler for client messages
             .Hook => {}, // TODO: same!
@@ -217,12 +299,9 @@ pub fn event_loop(mpv: *Mpv) !void {
         }
 
         if (eid == .Shutdown) {
-            threading_info.event_handle.destroy();
-            if (threading_info.thread_event) |te| {
-                te.set();
-            }
-            threading_info.free();
-            mpv.threading_info = null;
+            // mpv.threading_info.?.thread_event.set();
+            // if (!mpv.threading_info.?.thread_event.isSet()) {
+            // }
             break;
         }
     }
@@ -234,9 +313,11 @@ pub fn register_event_callback(mpv: *Mpv, callback: MpvEventCallback) !MpvEventC
     try mpv.check_core_shutdown();
 
     var threading_info = mpv.threading_info.?;
-    threading_info.mutex.lock();
-    try threading_info.event_callbacks.append(callback);
-    threading_info.mutex.unlock();
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        try threading_info.event_callbacks.append(callback);
+    }
 
     return .{
         .mpv = mpv,
@@ -254,6 +335,8 @@ pub fn unregister_event_callback(mpv: *Mpv, callback: MpvEventCallback) !void {
     std.debug.assert(mpv.threading_info != null);
     var threading_info = mpv.threading_info.?;
 
+    threading_info.mutex.lock();
+    defer threading_info.mutex.unlock();
     for (0.., threading_info.event_callbacks.items) |idx, cb| {
         if (std.meta.eql(cb, callback)) {
             _ = threading_info.event_callbacks.swapRemove(idx);
@@ -267,16 +350,19 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
     try mpv.check_core_shutdown();
 
     var threading_info = mpv.threading_info.?;
-
     const property_name = callback.property_name;
-    if (!threading_info.property_callbacks.contains(property_name)) {
-        const allocator = mpv.allocator;
-        const list_ptr = try allocator.create(std.ArrayList(MpvPropertyCallback));
-        list_ptr.* = std.ArrayList(MpvPropertyCallback).init(allocator);
-        try threading_info.property_callbacks.put(property_name, list_ptr);
+    const allocator = mpv.allocator;
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        if (!threading_info.property_callbacks.contains(property_name)) {
+            const list_ptr = try allocator.create(std.ArrayList(MpvPropertyCallback));
+            list_ptr.* = std.ArrayList(MpvPropertyCallback).init(allocator);
+            try threading_info.property_callbacks.put(property_name, list_ptr);
+        }
+        var property_observers = threading_info.property_callbacks.get(property_name).?;
+        try property_observers.append(callback);
     }
-    var property_observers = threading_info.property_callbacks.get(property_name).?;
-    try property_observers.append(callback);
     try threading_info.event_handle.observe_property(std.hash.Fnv1a_64.hash(property_name), property_name, .Node);
 
     return .{
@@ -296,6 +382,9 @@ pub fn register_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !Mpv
 pub fn unregister_property_callback(mpv: *Mpv, callback: MpvPropertyCallback) !void {
     std.debug.assert(mpv.threading_info != null);
     var threading_info = mpv.threading_info.?;
+
+    threading_info.mutex.lock();
+    defer threading_info.mutex.unlock();
     if (threading_info.property_callbacks.get(callback.property_name)) |cbs| {
         for (0.., cbs.items) |idx, cb| {
             if (std.meta.eql(cb, callback)) {
@@ -315,7 +404,11 @@ pub fn register_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCallb
 
     var threading_info = mpv.threading_info.?;
     const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
-    try threading_info.command_reply_callbacks.put(args_hash, callback);
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        try threading_info.command_reply_callbacks.put(args_hash, callback);
+    }
     try threading_info.event_handle.command_async(args_hash, callback.command_args);
 
     return .{
@@ -338,7 +431,11 @@ pub fn unregister_command_reply_callback(mpv: *Mpv, callback: MpvCommandReplyCal
     var threading_info = mpv.threading_info.?;
     const args_hash = try utils.string_array_hash(mpv.allocator, callback.command_args);
     threading_info.event_handle.abort_async_command(args_hash);
-    _ = threading_info.command_reply_callbacks.remove(args_hash);
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        _ = threading_info.command_reply_callbacks.remove(args_hash);
+    }
 }
 
 /// Register a callback that all of Mpv log messages will be passed to. only one callback can be set.
@@ -347,7 +444,11 @@ pub fn register_log_message_handler(mpv: *Mpv, callback: MpvLogMessageCallback) 
 
     var threading_info = mpv.threading_info.?;
     try threading_info.event_handle.request_log_messages(callback.level);
-    threading_info.log_callback = callback;
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        threading_info.log_callback = callback;
+    }
 
     return .{
         .mpv = mpv,
@@ -368,7 +469,11 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
 
     var threading_info = mpv.threading_info.?;
     try mpv.request_log_messages(.None);
-    threading_info.log_callback = null;
+    {
+        threading_info.mutex.lock();
+        defer threading_info.mutex.unlock();
+        threading_info.log_callback = null;
+    }
 }
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
@@ -376,55 +481,37 @@ pub fn unregister_log_message_handler(mpv: *Mpv) !void {
 /// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEvent {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
-            const data_struct = struct { *ResetEvent, *?MpvEvent };
-            const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
-            var received_event: *ResetEvent = data_ptr.*[0];
-            const event_ptr: *?MpvEvent = data_ptr.*[1];
-
-            event_ptr.* = event;
-            received_event.set();
+            var future: *Future = @ptrCast(@alignCast(user_data));
+            future.set_result(event) catch |err| {
+                future.set_error(err);
+            };
         }
     }.cb;
 
-    const data_struct = struct { *ResetEvent, *?MpvEvent };
-    const sent_data_ptr = try mpv.allocator.create(data_struct);
-    const event_ptr = try mpv.allocator.create(?MpvEvent);
-    event_ptr.* = null;
-    var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{ &received_event, event_ptr };
-    defer {
-        mpv.allocator.destroy(event_ptr);
-        mpv.allocator.destroy(sent_data_ptr);
-    }
+    var future = try Future.new(mpv.allocator);
+    defer future.free();
 
     const unregisterrer = try mpv.register_event_callback(MpvEventCallback{
         .event_ids = event_ids,
         .callback = &cb,
-        .user_data = @ptrCast(sent_data_ptr),
+        .user_data = @ptrCast(future),
         .cond_cb = args.cond_cb,
     });
-    defer unregisterrer.unregister();
-
-    mpv.threading_info.?.thread_event = &received_event;
     defer {
         if (!mpv.core_shutdown) {
-            mpv.threading_info.?.thread_event = null;
+            unregisterrer.unregister();
         }
     }
 
-    if (args.timeout) |timeout| {
-        try received_event.timedWait(@as(u64, timeout * @as(u64, 1e9)));
-    } else {
-        received_event.wait();
-    }
-
-    return event_ptr.* orelse return GenericError.NullValue;
+    const result = try future.wait_result(args.timeout);
+    const event_ptr: *MpvEvent = @ptrCast(@alignCast(result));
+    return event_ptr.*;
 }
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
@@ -432,56 +519,42 @@ pub fn wait_for_event(mpv: *Mpv, event_ids: []const MpvEventId, args: struct {
 /// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_property(mpv: *Mpv, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEventProperty {
     std.debug.assert(mpv.threading_info != null);
     try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
-            const data_struct = struct { *ResetEvent, *?MpvEventProperty };
-            const data_ptr: *data_struct = @ptrCast(@alignCast(user_data.?));
-            var received_event: *ResetEvent = data_ptr.*[0];
-            const property_data_ptr: *?MpvEventProperty = data_ptr.*[1];
-
-            property_data_ptr.* = event;
-            received_event.set();
+            var future: *Future = @ptrCast(@alignCast(user_data));
+            future.set_result(event) catch |err| {
+                future.set_error(err);
+            };
         }
     }.cb;
 
-    const data_struct = struct { *ResetEvent, *?MpvEventProperty };
-    const sent_data_ptr = try mpv.allocator.create(data_struct);
-    const property_data_ptr = try mpv.allocator.create(?MpvEventProperty);
-    property_data_ptr.* = null;
-    var received_event = ResetEvent{};
-    sent_data_ptr.* = data_struct{ &received_event, property_data_ptr };
-    defer {
-        mpv.allocator.destroy(property_data_ptr);
-        mpv.allocator.destroy(sent_data_ptr);
-    }
+    var future = try Future.new(mpv.allocator);
+    defer future.free();
 
     const unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
         .property_name = property_name,
         .callback = &cb,
-        .user_data = @ptrCast(sent_data_ptr),
+        .user_data = future,
         .cond_cb = args.cond_cb,
     });
-    defer unregisterrer.unregister();
-
-    mpv.threading_info.?.thread_event = &received_event;
-    defer mpv.threading_info.?.thread_event = null;
-
-    if (args.timeout) |timeout| {
-        try received_event.timedWait(@as(u64, timeout * @as(u64, 1e9)));
-    } else {
-        received_event.wait();
+    defer {
+        if (!mpv.core_shutdown) {
+            unregisterrer.unregister();
+        }
     }
 
-    return property_data_ptr.* orelse return GenericError.NullValue;
+    const result = try future.wait_result(args.timeout);
+    const property_event_ptr: *MpvEventProperty = @ptrCast(@alignCast(result));
+    return property_event_ptr.*;
 }
 
 /// Wait until the playback has started
 pub fn wait_until_playing(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEventProperty {
     return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout, .cond_cb = struct {
         pub fn cb(event: MpvEventProperty) bool {
@@ -492,7 +565,7 @@ pub fn wait_until_playing(mpv: *Mpv, args: struct {
 
 /// Wait until the current playback is paused or done
 pub fn wait_until_paused(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEventProperty {
     return try mpv.wait_for_property("core-idle", .{ .timeout = args.timeout, .cond_cb = struct {
         pub fn cb(event: MpvEventProperty) bool {
@@ -501,16 +574,16 @@ pub fn wait_until_paused(mpv: *Mpv, args: struct {
     }.cb });
 }
 
-/// Wait until the current playback is finished
+// Wait until the current playback is finished
 pub fn wait_for_playback(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEvent {
     return try mpv.wait_for_event(&.{.EndFile}, .{ .timeout = args.timeout });
 }
 
 /// Wait until the core shutdown.
 pub fn wait_for_shutdown(mpv: *Mpv, args: struct {
-    timeout: ?u32 = null,
+    timeout: ?u64 = null,
 }) !MpvEvent {
     return try mpv.wait_for_event(&.{.Shutdown}, .{ .timeout = args.timeout });
 }
