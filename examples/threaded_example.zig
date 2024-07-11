@@ -7,6 +7,7 @@ const MpvNode = zmpv.MpvNode;
 const MpvEvent = zmpv.MpvEvent;
 const MpvEventProperty = zmpv.MpvEventProperty;
 const MpvEventId = zmpv.MpvEventId;
+const MpvEventLoop = zmpv.MpvEventLoop;
 const MpvEventCallback = zmpv.MpvEventCallback;
 const MpvPropertyCallback = zmpv.MpvPropertyCallback;
 const MpvPropertyData = zmpv.MpvPropertyData;
@@ -29,7 +30,6 @@ pub fn main() !void {
     const filename = args[1];
 
     var mpv = try Mpv.new(allocator, .{
-        .start_event_thread = true,
         .options = &.{
             .{ "osc", "yes" },
             .{ "input-default-bindings", "yes" },
@@ -38,7 +38,10 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    _ = try mpv.register_event_callback(MpvEventCallback{
+    var event_loop = try MpvEventLoop.new(mpv);
+    defer event_loop.free();
+
+    _ = try event_loop.register_event_callback(MpvEventCallback{
         .event_ids = &.{
             .EndFile,
         },
@@ -51,7 +54,7 @@ pub fn main() !void {
         .user_data = null,
     });
 
-    const startfile_callback_unregisterrer = try mpv.register_event_callback(MpvEventCallback{
+    const startfile_callback_unregisterrer = try event_loop.register_event_callback(MpvEventCallback{
         .event_ids = &.{.StartFile},
         .callback = struct {
             pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
@@ -64,7 +67,7 @@ pub fn main() !void {
     // _ = startfile_callback_unregisterrer;
     startfile_callback_unregisterrer.unregister();
 
-    const fullscreen_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
+    const fullscreen_unregisterrer = try event_loop.register_property_callback(MpvPropertyCallback{
         .property_name = "fullscreen",
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
@@ -73,9 +76,10 @@ pub fn main() !void {
             }
         }.cb,
     });
-    fullscreen_unregisterrer.unregister();
+    // fullscreen_unregisterrer.unregister();
+    _ = fullscreen_unregisterrer;
 
-    const pause_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
+    const pause_unregisterrer = try event_loop.register_property_callback(MpvPropertyCallback{
         .property_name = "pause",
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
@@ -84,9 +88,10 @@ pub fn main() !void {
             }
         }.cb,
     });
-    pause_unregisterrer.unregister();
+    // pause_unregisterrer.unregister();
+    _ = pause_unregisterrer;
 
-    const time_pos_callback_unregisterrer = try mpv.register_property_callback(MpvPropertyCallback{
+    const time_pos_callback_unregisterrer = try event_loop.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
@@ -103,8 +108,8 @@ pub fn main() !void {
     time_pos_callback_unregisterrer.unregister();
     // _ = time_pos_callback_unregisterrer;
 
-    const log_handler_unregisterrer = try mpv.register_log_message_handler(.{
-        .level = .V,
+    const log_handler_unregisterrer = try event_loop.register_log_message_handler(.{
+        .level = .Debug,
         .callback = struct {
             pub fn cb(level: MpvLogLevel, prefix: []const u8, text: []const u8, user_data: ?*anyopaque) void {
                 _ = user_data;
@@ -155,20 +160,20 @@ pub fn main() !void {
     //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
     // // };
     // std.log.debug("waited property: {}", .{property});
-    _ = try mpv.wait_until_playing(.{});
-    // const pause_property_copy = try pause_property.copy(mpv.allocator);
-    // defer pause_property_copy.free(mpv.allocator);
-    // std.log.debug("playing started: {}", .{pause_property_copy});
-    // _ = try mpv.wait_until_paused(.{});
-    // std.log.debug("paused", .{});
-    _ = try mpv.wait_for_property("fullscreen", .{
-        .cond_cb = struct {
-            pub fn cb(event: MpvEventProperty) bool {
-                return (event.data.Node.Flag);
-            }
-        }.cb,
-    });
-    std.log.debug("stopped waiting fullscreen", .{});
+    // _ = try event_loop.wait_until_playing(.{});
+    // // const pause_property_copy = try pause_property.copy(mpv.allocator);
+    // // defer pause_property_copy.free(mpv.allocator);
+    // // std.log.debug("playing started: {}", .{pause_property_copy});
+    // // _ = try mpv.wait_until_paused(.{});
+    // // std.log.debug("paused", .{});
+    // _ = try event_loop.wait_for_property("fullscreen", .{
+    //     .cond_cb = struct {
+    //         pub fn cb(event: MpvEventProperty) bool {
+    //             return (event.data.Node.Flag);
+    //         }
+    //     }.cb,
+    // });
+    // std.log.debug("stopped waiting fullscreen", .{});
 
     // try skip_silence(mpv);
     // std.log.debug("finished skipping", .{});
@@ -181,12 +186,14 @@ pub fn main() !void {
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
     // std.log.debug("done playing", .{});
-    const shutdown_evt = mpv.wait_for_shutdown(.{ .timeout = null }) catch |err| {
-        std.log.err("error waiting for shutdown: {}", .{err});
-        std.process.exit(2);
-    };
-    std.log.debug("everything has ended: {}", .{shutdown_evt});
-    // _ = try mpv.wait_until_playing(.{});
+    try event_loop.start(.{ .start_new_thread = false });
+
+    std.log.debug("waiting for the shutdown", .{});
+    // const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
+    //     std.log.err("error waiting for shutdown: {}", .{err});
+    //     std.process.exit(2);
+    // };
+    // std.log.debug("everything has ended: {}", .{shutdown_evt});
 }
 
 fn skip_silence(mpv: *Mpv) !void {

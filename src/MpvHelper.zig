@@ -2,25 +2,16 @@ const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
-const MpvThreadingInfo = @import("./mpv_threading.zig").MpvThreadingInfo;
 
 pub fn new(allocator: std.mem.Allocator, args: struct {
-    start_event_thread: bool = false,
     initialize: bool = true,
     options: []const struct { []const u8, []const u8 },
 }) !*Mpv {
-    var instance: *Mpv = undefined;
     if (args.initialize) {
-        instance = try create_and_initialize(allocator, args.options);
+        return try create_and_initialize(allocator, args.options);
     } else {
-        instance = try create_and_set_options(allocator, args.options);
+        return try create_and_set_options(allocator, args.options);
     }
-
-    if (args.start_event_thread) {
-        instance.threading_info = try MpvThreadingInfo.new(instance);
-    }
-
-    return instance;
 }
 
 /// Create an `Mpv` instance and set options if provided
