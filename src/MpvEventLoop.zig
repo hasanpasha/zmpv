@@ -8,7 +8,6 @@ const MpvEventProperty = @import("./mpv_event_data_types/MpvEventProperty.zig");
 const MpvEventLogMessage = @import("./mpv_event_data_types/MpvEventLogMessage.zig");
 const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
 const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
-const GenericError = @import("./generic_error.zig").GenericError;
 const MpvError = @import("./mpv_error.zig").MpvError;
 const utils = @import("./utils.zig");
 const ResetEvent = std.Thread.ResetEvent;
@@ -16,6 +15,10 @@ const Future = @import("./Future.zig");
 const testing = std.testing;
 
 const Self = @This();
+
+pub const MpvEventLoopError = error {
+    CoreShutdown,
+};
 
 mpv_event_handle: *Mpv,
 event_callbacks: std.ArrayList(MpvEventCallback),
@@ -63,6 +66,10 @@ pub fn free(self: *Self) void {
     self.mpv_event_handle.destroy();
 
     allocator.destroy(self);
+}
+
+pub fn check_core_shutdown(self: Self) MpvEventLoopError!void {
+    if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
 }
 
 pub const MpvEventCallback = struct {
@@ -375,8 +382,8 @@ pub fn unregister_log_message_handler(self: *Self) !void {
 }
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
-/// returns `GenericError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
+/// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
+/// error if timeout is specified, or `MpvEventLoopError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
     timeout: ?u64 = null,
@@ -412,8 +419,8 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
 }
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
-/// returns `GenericError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
+/// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
+/// error if timeout is specified, or `MpvEventLoopError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
     timeout: ?u64 = null,
