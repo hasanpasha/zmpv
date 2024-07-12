@@ -84,7 +84,7 @@ pub const MpvEventCallback = struct {
     user_data: ?*anyopaque = null,
     cond_cb: ?*const fn (MpvEvent) bool = null,
 
-    pub fn call(self: MpvEventCallback, event: MpvEvent) void {
+    pub fn tryCall(self: MpvEventCallback, event: MpvEvent) void {
         const event_id = event.event_id;
         for (self.event_ids) |registerd_event_id| {
             if (registerd_event_id == event_id) {
@@ -106,7 +106,7 @@ pub const MpvPropertyCallback = struct {
     user_data: ?*anyopaque = null,
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
 
-    pub fn call(self: MpvPropertyCallback, property_event: MpvEventProperty) void {
+    pub fn tryCall(self: MpvPropertyCallback, property_event: MpvEventProperty) void {
         if (self.cond_cb) |cond| {
             if (cond(property_event)) {
                 self.callback(property_event, self.user_data);
@@ -196,7 +196,7 @@ pub fn start_event_loop(self: *Self) !void {
             self.mutex.lock();
             defer self.mutex.unlock();
             for (self.event_callbacks.items) |cb| {
-                cb.call(event);
+                cb.tryCall(event);
             }
         }
 
