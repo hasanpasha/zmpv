@@ -156,16 +156,27 @@ const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandR
 
 pub const EventIterator = struct {
     handle: Mpv,
+    wait_flag: union(enum) {
+        NoWait: void,
+        IndefiniteWait: void,
+        TimedWait: f64,
+    } = .{ .IndefiniteWait = {} },
 
     pub fn next(self: EventIterator) ?MpvEvent {
-        const event = self.handle.wait_event(-1);
+        const timeout: f64 = switch (self.wait_flag) {
+            .NoWait => 0,
+            .IndefiniteWait => -1,
+            .TimedWait => |value| value,
+        };
+
+        const event = self.handle.wait_event(timeout);
         if (event.event_id == .None) return null;
         return event;
     }
 };
 
 pub fn event_iterator(mpv: Mpv) EventIterator {
-    return .{ .handle = mpv };
+    return EventIterator{ .handle = mpv, .wait_flag = .{ .IndefiniteWait = {} } };
 }
 
 pub fn start(self: *Self, args: struct {
