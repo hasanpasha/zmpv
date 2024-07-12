@@ -206,7 +206,7 @@ pub fn start_event_loop(self: *Self) !void {
                 defer self.mutex.unlock();
                 if (self.property_callbacks.get(property.name)) |cbs| {
                     for (cbs.items) |cb| {
-                        cb.call(property);
+                        cb.tryCall(property);
                     }
                 }
                 // }
