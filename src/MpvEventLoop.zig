@@ -236,8 +236,6 @@ pub fn start_event_loop(self: *Self) !void {
 
 /// Register a callback that will be called on the specified event occurance.
 pub fn register_event_callback(self: *Self, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
-    // try self.check_core_shutdown();
-
     {
         self.mutex.lock();
         defer self.mutex.unlock();
@@ -268,8 +266,6 @@ pub fn unregister_event_callback(self: *Self, callback: MpvEventCallback) !void 
 
 /// Register a callback that will be called on the specified property event occurance.
 pub fn register_property_callback(self: *Self, callback: MpvPropertyCallback) !MpvPropertyCallbackUnregisterrer {
-    // try self.check_core_shutdown();
-
     const property_name = callback.property_name;
     const allocator = self.allocator;
     {
@@ -388,7 +384,6 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
     timeout: ?u64 = null,
 }) !MpvEvent {
-    // try mpv.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
             var future: *Future = @ptrCast(@alignCast(user_data));
@@ -401,6 +396,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     var future = try Future.new(self.allocator);
     defer future.free();
 
+    try self.check_core_shutdown();
     const unregisterrer = try self.register_event_callback(MpvEventCallback{
         .event_ids = event_ids,
         .callback = &cb,
@@ -408,9 +404,9 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
         .cond_cb = args.cond_cb,
     });
     defer {
-        // if (!self.core_shutdown) {
+        if (!self.core_shutdown) {
             unregisterrer.unregister();
-        // }
+        }
     }
 
     const result = try future.wait_result(args.timeout);
@@ -425,7 +421,6 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
     timeout: ?u64 = null,
 }) !MpvEventProperty {
-    // try self.check_core_shutdown();
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
             var future: *Future = @ptrCast(@alignCast(user_data));
@@ -438,6 +433,7 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     var future = try Future.new(self.allocator);
     defer future.free();
 
+    try self.check_core_shutdown();
     const unregisterrer = try self.register_property_callback(MpvPropertyCallback{
         .property_name = property_name,
         .callback = &cb,
@@ -445,9 +441,9 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
         .cond_cb = args.cond_cb,
     });
     defer {
-        // if (!self.core_shutdown) {
+        if (!self.core_shutdown) {
             unregisterrer.unregister();
-        // }
+        }
     }
 
     const result = try future.wait_result(args.timeout);
