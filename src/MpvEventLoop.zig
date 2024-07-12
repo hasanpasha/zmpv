@@ -154,7 +154,7 @@ const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCal
 const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
 const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
 
-pub const EventIterator = struct {
+pub const MpvEventIterator = struct {
     handle: Mpv,
     wait_flag: union(enum) {
         NoWait: void,
@@ -162,7 +162,7 @@ pub const EventIterator = struct {
         TimedWait: f64,
     } = .{ .IndefiniteWait = {} },
 
-    pub fn next(self: EventIterator) ?MpvEvent {
+    pub fn next(self: MpvEventIterator) ?MpvEvent {
         const timeout: f64 = switch (self.wait_flag) {
             .NoWait => 0,
             .IndefiniteWait => -1,
@@ -175,8 +175,8 @@ pub const EventIterator = struct {
     }
 };
 
-pub fn event_iterator(mpv: Mpv) EventIterator {
-    return EventIterator{ .handle = mpv, .wait_flag = .{ .IndefiniteWait = {} } };
+pub fn event_iterator(mpv: Mpv) MpvEventIterator {
+    return MpvEventIterator{ .handle = mpv, .wait_flag = .{ .IndefiniteWait = {} } };
 }
 
 pub fn start(self: *Self, args: struct {
