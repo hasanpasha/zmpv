@@ -388,7 +388,7 @@ pub fn unregister_log_message_handler(self: *Self) !void {
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
 /// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, `MpvEventLoopError.NullValue` if the core shutdowns while waiting, or
+/// error if timeout is specified, `GenericError.NullValue` if the core shutdowns while waiting, or
 /// `MpvEventLoopError.LoopNotRunning` if this functions is called before starting the loop.
 pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
@@ -428,7 +428,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
 /// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, `MpvEventLoopError.NullValue` if the core shutdowns while waiting, or
+/// error if timeout is specified, `GenericError.NullValue` if the core shutdowns while waiting, or
 /// `MpvEventLoopError.LoopNotRunning` if this functions is called before starting the loop.
 pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
