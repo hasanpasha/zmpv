@@ -2,6 +2,7 @@ const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const MpvNode = @import("./mpv_node.zig").MpvNode;
 const MpvEvent = @import("./MpvEvent.zig");
+const MpvEventIterator = @import("MpvEventIterator.zig");
 const MpvEventData = MpvEvent.MpvEventData;
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const MpvEventProperty = @import("./mpv_event_data_types/MpvEventProperty.zig");
@@ -153,27 +154,6 @@ const MpvEventCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvEventCallback)
 const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCallback);
 const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
 const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
-
-pub const MpvEventIterator = struct {
-    handle: Mpv,
-    wait_flag: union(enum) {
-        NoWait: void,
-        IndefiniteWait: void,
-        TimedWait: f64,
-    } = .{ .IndefiniteWait = {} },
-
-    pub fn next(self: MpvEventIterator) ?MpvEvent {
-        const timeout: f64 = switch (self.wait_flag) {
-            .NoWait => 0,
-            .IndefiniteWait => -1,
-            .TimedWait => |value| value,
-        };
-
-        const event = self.handle.wait_event(timeout);
-        if (event.event_id == .None) return null;
-        return event;
-    }
-};
 
 pub fn event_iterator(mpv: Mpv) MpvEventIterator {
     return MpvEventIterator{ .handle = mpv, .wait_flag = .{ .IndefiniteWait = {} } };
