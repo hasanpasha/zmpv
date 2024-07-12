@@ -155,9 +155,6 @@ const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCal
 const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
 const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
 
-pub fn event_iterator(mpv: Mpv) MpvEventIterator {
-    return MpvEventIterator{ .handle = mpv, .wait_flag = .{ .IndefiniteWait = {} } };
-}
 
 pub fn start(self: *Self, args: struct {
     start_new_thread: bool = false,
@@ -174,7 +171,10 @@ pub fn start_event_loop(self: *Self) !void {
     self.running = true;
     defer self.running = false;
 
-    var iter = event_iterator(self.mpv_event_handle.*);
+    var iter = MpvEventIterator{
+        .handle = self.mpv_event_handle.*,
+        .wait_flag = .{ .IndefiniteWait = {} },
+    };
     while (iter.next()) |event| {
         const eid = event.event_id;
         if (eid == .Shutdown) {
