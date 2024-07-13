@@ -374,7 +374,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
     timeout: ?u64 = null,
 }) !MpvEvent {
-    self.check_running();
+    try self.check_running();
 
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
@@ -414,7 +414,7 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
     timeout: ?u64 = null,
 }) !MpvEventProperty {
-    self.check_running();
+    try self.check_running();
 
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
