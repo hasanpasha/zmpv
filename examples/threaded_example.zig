@@ -176,25 +176,36 @@ pub fn main() !void {
     // std.log.debug("stopped waiting fullscreen", .{});
     try event_loop.start(.{ .start_new_thread = true });
 
-    try skip_silence(mpv, event_loop);
-    std.log.debug("finished skipping", .{});
-    // try skip_silence(mpv);
-    _ = try event_loop.wait_for_property("fullscreen", .{
-        .cond_cb = struct {
-            pub fn cb(property: MpvEventProperty) bool {
-                return (property.data.Node.Flag);
+    const client_message_unregisterrer = try event_loop.register_client_message_callback(.{
+        .target = "hasan",
+        .callback = struct {
+            pub fn cb(message: [][*:0]const u8, _: ?*anyopaque) void {
+                std.log.debug("{s}", .{message});
             }
-        }.cb});
+        }.cb,
+    });
+    // client_message_unregisterrer.unregister();
+    _ = client_message_unregisterrer;
 
-    _ = try event_loop.wait_until_playing(.{});
-    _ = try event_loop.wait_until_paused(.{});
-    std.log.debug("paused", .{});
+    // try skip_silence(mpv, event_loop);
+    // std.log.debug("finished skipping", .{});
+    // // try skip_silence(mpv);
+    // _ = try event_loop.wait_for_property("fullscreen", .{
+    //     .cond_cb = struct {
+    //         pub fn cb(property: MpvEventProperty) bool {
+    //             return (property.data.Node.Flag);
+    //         }
+    //     }.cb});
 
-    _ = event_loop.wait_for_playback(.{}) catch |err| {
-        std.log.err("error waiting for playback: {}", .{err});
-        std.process.exit(1);
-    };
-    std.log.debug("done playing", .{});
+    // _ = try event_loop.wait_until_playing(.{});
+    // _ = try event_loop.wait_until_paused(.{});
+    // std.log.debug("paused", .{});
+
+    // _ = event_loop.wait_for_playback(.{}) catch |err| {
+    //     std.log.err("error waiting for playback: {}", .{err});
+    //     std.process.exit(1);
+    // };
+    // std.log.debug("done playing", .{});
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});

@@ -25,6 +25,7 @@ mpv_event_handle: *Mpv,
 event_callbacks: std.ArrayList(MpvEventCallback),
 property_callbacks: std.StringHashMap(*std.ArrayList(MpvPropertyCallback)),
 command_reply_callbacks: std.AutoHashMap(u64, MpvCommandReplyCallback),
+client_message_callbacks: std.StringHashMap(MpvClientMessageCallback),
 log_callback: ?MpvLogMessageCallback = null,
 mutex: std.Thread.Mutex = std.Thread.Mutex{},
 futures: std.ArrayList(*Future),
@@ -40,6 +41,7 @@ pub fn new(mpv: *Mpv) !*Self {
         .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
         .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
         .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
+        .client_message_callbacks = std.StringHashMap(MpvClientMessageCallback).init(allocator),
         .futures = std.ArrayList(*Future).init(allocator),
         .allocator = allocator,
     };
@@ -63,6 +65,8 @@ pub fn free(self: *Self) void {
     self.property_callbacks.deinit();
 
     self.command_reply_callbacks.deinit();
+
+    self.client_message_callbacks.deinit();
 
     self.futures.deinit();
 
@@ -130,8 +134,16 @@ pub fn start_event_loop(self: *Self) !void {
                     cb.call(cmd_error, result);
                 }
             },
-            .ClientMessage => {}, // TODO: implement callback handler for client messages
-            .Hook => {}, // TODO: same!
+            .ClientMessage => |message| {
+                if (message.args.len == 0) break;
+                self.mutex.lock();
+                defer self.mutex.unlock();
+                const taget = std.mem.sliceTo(message.args[0], 0);
+                if (self.client_message_callbacks.get(taget)) |cb| {
+                    cb.call(message.args[1..message.args.len]);
+                }
+            },
+            .Hook => {},        // TODO: implement callbacks for hooks
             else => {},
         }
 
@@ -366,6 +378,40 @@ pub fn unregister_log_message_handler(self: *Self) !void {
         defer self.mutex.unlock();
         self.log_callback = null;
     }
+}
+
+pub const MpvClientMessageCallback = struct {
+    target: []const u8,
+    callback: *const fn ([][*:0]const u8, ?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+
+    pub fn call(self: MpvClientMessageCallback, message: [][*:0]const u8) void {
+        self.callback(message, self.user_data);
+    }
+};
+
+const MpvClientMessageCallbackUnregisterrer = MpvCallbackUnregisterrer([]const u8);
+
+pub fn register_client_message_callback(self: *Self, callback: MpvClientMessageCallback) !MpvClientMessageCallbackUnregisterrer {
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    try self.client_message_callbacks.put(callback.target, callback);
+
+    return MpvClientMessageCallbackUnregisterrer{
+        .mpv = self,
+        .data = callback.target,
+        .unregisterrer_func = struct {
+            pub fn cb(mpv_event_loop: *Self, target: []const u8) void {
+                mpv_event_loop.unregister_client_message_callback(target);
+            }
+        }.cb,
+    };
+}
+
+pub fn unregister_client_message_callback(self: *Self, target: []const u8) void {
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    _ = self.client_message_callbacks.remove(target);
 }
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
