@@ -5,7 +5,7 @@ const Self = @This();
 
 value: ?*anyopaque = null,
 error_value: anyerror = error.Success,
-reset_event: *ResetEvent,
+reset_event: ResetEvent,
 arena: std.heap.ArenaAllocator,
 
 const FutureError = error {
@@ -16,9 +16,8 @@ pub fn new(allocator: std.mem.Allocator) !*Self {
     var arena = std.heap.ArenaAllocator.init(allocator);
 
     const this = try arena.allocator().create(Self);
-    var reset_event = ResetEvent{};
     this.* = .{
-        .reset_event = &reset_event,
+        .reset_event = ResetEvent{},
         .arena = arena,
     };
     return this;
@@ -28,7 +27,7 @@ pub fn free(self: *Self) void {
     self.arena.deinit();
 }
 
-pub fn wait_result(self: Self, timeout: ?u64) !*anyopaque {
+pub fn wait_result(self: *Self, timeout: ?u64) !*anyopaque {
     if (timeout) |t| {
         try self.reset_event.timedWait(t);
     } else {
@@ -38,7 +37,7 @@ pub fn wait_result(self: Self, timeout: ?u64) !*anyopaque {
     return self.value orelse self.error_value;
 }
 
-fn set(self: Self) void {
+fn set(self: *Self) void {
     if (!self.reset_event.isSet()) {
         self.reset_event.set();
     }
