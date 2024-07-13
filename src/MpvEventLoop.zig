@@ -71,91 +71,6 @@ pub fn free(self: *Self) void {
     allocator.destroy(self);
 }
 
-pub fn check_core_shutdown(self: Self) MpvEventLoopError!void {
-    if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
-}
-
-pub fn check_running(self: Self) MpvEventLoopError!void {
-    if (!self.running) return MpvEventLoopError.LoopNotRunning;
-}
-
-pub const MpvEventCallback = struct {
-    event_ids: []const MpvEventId,
-    callback: *const fn (MpvEvent, ?*anyopaque) void,
-    user_data: ?*anyopaque = null,
-    cond_cb: ?*const fn (MpvEvent) bool = null,
-
-    pub fn tryCall(self: MpvEventCallback, event: MpvEvent) void {
-        const event_id = event.event_id;
-        for (self.event_ids) |registerd_event_id| {
-            if (registerd_event_id == event_id) {
-                if (self.cond_cb) |cond| {
-                    if (cond(event)) {
-                        self.callback(event, self.user_data);
-                    }
-                } else {
-                    self.callback(event, self.user_data);
-                }
-            }
-        }
-    }
-};
-
-pub const MpvPropertyCallback = struct {
-    property_name: []const u8,
-    callback: *const fn (MpvEventProperty, ?*anyopaque) void,
-    user_data: ?*anyopaque = null,
-    cond_cb: ?*const fn (MpvEventProperty) bool = null,
-
-    pub fn tryCall(self: MpvPropertyCallback, property_event: MpvEventProperty) void {
-        if (self.cond_cb) |cond| {
-            if (cond(property_event)) {
-                self.callback(property_event, self.user_data);
-            }
-        } else {
-            self.callback(property_event, self.user_data);
-        }
-    }
-};
-
-pub const MpvCommandReplyCallback = struct {
-    command_args: [][]const u8,
-    callback: *const fn (MpvError, MpvNode, ?*anyopaque) void,
-    user_data: ?*anyopaque = null,
-
-    pub fn call(self: MpvCommandReplyCallback, cmd_error: MpvError, result: MpvNode) void {
-        self.callback(cmd_error, result, self.user_data);
-    }
-};
-
-pub const MpvLogMessageCallback = struct {
-    level: MpvLogLevel,
-    callback: *const fn (MpvLogLevel, []const u8, []const u8, ?*anyopaque) void,
-    user_data: ?*anyopaque = null,
-
-    pub fn call(self: MpvLogMessageCallback, log: MpvEventLogMessage) void {
-        self.callback(log.log_level, log.prefix, log.text, self.user_data);
-    }
-};
-
-pub fn MpvCallbackUnregisterrer(T: type) type {
-    return struct {
-        mpv: *Self,
-        data: T,
-        unregisterrer_func: *const fn (*Self, T) void,
-
-        pub fn unregister(self: @This()) void {
-            self.unregisterrer_func(self.mpv, self.data);
-        }
-    };
-}
-
-const MpvEventCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvEventCallback);
-const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCallback);
-const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
-const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
-
-
 pub fn start(self: *Self, args: struct {
     start_new_thread: bool = false,
 }) !void {
@@ -200,7 +115,6 @@ pub fn start_event_loop(self: *Self) !void {
                         cb.tryCall(property);
                     }
                 }
-                // }
             },
             .LogMessage => |log| {
                 self.mutex.lock();
@@ -215,7 +129,6 @@ pub fn start_event_loop(self: *Self) !void {
                 const result = reply.result;
                 self.mutex.lock();
                 defer self.mutex.unlock();
-                // if (threading_info.mutex.tryLock()) {
                 if (self.command_reply_callbacks.get(key)) |cb| {
                     cb.call(cmd_error, result);
                 }
@@ -226,13 +139,46 @@ pub fn start_event_loop(self: *Self) !void {
         }
 
         if (eid == .Shutdown) {
-            // mpv.threading_info.?.thread_event.set();
-            // if (!mpv.threading_info.?.thread_event.isSet()) {
-            // }
             break;
         }
     }
 }
+
+pub fn MpvCallbackUnregisterrer(T: type) type {
+    return struct {
+        mpv: *Self,
+        data: T,
+        unregisterrer_func: *const fn (*Self, T) void,
+
+        pub fn unregister(self: @This()) void {
+            self.unregisterrer_func(self.mpv, self.data);
+        }
+    };
+}
+
+pub const MpvEventCallback = struct {
+    event_ids: []const MpvEventId,
+    callback: *const fn (MpvEvent, ?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+    cond_cb: ?*const fn (MpvEvent) bool = null,
+
+    pub fn tryCall(self: MpvEventCallback, event: MpvEvent) void {
+        const event_id = event.event_id;
+        for (self.event_ids) |registerd_event_id| {
+            if (registerd_event_id == event_id) {
+                if (self.cond_cb) |cond| {
+                    if (cond(event)) {
+                        self.callback(event, self.user_data);
+                    }
+                } else {
+                    self.callback(event, self.user_data);
+                }
+            }
+        }
+    }
+};
+
+const MpvEventCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvEventCallback);
 
 /// Register a callback that will be called on the specified event occurance.
 pub fn register_event_callback(self: *Self, callback: MpvEventCallback) !MpvEventCallbackUnregisterrer {
@@ -263,6 +209,25 @@ pub fn unregister_event_callback(self: *Self, callback: MpvEventCallback) !void 
         }
     }
 }
+
+pub const MpvPropertyCallback = struct {
+    property_name: []const u8,
+    callback: *const fn (MpvEventProperty, ?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+    cond_cb: ?*const fn (MpvEventProperty) bool = null,
+
+    pub fn tryCall(self: MpvPropertyCallback, property_event: MpvEventProperty) void {
+        if (self.cond_cb) |cond| {
+            if (cond(property_event)) {
+                self.callback(property_event, self.user_data);
+            }
+        } else {
+            self.callback(property_event, self.user_data);
+        }
+    }
+};
+
+const MpvPropertyCallbackUnregisterrer = MpvCallbackUnregisterrer(MpvPropertyCallback);
 
 /// Register a callback that will be called on the specified property event occurance.
 pub fn register_property_callback(self: *Self, callback: MpvPropertyCallback) !MpvPropertyCallbackUnregisterrer {
@@ -311,6 +276,18 @@ pub fn unregister_property_callback(self: *Self, callback: MpvPropertyCallback) 
     }
 }
 
+pub const MpvCommandReplyCallback = struct {
+    command_args: [][]const u8,
+    callback: *const fn (MpvError, MpvNode, ?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+
+    pub fn call(self: MpvCommandReplyCallback, cmd_error: MpvError, result: MpvNode) void {
+        self.callback(cmd_error, result, self.user_data);
+    }
+};
+
+const MpvCommandReplyCallbackUnegisterrer = MpvCallbackUnregisterrer(MpvCommandReplyCallback);
+
 /// Register a callback that will be called when the async command is finished.
 pub fn register_command_reply_callback(self: *Self, callback: MpvCommandReplyCallback) !MpvCommandReplyCallbackUnegisterrer {
     const args_hash = try utils.string_array_hash(self.allocator, callback.command_args);
@@ -344,6 +321,18 @@ pub fn unregister_command_reply_callback(self: *Self, callback: MpvCommandReplyC
         _ = self.command_reply_callbacks.remove(args_hash);
     }
 }
+
+pub const MpvLogMessageCallback = struct {
+    level: MpvLogLevel,
+    callback: *const fn (MpvLogLevel, []const u8, []const u8, ?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+
+    pub fn call(self: MpvLogMessageCallback, log: MpvEventLogMessage) void {
+        self.callback(log.log_level, log.prefix, log.text, self.user_data);
+    }
+};
+
+const MpvLogMessageCallbackUnregisterrer = MpvCallbackUnregisterrer(void);
 
 /// Register a callback that all of Mpv log messages will be passed to. only one callback can be set.
 pub fn register_log_message_handler(self: *Self, callback: MpvLogMessageCallback) !MpvLogMessageCallbackUnregisterrer {
@@ -492,6 +481,15 @@ pub fn wait_for_shutdown(self: *Self, args: struct {
 }) !MpvEvent {
     return try self.wait_for_event(&.{.Shutdown}, .{ .timeout = args.timeout });
 }
+
+fn check_core_shutdown(self: Self) MpvEventLoopError!void {
+    if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
+}
+
+fn check_running(self: Self) MpvEventLoopError!void {
+    if (!self.running) return MpvEventLoopError.LoopNotRunning;
+}
+
 
 test "threaded: simple" {
     const allocator = testing.allocator;
