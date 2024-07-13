@@ -9,10 +9,17 @@ args: [][*:0]const u8,
 
 pub fn from(data_ptr: *anyopaque) Self {
     const data = utils.cast_event_data(data_ptr, c.mpv_event_client_message);
-    const cstring: [*][*:0]const u8 = @ptrCast(data.args);
+
+    var args: [][*:0]const u8 = undefined;
+    if (data.num_args == 0) {
+        args = &.{};
+    } else {
+        const cstring: [*][*:0]const u8 = @ptrCast(data.args);
+        args = cstring[0..@intCast(data.num_args)];
+    }
 
     return Self{
-        .args = cstring[0..@intCast(data.num_args)],
+        .args = args,
     };
 }
 
