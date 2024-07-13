@@ -180,7 +180,7 @@ pub fn main() !void {
         .target = "hasan",
         .callback = struct {
             pub fn cb(message: [][*:0]const u8, _: ?*anyopaque) void {
-                std.log.debug("{s}", .{message});
+                std.log.debug("\"hasan\" received: {s}", .{message});
             }
         }.cb,
     });

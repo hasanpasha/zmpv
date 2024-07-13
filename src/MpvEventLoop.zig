@@ -135,12 +135,13 @@ pub fn start_event_loop(self: *Self) !void {
                 }
             },
             .ClientMessage => |message| {
-                if (message.args.len == 0) break;
-                self.mutex.lock();
-                defer self.mutex.unlock();
-                const taget = std.mem.sliceTo(message.args[0], 0);
-                if (self.client_message_callbacks.get(taget)) |cb| {
-                    cb.call(message.args[1..message.args.len]);
+                if (message.args.len > 0) {
+                    self.mutex.lock();
+                    defer self.mutex.unlock();
+                    const taget = std.mem.sliceTo(message.args[0], 0);
+                    if (self.client_message_callbacks.get(taget)) |cb| {
+                        cb.call(message.args[1..message.args.len]);
+                    }
                 }
             },
             .Hook => {},        // TODO: implement callbacks for hooks
