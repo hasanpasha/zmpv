@@ -19,7 +19,6 @@ const Self = @This();
 
 pub const MpvEventLoopError = error {
     CoreShutdown,
-    LoopNotRunning,
 };
 
 mpv_event_handle: *Mpv,
@@ -30,7 +29,6 @@ log_callback: ?MpvLogMessageCallback = null,
 mutex: std.Thread.Mutex = std.Thread.Mutex{},
 futures: std.ArrayList(*Future),
 core_shutdown: bool = false,
-running: bool = false,
 allocator: std.mem.Allocator,
 
 pub fn new(mpv: *Mpv) !*Self {
@@ -83,9 +81,6 @@ pub fn start(self: *Self, args: struct {
 }
 
 pub fn start_event_loop(self: *Self) !void {
-    self.running = true;
-    defer self.running = false;
-
     var iter = MpvEventIterator{
         .handle = self.mpv_event_handle.*,
         .wait_flag = .{ .IndefiniteWait = {} },
@@ -368,14 +363,11 @@ pub fn unregister_log_message_handler(self: *Self) !void {
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.
 /// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, `GenericError.NullValue` if the core shutdowns while waiting, or
-/// `MpvEventLoopError.LoopNotRunning` if this functions is called before starting the loop.
+/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     cond_cb: ?*const fn (MpvEvent) bool = null,
     timeout: ?u64 = null,
 }) !MpvEvent {
-    try self.check_running();
-
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
             var future: *Future = @ptrCast(@alignCast(user_data));
@@ -408,14 +400,11 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
 /// returns `MpvEventLoopError.CoreShutdown` when the core shutdowns befores reaching this wait, `Timeout`
-/// error if timeout is specified, `GenericError.NullValue` if the core shutdowns while waiting, or
-/// `MpvEventLoopError.LoopNotRunning` if this functions is called before starting the loop.
+/// error if timeout is specified, or `GenericError.NullValue` if the core shutdowns while waiting.
 pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
     timeout: ?u64 = null,
 }) !MpvEventProperty {
-    try self.check_running();
-
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
             var future: *Future = @ptrCast(@alignCast(user_data));
@@ -485,11 +474,6 @@ pub fn wait_for_shutdown(self: *Self, args: struct {
 fn check_core_shutdown(self: Self) MpvEventLoopError!void {
     if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
 }
-
-fn check_running(self: Self) MpvEventLoopError!void {
-    if (!self.running) return MpvEventLoopError.LoopNotRunning;
-}
-
 
 test "EventLoop: simple" {
     const allocator = testing.allocator;
