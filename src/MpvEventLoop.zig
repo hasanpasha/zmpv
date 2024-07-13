@@ -491,14 +491,17 @@ fn check_running(self: Self) MpvEventLoopError!void {
 }
 
 
-test "threaded: simple" {
+test "EventLoop: simple" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
-        .start_event_thread = true,
         .options = &.{},
     });
     defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+    try event_loop.start(.{ .start_new_thread = true });
 
     try mpv.loadfile("sample.mp4", .{});
 
@@ -509,20 +512,23 @@ test "threaded: simple" {
         }
     }.cb, .{mpv});
 
-    _ = try mpv.wait_for_shutdown(.{});
+    _ = try event_loop.wait_for_shutdown(.{});
 }
 
-test "threaded: register_event" {
+test "EventLoop: register_event" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
-        .start_event_thread = true,
         .options = &.{},
     });
     defer mpv.terminate_destroy();
 
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+    try event_loop.start(.{ .start_new_thread = true });
+
     var callback_event = ResetEvent{};
-    _ = try mpv.register_event_callback(MpvEventCallback{ .event_ids = &.{MpvEventId.FileLoaded}, .callback = struct {
+    _ = try event_loop.register_event_callback(MpvEventCallback{ .event_ids = &.{MpvEventId.FileLoaded}, .callback = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
             _ = event;
             const called_ptr: *ResetEvent = @ptrCast(@alignCast(user_data));
@@ -539,5 +545,5 @@ test "threaded: register_event" {
         }
     }.cb, .{mpv});
 
-    _ = try mpv.wait_for_shutdown(.{});
+    _ = try event_loop.wait_for_shutdown(.{});
 }
