@@ -36,7 +36,7 @@ pub fn new(mpv: *Mpv) !*Self {
 
     const instance_ptr = try allocator.create(Self);
     instance_ptr.* = Self{
-        .mpv_event_handle = try mpv.create_client("MpvThreadHandle"),
+        .mpv_event_handle = try mpv.create_client("MpvEventLoopHandler"),
         .event_callbacks = std.ArrayList(MpvEventCallback).init(allocator),
         .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
         .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
@@ -63,6 +63,8 @@ pub fn free(self: *Self) void {
     self.property_callbacks.deinit();
 
     self.command_reply_callbacks.deinit();
+
+    self.futures.deinit();
 
     self.mpv_event_handle.destroy();
 
@@ -134,6 +136,11 @@ pub fn start_event_loop(self: *Self) !void {
         }
 
         if (eid == .Shutdown) {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            for (self.futures.items) |future| {
+                future.cancel();
+            }
             break;
         }
     }
@@ -393,6 +400,9 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
         }
     }
 
+    try self.future_add(future);
+    defer self.future_remove(future);
+
     const result = try future.wait_result(args.timeout);
     const event_ptr: *MpvEvent = @ptrCast(@alignCast(result));
     return event_ptr.*;
@@ -429,6 +439,9 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
             unregisterrer.unregister();
         }
     }
+
+    try self.future_add(future);
+    defer self.future_remove(future);
 
     const result = try future.wait_result(args.timeout);
     const property_event_ptr: *MpvEventProperty = @ptrCast(@alignCast(result));
@@ -473,6 +486,23 @@ pub fn wait_for_shutdown(self: *Self, args: struct {
 
 fn check_core_shutdown(self: Self) MpvEventLoopError!void {
     if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
+}
+
+fn future_add(self: *Self, future: *Future) !void {
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    try self.futures.append(future);
+}
+
+fn future_remove(self: *Self, future: *Future) void {
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    for (0.., self.futures.items) |idx, item| {
+        if (std.meta.eql(item, future)) {
+            _ = self.futures.swapRemove(idx);
+            break;
+        }
+    }
 }
 
 test "EventLoop: simple" {

@@ -174,38 +174,51 @@ pub fn main() !void {
     //     }.cb,
     // });
     // std.log.debug("stopped waiting fullscreen", .{});
+    try event_loop.start(.{ .start_new_thread = true });
 
+    try skip_silence(mpv, event_loop);
+    std.log.debug("finished skipping", .{});
     // try skip_silence(mpv);
-    // std.log.debug("finished skipping", .{});
-    // try skip_silence(mpv);
-    // _ = mpv.wait_for_playback(.{}) catch |err| {
-    //     std.log.err("error waiting for playback: {}", .{err});
-    //     std.process.exit(1);
-    // };
+    _ = try event_loop.wait_for_property("fullscreen", .{
+        .cond_cb = struct {
+            pub fn cb(property: MpvEventProperty) bool {
+                return (property.data.Node.Flag);
+            }
+        }.cb});
+
+    _ = try event_loop.wait_until_playing(.{});
+    _ = try event_loop.wait_until_paused(.{});
+    std.log.debug("paused", .{});
+
+    _ = event_loop.wait_for_playback(.{}) catch |err| {
+        std.log.err("error waiting for playback: {}", .{err});
+        std.process.exit(1);
+    };
+    std.log.debug("done playing", .{});
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
-    // std.log.debug("done playing", .{});
-    try event_loop.start(.{ .start_new_thread = false });
 
     std.log.debug("waiting for the shutdown", .{});
-    // const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
-    //     std.log.err("error waiting for shutdown: {}", .{err});
-    //     std.process.exit(2);
-    // };
-    // std.log.debug("everything has ended: {}", .{shutdown_evt});
+    const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
+        std.log.err("error waiting for shutdown: {}", .{err});
+        std.process.exit(2);
+    };
+    std.log.debug("everything has ended: {}", .{shutdown_evt});
 }
 
-fn skip_silence(mpv: *Mpv) !void {
-    try mpv.request_log_messages(.Debug);
+fn skip_silence(mpv: *Mpv, event_loop: *MpvEventLoop) !void {
+    try event_loop.mpv_event_handle.request_log_messages(.Debug);
     try mpv.set_property_string("af", "lavfi=[silencedetect=n=-20dB:d=1]");
     try mpv.set_property("speed", .INT64, .{ .INT64 = 100 });
-    const result = try mpv.wait_for_event(&.{.LogMessage}, .{
+
+    const result = try event_loop.wait_for_event(&.{.LogMessage}, .{
         .cond_cb = struct {
             pub fn cb(event: MpvEvent) bool {
                 const log = event.data.LogMessage;
                 const text = log.text[0..(log.text.len - 1)];
                 var iter = std.mem.split(u8, text, " ");
+                std.log.debug("checking silence_end", .{});
                 while (iter.next()) |tok| {
                     if (std.mem.eql(u8, tok, "silence_end:")) {
                         std.log.debug("found silence end: {s}", .{iter.peek().?});
