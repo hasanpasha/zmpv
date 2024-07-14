@@ -38,8 +38,8 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    var event_loop = try MpvEventLoop.new(mpv);
-    defer event_loop.free();
+    var event_loop = try mpv.create_and_start_event_loop(.{});
+    // defer event_loop.free();
 
     _ = try event_loop.register_event_callback(MpvEventCallback{
         .event_ids = &.{
@@ -172,7 +172,6 @@ pub fn main() !void {
     //     }.cb,
     // });
     // std.log.debug("stopped waiting fullscreen", .{});
-    try event_loop.start(.{ .start_new_thread = true });
 
     try event_loop.register_hook_callback(.{
         .hook = .Load,

@@ -2,6 +2,7 @@ const std = @import("std");
 const Mpv = @import("./Mpv.zig");
 const MpvRenderContext = @import("./MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const MpvEventLoop = @import("MpvEventLoop.zig");
 
 pub fn new(allocator: std.mem.Allocator, args: struct {
     initialize: bool = true,
@@ -12,6 +13,14 @@ pub fn new(allocator: std.mem.Allocator, args: struct {
     } else {
         return try create_and_set_options(allocator, args.options);
     }
+}
+
+pub fn create_and_start_event_loop(self: *Mpv, args: struct {
+    threading: bool = true,
+}) !*MpvEventLoop {
+    const instance = try MpvEventLoop.new(self);
+    try instance.start(.{ .start_new_thread = args.threading });
+    return instance;
 }
 
 /// Create an `Mpv` instance and set options if provided
