@@ -26,6 +26,7 @@ event_callbacks: std.ArrayList(MpvEventCallback),
 property_callbacks: std.StringHashMap(*std.ArrayList(MpvPropertyCallback)),
 command_reply_callbacks: std.AutoHashMap(u64, MpvCommandReplyCallback),
 client_message_callbacks: std.StringHashMap(MpvClientMessageCallback),
+hook_callbacks: std.StringHashMap(*std.AutoHashMap(usize, MpvHookCallback)),
 log_callback: ?MpvLogMessageCallback = null,
 mutex: std.Thread.Mutex = std.Thread.Mutex{},
 futures: std.ArrayList(*Future),
@@ -42,6 +43,7 @@ pub fn new(mpv: *Mpv) !*Self {
         .property_callbacks = std.StringHashMap(*std.ArrayList(MpvPropertyCallback)).init(allocator),
         .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
         .client_message_callbacks = std.StringHashMap(MpvClientMessageCallback).init(allocator),
+        .hook_callbacks = std.StringHashMap(*std.AutoHashMap(usize, MpvHookCallback)).init(allocator),
         .futures = std.ArrayList(*Future).init(allocator),
         .allocator = allocator,
     };
@@ -67,6 +69,13 @@ pub fn free(self: *Self) void {
     self.command_reply_callbacks.deinit();
 
     self.client_message_callbacks.deinit();
+
+    var hook_cbs_iter = self.hook_callbacks.valueIterator();
+    while (hook_cbs_iter.next()) |cbs| {
+        cbs.*.deinit();
+        allocator.destroy(cbs.*);
+    }
+    self.hook_callbacks.deinit();
 
     self.futures.deinit();
 
@@ -144,7 +153,17 @@ pub fn start_event_loop(self: *Self) !void {
                     }
                 }
             },
-            .Hook => {},        // TODO: implement callbacks for hooks
+            .Hook => |hook| {
+                self.mutex.lock();
+                defer self.mutex.unlock();
+                if (self.hook_callbacks.get(hook.name)) |cbs| {
+                    const cb_idx: usize = @intCast(event.reply_userdata);
+                    if (cbs.fetchRemove(cb_idx)) |pair| {
+                        pair.value.call();
+                    }
+                }
+                try self.mpv_event_handle.hook_continue(hook.id);
+            },
             else => {},
         }
 
@@ -413,6 +432,56 @@ pub fn unregister_client_message_callback(self: *Self, target: []const u8) void 
     self.mutex.lock();
     defer self.mutex.unlock();
     _ = self.client_message_callbacks.remove(target);
+}
+
+pub const MpvHook = enum {
+    Load,
+    LoadFail,
+    Preloaded,
+    Unload,
+    BeforeStartFile,
+    AfterStartFile,
+
+    pub fn to_string(self: @This()) []const u8 {
+        return switch (self) {
+            .Load => "on_load",
+            .LoadFail => "on_load_fail",
+            .Preloaded => "on_preloaded",
+            .Unload => "on_unload",
+            .BeforeStartFile => "on_before_start_file",
+            .AfterStartFile => "on_after_end_file",
+        };
+    }
+};
+
+pub const MpvHookCallback = struct {
+    hook: MpvHook,
+    callback: *const fn (?*anyopaque) void,
+    user_data: ?*anyopaque = null,
+
+
+    pub fn call(self: MpvHookCallback) void {
+        self.callback(self.user_data);
+    }
+};
+
+pub fn register_hook_callback(self: *Self, callback: MpvHookCallback) !void {
+    const hook_name = callback.hook.to_string();
+    var cb_idx: usize = undefined;
+    const allocator = self.allocator;
+    {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        if (!self.hook_callbacks.contains(hook_name)) {
+            const list_ptr = try allocator.create(std.AutoHashMap(usize, MpvHookCallback));
+            list_ptr.* = std.AutoHashMap(usize, MpvHookCallback).init(allocator);
+            try self.hook_callbacks.put(hook_name, list_ptr);
+        }
+        var hook_cbs = self.hook_callbacks.get(hook_name).?;
+        cb_idx = @intCast(hook_cbs.count());
+        try hook_cbs.put(cb_idx, callback);
+    }
+    try self.mpv_event_handle.hook_add(@intCast(cb_idx), hook_name, @intCast(cb_idx));
 }
 
 /// Wait for specified events, if `cond_cb` is specified then wait until cond_cb(event) is `true`.

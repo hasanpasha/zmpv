@@ -121,8 +121,6 @@ pub fn main() !void {
     log_handler_unregisterrer.unregister();
     // _ = log_handler_unregisterrer;
 
-    var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
-    try mpv.command_async(0, &loadfile_cmd_args);
     // try mpv.command(&loadfile_cmd_args);
     // try mpv.wait_until_playing();
     // const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
@@ -175,6 +173,39 @@ pub fn main() !void {
     // });
     // std.log.debug("stopped waiting fullscreen", .{});
     try event_loop.start(.{ .start_new_thread = true });
+
+    try event_loop.register_hook_callback(.{
+        .hook = .Load,
+        .callback = struct {
+            pub fn cb(_: ?*anyopaque) void {
+                std.log.debug("Hook load", .{});
+            }
+        }.cb,
+    });
+
+    var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
+    try mpv.command(&loadfile_cmd_args);
+
+    try event_loop.register_hook_callback(.{
+        .hook = .Unload,
+        .callback = struct {
+            pub fn cb(_: ?*anyopaque) void {
+                std.log.debug("HOOK unload", .{});
+            }
+        }.cb,
+    });
+
+    try event_loop.register_hook_callback(.{
+        .hook = .Unload,
+        .callback = struct {
+            pub fn cb(_: ?*anyopaque) void {
+                std.log.debug("HOOK unload 2", .{});
+                for (0..10) |idx| {
+                    std.log.debug("doing think in unload hook: {}", .{idx});
+                }
+            }
+        }.cb,
+    });
 
     const client_message_unregisterrer = try event_loop.register_client_message_callback(.{
         .target = "hasan",
