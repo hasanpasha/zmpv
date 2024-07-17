@@ -5,7 +5,7 @@ const Self = @This();
 
 value: ?*anyopaque = null,
 error_value: anyerror = error.Success,
-reset_event: ResetEvent,
+reset_event: ResetEvent = ResetEvent{},
 arena: std.heap.ArenaAllocator,
 
 const FutureError = error {
@@ -17,7 +17,6 @@ pub fn new(allocator: std.mem.Allocator) !*Self {
 
     const this = try arena.allocator().create(Self);
     this.* = .{
-        .reset_event = ResetEvent{},
         .arena = arena,
     };
     return this;
