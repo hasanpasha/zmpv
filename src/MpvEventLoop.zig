@@ -624,7 +624,113 @@ fn future_remove(self: *Self, future: *Future) void {
     }
 }
 
-test "EventLoop: simple" {
+test "EventLoop: non-threading-simple" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    _ = try std.Thread.spawn(.{}, struct {
+        pub fn cb(player: *Mpv) void {
+            std.time.sleep(1 * 1e9);
+            player.command_string("quit") catch {};
+        }
+    }.cb, .{mpv});
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: non-threading-register_event_callback" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    try mpv.command_string("loadfile sample.mp4");
+
+    _ = try event_loop.register_event_callback(.{
+        .event_ids = &.{ .FileLoaded },
+        .callback = struct {
+            pub fn cb(_: MpvEvent, mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: non-threading-register_property_callback" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    try mpv.command_string("loadfile sample.mp4");
+
+    _ = try event_loop.register_property_callback(.{
+        .property_name = "playlist",
+        .callback = struct {
+            pub fn cb(_: MpvEventProperty, mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: non-threading-register_command_reply_callback" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    var cmd_args = [_][]const u8{"loadfile", "sample.mp4"};
+    _ = try event_loop.register_command_reply_callback(.{
+        .command_args = &cmd_args,
+        .callback = struct {
+            pub fn cb(err: MpvError, _: MpvNode, mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                if (err == MpvError.Success)
+                    player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: threading-simple" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
@@ -648,7 +754,7 @@ test "EventLoop: simple" {
     _ = try event_loop.wait_for_shutdown(.{});
 }
 
-test "EventLoop: register_event" {
+test "EventLoop: threading-register_event_callback" {
     const allocator = testing.allocator;
 
     var mpv = try Mpv.new(allocator, .{
