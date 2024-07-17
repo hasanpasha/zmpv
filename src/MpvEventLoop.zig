@@ -333,7 +333,7 @@ pub fn register_command_reply_callback(self: *Self, callback: MpvCommandReplyCal
         defer self.mutex.unlock();
         try self.command_reply_callbacks.put(args_hash, callback);
     }
-    try self.event_handle.command_async(args_hash, callback.command_args);
+    try self.mpv_event_handle.command_async(args_hash, callback.command_args);
 
     return .{
         .mpv = self,
@@ -351,7 +351,7 @@ pub fn register_command_reply_callback(self: *Self, callback: MpvCommandReplyCal
 /// Unregister the async command callback. and abort the command if it's still not done.
 pub fn unregister_command_reply_callback(self: *Self, callback: MpvCommandReplyCallback) !void {
     const args_hash = try utils.string_array_hash(self.allocator, callback.command_args);
-    self.event_handle.abort_async_command(args_hash);
+    self.mpv_event_handle.abort_async_command(args_hash);
     {
         self.mutex.lock();
         defer self.mutex.unlock();
