@@ -9,7 +9,7 @@ const Self = @This();
 result: MpvNode,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_command);
+    const data = utils.casted_anyopaque_ptr_value(c.mpv_event_command, data_ptr);
 
     return Self{
         .result = MpvNode.from(@constCast(&data.result)),

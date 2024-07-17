@@ -8,7 +8,7 @@ const Self = @This();
 args: [][*:0]const u8,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_client_message);
+    const data = utils.casted_anyopaque_ptr_value(c.mpv_event_client_message, data_ptr);
 
     var args: [][*:0]const u8 = undefined;
     if (data.num_args == 0) {

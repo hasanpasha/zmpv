@@ -25,8 +25,8 @@ pub fn cast_anyopaque_ptr(T: type, ptr: ?*anyopaque) *T {
     return @ptrCast(@alignCast(ptr));
 }
 
-pub fn cast_event_data(data_ptr: ?*anyopaque, return_data: type) return_data {
-    const casted_data: *return_data = @ptrCast(@alignCast(data_ptr));
+pub fn casted_anyopaque_ptr_value(T: type, ptr: ?*anyopaque) T {
+    const casted_data: *T = @ptrCast(@alignCast(ptr));
     return casted_data.*;
 }
 

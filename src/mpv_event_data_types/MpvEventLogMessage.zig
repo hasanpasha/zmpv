@@ -11,7 +11,7 @@ text: []const u8,
 log_level: MpvLogLevel,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const log = utils.cast_event_data(data_ptr, c.mpv_event_log_message);
+    const log = utils.casted_anyopaque_ptr_value(c.mpv_event_log_message, data_ptr);
     return Self{
         .prefix = std.mem.sliceTo(log.prefix, 0),
         .level = std.mem.sliceTo(log.level, 0),

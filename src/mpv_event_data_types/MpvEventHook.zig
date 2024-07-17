@@ -9,7 +9,7 @@ name: []const u8,
 id: u64,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_hook);
+    const data = utils.casted_anyopaque_ptr_value(c.mpv_event_hook, data_ptr);
 
     return Self{
         .name = std.mem.sliceTo(data.name, 0),
