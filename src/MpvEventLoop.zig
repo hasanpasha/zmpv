@@ -3,6 +3,7 @@ const Mpv = @import("./Mpv.zig");
 const MpvNode = @import("./mpv_node.zig").MpvNode;
 const MpvEvent = @import("./MpvEvent.zig");
 const MpvEventIterator = @import("MpvEventIterator.zig");
+const MpvEventIteratorWaitFlag = MpvEventIterator.MpvEventIteratorWaitFlag;
 const MpvEventData = MpvEvent.MpvEventData;
 const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
 const MpvEventProperty = @import("./mpv_event_data_types/MpvEventProperty.zig");
@@ -88,17 +89,20 @@ pub fn start(self: *Self, args: struct {
     start_new_thread: bool = false,
 }) !void {
     if (args.start_new_thread) {
-        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self});
+        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, .{}});
         event_thread.detach();
     } else {
-        try self.start_event_loop();
+        try self.start_event_loop(.{});
     }
 }
 
-pub fn start_event_loop(self: *Self) !void {
+pub fn start_event_loop(self: *Self, args: struct {
+    iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
+}) !void {
+
     var iter = MpvEventIterator{
         .handle = self.mpv_event_handle.*,
-        .wait_flag = .{ .IndefiniteWait = {} },
+        .wait_flag = args.iter_wait_flag,
     };
     while (iter.next()) |event| {
         const eid = event.event_id;
