@@ -21,6 +21,10 @@ pub fn free_cstring_array(c_array: [][*c]const u8, n: usize, allocator: std.mem.
     allocator.free(array);
 }
 
+pub fn cast_anyopaque_ptr(T: type, ptr: ?*anyopaque) *T {
+    return @ptrCast(@alignCast(ptr));
+}
+
 pub fn cast_event_data(data_ptr: ?*anyopaque, return_data: type) return_data {
     const casted_data: *return_data = @ptrCast(@alignCast(data_ptr));
     return casted_data.*;
