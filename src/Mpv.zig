@@ -57,7 +57,7 @@ pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvProp
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, format.to(), data_ptr));
+    try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, format.to_c(), data_ptr));
 }
 
 pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
@@ -130,7 +130,7 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
     var output_mem: format.CDataType() = undefined;
     const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
 
-    try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to(), data_ptr));
+    try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to_c(), data_ptr));
     defer {
         switch (format) {
             .String, .OSDString => {
@@ -168,7 +168,7 @@ pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
 }
 
 pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
-    try catch_mpv_error(c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to()));
+    try catch_mpv_error(c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to_c()));
 }
 
 pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
@@ -176,7 +176,7 @@ pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvP
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_property(self.handle, name.ptr, format.to(), data_ptr));
+    try catch_mpv_error(c.mpv_set_property(self.handle, name.ptr, format.to_c(), data_ptr));
 }
 
 pub fn set_property_string(self: Self, name: []const u8, value: []const u8) MpvError!void {
@@ -188,7 +188,7 @@ pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, for
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, format.to(), data_ptr));
+    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, format.to_c(), data_ptr));
 }
 
 pub fn del_property(self: Self, name: []const u8) MpvError!void {
@@ -196,7 +196,7 @@ pub fn del_property(self: Self, name: []const u8) MpvError!void {
 }
 
 pub fn observe_property(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat) MpvError!void {
-    try catch_mpv_error(c.mpv_observe_property(self.handle, reply_userdata, name.ptr, format.to()));
+    try catch_mpv_error(c.mpv_observe_property(self.handle, reply_userdata, name.ptr, format.to_c()));
 }
 
 pub fn unobserve_property(self: Self, registered_reply_userdata: u64) MpvError!void {

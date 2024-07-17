@@ -1,33 +1,33 @@
 const c = @import("./c.zig");
 const testing = @import("std").testing;
 
-pub const MpvEventId = enum(u8) {
-    None = 0,
-    Shutdown = 1,
-    LogMessage = 2,
-    GetPropertyReply = 3,
-    SetPropertyReply = 4,
-    CommandReply = 5,
-    StartFile = 6,
-    EndFile = 7,
-    FileLoaded = 8,
-    Idle = 11,
-    Tick = 14,
-    ClientMessage = 16,
-    VideoReconfig = 17,
-    AudioReconfig = 18,
-    Seek = 20,
-    PlaybackRestart = 21,
-    PropertyChange = 22,
-    QueueOverflow = 24,
-    Hook = 25,
+pub const MpvEventId = enum(c.mpv_event_id) {
+    None = c.MPV_EVENT_NONE,
+    Shutdown = c.MPV_EVENT_SHUTDOWN,
+    LogMessage = c.MPV_EVENT_LOG_MESSAGE,
+    GetPropertyReply = c.MPV_EVENT_GET_PROPERTY_REPLY,
+    SetPropertyReply = c.MPV_EVENT_SET_PROPERTY_REPLY,
+    CommandReply = c.MPV_EVENT_COMMAND_REPLY,
+    StartFile = c.MPV_EVENT_START_FILE,
+    EndFile = c.MPV_EVENT_END_FILE,
+    FileLoaded = c.MPV_EVENT_FILE_LOADED,
+    Idle = c.MPV_EVENT_IDLE,
+    Tick = c.MPV_EVENT_TICK,
+    ClientMessage = c.MPV_EVENT_CLIENT_MESSAGE,
+    VideoReconfig = c.MPV_EVENT_VIDEO_RECONFIG,
+    AudioReconfig = c.MPV_EVENT_AUDIO_RECONFIG,
+    Seek = c.MPV_EVENT_SEEK,
+    PlaybackRestart = c.MPV_EVENT_PLAYBACK_RESTART,
+    PropertyChange = c.MPV_EVENT_PROPERTY_CHANGE,
+    QueueOverflow = c.MPV_EVENT_QUEUE_OVERFLOW,
+    Hook = c.MPV_EVENT_HOOK,
 
     pub fn from(event_id: c.mpv_event_id) MpvEventId {
         return @enumFromInt(event_id);
     }
 
     pub fn to_c(self: MpvEventId) c.mpv_event_id {
-        return @intCast(@intFromEnum(self));
+        return @intFromEnum(self);
     }
 };
 

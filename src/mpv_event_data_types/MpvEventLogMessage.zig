@@ -35,15 +35,15 @@ pub fn free(self: Self, allocator: std.mem.Allocator) void {
     allocator.free(self.text);
 }
 
-pub const MpvLogLevel = enum(u8) {
-    None = 0,
-    Fatal = 10,
-    Error = 20,
-    Warn = 30,
-    Info = 40,
-    V = 50,
-    Debug = 60,
-    Trace = 70,
+pub const MpvLogLevel = enum(c.mpv_log_level) {
+    None = c.MPV_LOG_LEVEL_NONE,
+    Fatal = c.MPV_LOG_LEVEL_FATAL,
+    Error = c.MPV_LOG_LEVEL_ERROR,
+    Warn = c.MPV_LOG_LEVEL_WARN,
+    Info = c.MPV_LOG_LEVEL_INFO,
+    V = c.MPV_LOG_LEVEL_V,
+    Debug = c.MPV_LOG_LEVEL_DEBUG,
+    Trace = c.MPV_LOG_LEVEL_TRACE,
 
     pub fn from(level: c.mpv_log_level) MpvLogLevel {
         return @enumFromInt(level);
