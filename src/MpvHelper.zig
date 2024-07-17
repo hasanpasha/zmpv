@@ -15,7 +15,7 @@ pub fn new(allocator: std.mem.Allocator, args: struct {
     }
 }
 
-pub fn create_and_start_event_loop(self: *Mpv, args: struct {
+pub fn create_and_run_event_loop_forever(self: *Mpv, args: struct {
     threading: bool = true,
 }) !*MpvEventLoop {
     const instance = try MpvEventLoop.new(self);

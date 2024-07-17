@@ -38,7 +38,7 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    var event_loop = try mpv.create_and_start_event_loop(.{});
+    var event_loop = try mpv.create_and_run_event_loop_forever(.{});
     // defer event_loop.free();
 
     _ = try event_loop.register_event_callback(MpvEventCallback{
