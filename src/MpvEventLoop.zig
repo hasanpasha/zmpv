@@ -87,12 +87,13 @@ pub fn free(self: *Self) void {
 
 pub fn start(self: *Self, args: struct {
     start_new_thread: bool = false,
+    iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
 }) !void {
     if (args.start_new_thread) {
-        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, .{}});
+        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, .{ args.iter_wait_flag }});
         event_thread.detach();
     } else {
-        try self.start_event_loop(.{});
+        try self.start_event_loop(.{ args.start_new_thread });
     }
 }
 
