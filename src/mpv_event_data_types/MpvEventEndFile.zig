@@ -13,7 +13,7 @@ playlist_insert_num_entries: i64,
 event_error: MpvError,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.casted_anyopaque_ptr_value(c.mpv_event_end_file, data_ptr);
+    const data = utils.cast_anyopaque_ptr(c.mpv_event_end_file, data_ptr).*;
     return Self{
         .reason = MpvEventEndFileReason.from(data.reason),
         .playlist_entry_id = data.playlist_entry_id,

@@ -25,10 +25,10 @@ pub fn cast_anyopaque_ptr(T: type, ptr: ?*anyopaque) *T {
     return @ptrCast(@alignCast(ptr));
 }
 
-pub fn casted_anyopaque_ptr_value(T: type, ptr: ?*anyopaque) T {
-    const casted_data: *T = @ptrCast(@alignCast(ptr));
-    return casted_data.*;
-}
+// pub fn casted_anyopaque_ptr_value(T: type, ptr: ?*anyopaque) T {
+//     const casted_data: *T = @ptrCast(@alignCast(ptr));
+//     return casted_data.*;
+// }
 
 pub fn catch_mpv_error(ret_code: c_int) MpvError!void {
     if (ret_code < 0) {

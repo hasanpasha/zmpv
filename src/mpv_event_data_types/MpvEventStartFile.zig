@@ -7,7 +7,7 @@ const Self = @This();
 playlist_entry_id: i64,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.casted_anyopaque_ptr_value(c.mpv_event_start_file, data_ptr);
+    const data = utils.cast_anyopaque_ptr(c.mpv_event_start_file, data_ptr).*;
     return Self{
         .playlist_entry_id = data.playlist_entry_id,
     };
