@@ -3,7 +3,7 @@ const mpv_error = @import("./mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const testing = std.testing;
 
-pub fn create_cstring_array(z_array: [][]const u8, allocator: std.mem.Allocator) ![][*c]const u8 {
+pub fn create_cstring_array(z_array: []const []const u8, allocator: std.mem.Allocator) ![][*c]const u8 {
     const array = try allocator.alloc([*c]const u8, z_array.len + 1);
     array[array.len - 1] = null;
     for (0..z_array.len) |index| {

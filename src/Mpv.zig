@@ -70,7 +70,7 @@ pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_load_config_file(self.handle, filename.ptr));
 }
 
-pub fn command(self: Self, args: [][]const u8) !void {
+pub fn command(self: Self, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
@@ -96,7 +96,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 }
 
 /// The resulting MpvNode should be freed with `self.free(node)`
-pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
+pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
@@ -108,7 +108,7 @@ pub fn command_ret(self: Self, args: [][]const u8) !MpvNode {
     return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
 }
 
-pub fn command_async(self: Self, reply_userdata: u64, args: [][]const u8) !void {
+pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, args.len, self.allocator);
 
@@ -308,7 +308,7 @@ test "Mpv memory leak" {
     const mpv = try Self.create(testing.allocator);
     try mpv.initialize();
     defer mpv.terminate_destroy();
-    // try mpv.loadfile("sample.mp4", .{});
+    
     try mpv.command_string("loadfile sample.mp4");
 
     while (true) {
@@ -354,8 +354,7 @@ test "Mpv.command" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    try mpv.command(&args);
+    try mpv.command(&.{ "loadfile", "sample.mp4" });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -387,8 +386,7 @@ test "Mpv.command_async" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_][]const u8{ "loadfile", "sample.mp4" };
-    try mpv.command_async(0, &args);
+    try mpv.command_async(0, &.{ "loadfile", "sample.mp4" });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -422,8 +420,7 @@ test "Mpv.get_property list" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var cmd = [_][]const u8{"loadfile", "sample.mp4"};
-    try mpv.command(&cmd);
+    try mpv.command(&.{ "loadfile", "sample.mp4" });
 
     while (true) {
         const event = mpv.wait_event(0);
