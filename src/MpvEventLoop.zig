@@ -90,20 +90,18 @@ pub fn start(self: *Self, args: struct {
     iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
 }) !void {
     if (args.start_new_thread) {
-        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, .{ args.iter_wait_flag }});
+        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, args.iter_wait_flag });
         event_thread.detach();
     } else {
-        try self.start_event_loop(.{ args.start_new_thread });
+        try self.start_event_loop(args.iter_wait_flag);
     }
 }
 
-pub fn start_event_loop(self: *Self, args: struct {
-    iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
-}) !void {
+pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !void {
 
     var iter = MpvEventIterator{
         .handle = self.mpv_event_handle.*,
-        .wait_flag = args.iter_wait_flag,
+        .wait_flag = iter_wait_flag,
     };
     while (iter.next()) |event| {
         const eid = event.event_id;
