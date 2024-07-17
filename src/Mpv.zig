@@ -295,7 +295,7 @@ pub fn free(self: Self, data: anytype) void {
     std.log.debug("{any}", .{@TypeOf(data)});
 }
 
-pub usingnamespace @import("./MpvHelper.zig");
+pub usingnamespace @import("./mpv_helper.zig");
 pub usingnamespace @import("./stream_cb.zig");
 
 test "Mpv simple test" {
