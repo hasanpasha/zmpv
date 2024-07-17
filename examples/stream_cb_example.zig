@@ -139,8 +139,8 @@ pub fn main() !void {
     const uri = try std.fmt.allocPrint(allocator, "zig://{s}", .{filename});
     defer allocator.free(uri);
 
-    var cmd_args = [_][]const u8{ "loadfile", uri };
-    try mpv.command_async(0, &cmd_args);
+    // var cmd_args = [_][]const u8{ "loadfile", uri };
+    try mpv.command_async(0, &.{ "loadfile", uri });
 
     try mpv.request_log_messages(.Error);
 
