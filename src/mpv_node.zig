@@ -41,32 +41,32 @@ pub const MpvNode = union(enum) {
         const node_ptr = try allocator.create(c.mpv_node);
         switch (self) {
             .None => {
-                node_ptr.format = MpvFormat.None.to();
+                node_ptr.format = MpvFormat.None.to_c();
             },
             .String => |string| {
-                node_ptr.format = MpvFormat.String.to();
+                node_ptr.format = MpvFormat.String.to_c();
                 node_ptr.u.string = @constCast(string.ptr);
             },
             .Flag => |flag| {
-                node_ptr.format = MpvFormat.Flag.to();
+                node_ptr.format = MpvFormat.Flag.to_c();
                 node_ptr.u.flag = if (flag) 1 else 0;
             },
             .INT64 => |num| {
-                node_ptr.format = MpvFormat.INT64.to();
+                node_ptr.format = MpvFormat.INT64.to_c();
                 node_ptr.u.int64 = num;
             },
             .Double => |num| {
-                node_ptr.format = MpvFormat.Double.to();
+                node_ptr.format = MpvFormat.Double.to_c();
                 node_ptr.u.double_ = num;
             },
             .NodeArray => |*array| {
                 var mut_array: *MpvNodeList = @constCast(array);
-                node_ptr.format = MpvFormat.NodeArray.to();
+                node_ptr.format = MpvFormat.NodeArray.to_c();
                 node_ptr.u.list = @ptrCast(try mut_array.to_c(allocator));
             },
             .NodeMap => |*map| {
                 var mut_map: *MpvNodeMap = @constCast(map);
-                node_ptr.format = MpvFormat.NodeMap.to();
+                node_ptr.format = MpvFormat.NodeMap.to_c();
                 node_ptr.u.list = @ptrCast(try mut_map.to_c(allocator));
             },
             else => @panic("I don't know"),
@@ -120,7 +120,7 @@ test "MpvNode to c" {
     defer arena.deinit();
     const node = MpvNode{ .Double = 3.14 };
     const c_node = try node.to_c(arena.allocator());
-    try testing.expect(c_node.format == MpvFormat.Double.to());
+    try testing.expect(c_node.format == MpvFormat.Double.to_c());
     try testing.expect(c_node.u.double_ == 3.14);
 }
 

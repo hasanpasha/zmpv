@@ -104,8 +104,7 @@ pub const MpvRenderParamType = enum(c.mpv_render_param_type) {
     SwPointer = c.MPV_RENDER_PARAM_SW_POINTER,
 
     pub fn to_c(self: MpvRenderParamType) c.mpv_render_param_type {
-        const param_type: c.mpv_render_param_type = @intCast(@intFromEnum(self));
-        return param_type;
+        return @intFromEnum(self);
     }
 
     pub inline fn CDataType(comptime self: MpvRenderParamType) type {

@@ -1,26 +1,26 @@
 const c = @import("./c.zig");
 const testing = @import("std").testing;
 
-pub const MpvFormat = enum(u8) {
+pub const MpvFormat = enum(c.mpv_format) {
     const Self = @This();
 
-    None = 0,
-    String = 1,
-    OSDString = 2,
-    Flag = 3,
-    INT64 = 4,
-    Double = 5,
-    Node = 6,
-    NodeArray = 7,
-    NodeMap = 8,
-    ByteArray = 9,
+    None = c.MPV_FORMAT_NONE,
+    String = c.MPV_FORMAT_STRING,
+    OSDString = c.MPV_FORMAT_OSD_STRING,
+    Flag = c.MPV_FORMAT_FLAG,
+    INT64 = c.MPV_FORMAT_INT64,
+    Double = c.MPV_FORMAT_DOUBLE,
+    Node = c.MPV_FORMAT_NODE,
+    NodeArray = c.MPV_FORMAT_NODE_ARRAY,
+    NodeMap = c.MPV_FORMAT_NODE_MAP,
+    ByteArray = c.MPV_FORMAT_BYTE_ARRAY,
 
     pub fn from(format: c.mpv_format) Self {
         return @enumFromInt(format);
     }
 
-    pub fn to(self: Self) c.mpv_format {
-        return @as(c.mpv_format, @intFromEnum(self));
+    pub fn to_c(self: Self) c.mpv_format {
+        return @intFromEnum(self);
     }
 
     pub inline fn CDataType(comptime self: Self) type {
@@ -45,10 +45,10 @@ test "MpvFormat from" {
 }
 
 test "MpvFormat to" {
-    try testing.expect(MpvFormat.to(.None) == c.MPV_FORMAT_NONE);
-    try testing.expect(MpvFormat.to(.INT64) == c.MPV_FORMAT_INT64);
-    try testing.expect(MpvFormat.to(.Double) == c.MPV_FORMAT_DOUBLE);
-    try testing.expect(MpvFormat.to(.Node) == c.MPV_FORMAT_NODE);
+    try testing.expect(MpvFormat.to_c(.None) == c.MPV_FORMAT_NONE);
+    try testing.expect(MpvFormat.to_c(.INT64) == c.MPV_FORMAT_INT64);
+    try testing.expect(MpvFormat.to_c(.Double) == c.MPV_FORMAT_DOUBLE);
+    try testing.expect(MpvFormat.to_c(.Node) == c.MPV_FORMAT_NODE);
 }
 
 test "MpvFormat ctype" {
