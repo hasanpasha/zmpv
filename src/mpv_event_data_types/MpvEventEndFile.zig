@@ -23,12 +23,12 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
-const MpvEventEndFileReason = enum(u8) {
-    Eof = 0,
-    Stop = 2,
-    Quit = 3,
-    Error = 4,
-    Redirect = 5,
+const MpvEventEndFileReason = enum(c.mpv_end_file_reason) {
+    Eof = c.MPV_END_FILE_REASON_EOF,
+    Stop = c.MPV_END_FILE_REASON_STOP,
+    Quit = c.MPV_END_FILE_REASON_QUIT,
+    Error = c.MPV_END_FILE_REASON_ERROR,
+    Redirect = c.MPV_END_FILE_REASON_REDIRECT,
 
     pub fn from(reason: c.mpv_end_file_reason) MpvEventEndFileReason {
         return @enumFromInt(reason);
