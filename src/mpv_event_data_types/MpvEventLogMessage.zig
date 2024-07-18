@@ -1,7 +1,7 @@
-const c = @import("../c.zig");
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const testing = std.testing;
 
 const Self = @This();
 

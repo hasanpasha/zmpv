@@ -1,6 +1,6 @@
 const testing = @import("std").testing;
-const utils = @import("../utils.zig");
 const c = @import("../c.zig");
+const utils = @import("../utils.zig");
 
 const Self = @This();
 

@@ -1,12 +1,12 @@
 const std = @import("std");
-const testing = std.testing;
-const c = @import("./c.zig");
-const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvNode = @import("./mpv_node.zig").MpvNode;
-const types = @import("./types.zig");
+const c = @import("c.zig");
+const MpvFormat = @import("mpv_format.zig").MpvFormat;
+const MpvNode = @import("mpv_node.zig").MpvNode;
+const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
 const utils = @import("utils.zig");
+const testing = std.testing;
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,

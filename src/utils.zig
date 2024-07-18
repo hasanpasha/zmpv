@@ -1,5 +1,5 @@
 const std = @import("std");
-const mpv_error = @import("./mpv_error.zig");
+const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const testing = std.testing;
 

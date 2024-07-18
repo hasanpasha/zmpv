@@ -1,10 +1,10 @@
 const std = @import("std");
-const testing = std.testing;
-const c = @import("./c.zig");
-const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const types = @import("./types.zig");
+const c = @import("c.zig");
+const MpvFormat = @import("mpv_format.zig").MpvFormat;
+const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
+const testing = std.testing;
 
 pub const MpvNode = union(enum) {
     None: void,

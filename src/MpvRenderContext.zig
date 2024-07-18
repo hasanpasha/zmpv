@@ -1,9 +1,9 @@
-const c = @import("./c.zig");
-const Mpv = @import("./Mpv.zig");
 const std = @import("std");
-const mpv_error = @import("./mpv_error.zig");
+const c = @import("c.zig");
+const Mpv = @import("Mpv.zig");
+const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
-const catch_mpv_error = @import("./utils.zig").catch_mpv_error;
+const catch_mpv_error = @import("utils.zig").catch_mpv_error;
 
 const Self = @This();
 

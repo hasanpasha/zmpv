@@ -1,8 +1,8 @@
-const MpvNode = @import("../mpv_node.zig").MpvNode;
 const std = @import("std");
-const testing = std.testing;
 const c = @import("../c.zig");
+const MpvNode = @import("../mpv_node.zig").MpvNode;
 const utils = @import("../utils.zig");
+const testing = std.testing;
 
 const Self = @This();
 

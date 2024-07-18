@@ -1,10 +1,10 @@
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const MpvError = @import("../mpv_error.zig").MpvError;
 const MpvFormat = @import("../mpv_format.zig").MpvFormat;
 const MpvPropertyData = @import("../mpv_property_data.zig").MpvPropertyData;
 const utils = @import("../utils.zig");
-const c = @import("../c.zig");
+const testing = std.testing;
 
 const Self = @This();
 
