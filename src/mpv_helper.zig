@@ -364,12 +364,13 @@ pub fn quit(self: Mpv, args: struct {
 
 // tests
 const SLEEP_AMOUNT: u64 = 1 * 1e7;
+const test_filepath = "resources/sample.mp4";
 
 test "MpvHelper seek" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var seeked = false;
     while (true) {
@@ -394,7 +395,7 @@ test "MpvHelper revert_seek" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var seeked = false;
     var reverted = false;
@@ -425,7 +426,7 @@ test "MpvHelper frame-step" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var stepped = false;
     while (true) {
@@ -451,7 +452,7 @@ test "MpvHelper frame-back-step" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var stepped = false;
     while (true) {
@@ -477,7 +478,7 @@ test "MpvHelper add" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var added = false;
     var checked_add = false;
@@ -510,7 +511,7 @@ test "MpvHelper multiply" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var multiplied = false;
     while (true) {
@@ -538,7 +539,7 @@ test "MpvHelper cycle" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var paused = false;
     while (true) {
@@ -565,7 +566,7 @@ test "MpvHelper loadfile" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.loadfile("sample.mp4", .{});
+    try mpv.loadfile(test_filepath, .{});
     try mpv.observe_property(6969, "time-pos", .INT64);
     var quited = false;
     while (true) {
@@ -601,7 +602,7 @@ test "MpvHelper screenshot" {
     const mpv = try Mpv.create_and_initialize(allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .Double);
     var screenshoted = false;
     var stopped = false;
@@ -653,7 +654,7 @@ test "MpvHelper screenshot-to-file" {
     defer mpv.terminate_destroy();
 
     const custom_screenshot_filename = "hender.jpg";
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .Double);
     var screenshoted = false;
     while (true) {
@@ -691,7 +692,7 @@ fn create_playlist(base_file_path: []const u8, allocator: std.mem.Allocator, arg
     defer file.close();
 
     for (0..args.size) |idx| {
-        const symlink = try std.fmt.allocPrint(allocator, "{}-{s}.bak", .{ idx, base_file_path });
+        const symlink = try std.fmt.allocPrint(allocator, "{s}-{}.bak", .{ base_file_path, idx });
         defer allocator.free(symlink);
         try std.fs.cwd().symLink(base_file_path, symlink, .{});
         _ = try file.writer().print("{s}\n", .{symlink});
@@ -705,11 +706,11 @@ test "MpvHelper playlist-next" {
     const mpv = try Mpv.create_and_initialize(allocator, &.{});
     defer mpv.terminate_destroy();
 
-    const base_filename = "sample.mp4";
+    const base_filename = test_filepath;
     const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
     defer {
         std.fs.cwd().deleteFile(playlist_path) catch {};
-        remove_file_with_extension(".bak", allocator, .{}) catch {};
+        remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
     }
     var load_cmd = [_][]const u8{ "loadlist", playlist_path };
     try mpv.command(&load_cmd);
@@ -741,11 +742,11 @@ test "MpvHelper playlist-prev" {
     const mpv = try Mpv.create_and_initialize(allocator, &.{});
     defer mpv.terminate_destroy();
 
-    const base_filename = "sample.mp4";
+    const base_filename = test_filepath;
     const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
     defer {
         std.fs.cwd().deleteFile(playlist_path) catch {};
-        remove_file_with_extension(".bak", allocator, .{}) catch {};
+        remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
     }
     var load_cmd = [_][]const u8{ "loadlist", playlist_path };
     try mpv.command(&load_cmd);
@@ -783,7 +784,7 @@ test "MpvHelper run" {
     // defer mpv.terminate_destroy();
 
     // try mpv.run("/bin/sh", &.{ "-c", "echo ${title}" });
-    // try mpv.command_string("loadfile sample.mp4");
+    // try mpv.command(&.{ "loadfile", test_filepath });
     // try mpv.observe_property(6969, "time-pos", .INT64);
     // var ran = false;
     // while (true) {
@@ -802,7 +803,7 @@ test "MpvHelper subprocess" {
     const mpv = try Mpv.create_and_initialize(allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var should_quit = false;
     var result_code: ?u64 = null;
@@ -855,7 +856,7 @@ test "MpvHelper quit" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
     try mpv.observe_property(6969, "time-pos", .INT64);
     var quited = false;
     while (true) {
