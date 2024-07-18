@@ -65,7 +65,8 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.Error);
 
-    try mpv.command_async(0, &.{ "loadfile", "sample.mp4" });
+    const filepath = "resources/sample.mp4";
+    try mpv.command_async(0, &.{ "loadfile", filepath });
 
     const fullscreen_status = try mpv.get_property("fullscreen", .String);
     mpv.free(fullscreen_status);
