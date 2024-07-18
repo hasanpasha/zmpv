@@ -729,6 +729,97 @@ test "EventLoop: non-threading-register_command_reply_callback" {
     try testing.expect(event_loop.core_shutdown);
 }
 
+test "EventLoop: non-threading-register_log_message_handler" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    _ = try event_loop.register_log_message_handler(.{
+        .level = .Debug,
+        .callback = struct {
+            pub fn cb(level: MpvLogLevel, _: []const u8, _: []const u8, mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                if (level == .Debug)
+                    player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: non-threading-register_client_message_callback" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    _ = try event_loop.register_client_message_callback(.{
+        .target = "test",
+        .callback = struct {
+            pub fn cb(message: [][*:0]const u8, mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                if (std.mem.eql(u8, std.mem.sliceTo(message[0], 0), "hello"))
+                    player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    _ = try std.Thread.spawn(.{}, struct {
+        pub fn cb(player: *Mpv) void {
+            std.time.sleep(1 * 1e6);
+            player.command(&.{ "script-message", "test", "hello" }) catch |err| {
+                std.debug.print("{}", .{err});
+            };
+        }
+    }.cb, .{mpv});
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
+test "EventLoop: non-threading-register_hook_callback" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+
+    _ = try event_loop.register_hook_callback(.{
+        .hook = .Load,
+        .callback = struct {
+            pub fn cb(mpv_anon: ?*anyopaque) void {
+                const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
+                player.command_string("quit") catch {};
+            }
+        }.cb,
+        .user_data = mpv,
+    });
+
+    try mpv.command(&.{ "loadfile", test_filepath });
+
+    try event_loop.start(.{ .start_new_thread = false });
+    try testing.expect(event_loop.core_shutdown);
+}
+
 test "EventLoop: threading-simple" {
     const allocator = testing.allocator;
 
