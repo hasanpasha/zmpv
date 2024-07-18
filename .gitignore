@@ -1,7 +1,6 @@
 zig-out/
 *zig-cache
 zig
-sample.mp4
 vgcore.*
 mpv.conf
 mpv.py
