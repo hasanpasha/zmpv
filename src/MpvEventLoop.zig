@@ -313,7 +313,7 @@ pub fn unregister_property_callback(self: *Self, callback: MpvPropertyCallback) 
 }
 
 pub const MpvCommandReplyCallback = struct {
-    command_args: [][]const u8,
+    command_args: []const []const u8,
     callback: *const fn (MpvError, MpvNode, ?*anyopaque) void,
     user_data: ?*anyopaque = null,
 
@@ -711,9 +711,8 @@ test "EventLoop: non-threading-register_command_reply_callback" {
     const event_loop = try Self.new(mpv);
     defer event_loop.free();
 
-    var cmd_args = [_][]const u8{ "loadfile", "sample.mp4" };
     _ = try event_loop.register_command_reply_callback(.{
-        .command_args = &cmd_args,
+        .command_args = &.{ "loadfile", "sample.mp4" },
         .callback = struct {
             pub fn cb(err: MpvError, _: MpvNode, mpv_anon: ?*anyopaque) void {
                 const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
