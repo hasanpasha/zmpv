@@ -494,7 +494,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
 }) !MpvEvent {
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
-            var future: *Future = @ptrCast(@alignCast(user_data));
+            var future: *Future = utils.cast_anyopaque_ptr(Future, user_data);
             future.set_result(event) catch |err| {
                 future.set_error(err);
             };
@@ -521,8 +521,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     defer self.future_remove(future);
 
     const result = try future.wait_result(args.timeout);
-    const event_ptr: *MpvEvent = @ptrCast(@alignCast(result));
-    return event_ptr.*;
+    return utils.cast_anyopaque_ptr(MpvEvent, result).*;
 }
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
@@ -534,7 +533,7 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
 }) !MpvEventProperty {
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
-            var future: *Future = @ptrCast(@alignCast(user_data));
+            var future: *Future = utils.cast_anyopaque_ptr(Future, user_data);
             future.set_result(event) catch |err| {
                 future.set_error(err);
             };
@@ -561,8 +560,7 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     defer self.future_remove(future);
 
     const result = try future.wait_result(args.timeout);
-    const property_event_ptr: *MpvEventProperty = @ptrCast(@alignCast(result));
-    return property_event_ptr.*;
+    return utils.cast_anyopaque_ptr(MpvEventProperty, result).*;
 }
 
 /// Wait until the playback has started
