@@ -34,7 +34,7 @@ test "zstring to cstring array" {
 
     var zstrings = [_][]const u8{ "hello", "world" };
     const cstrings = try create_cstring_array(&zstrings, allocator);
-    defer free_cstring_array(cstrings, zstrings.len, allocator);
+    defer free_cstring_array(cstrings, allocator);
     try testing.expect(zstrings[0][0] == cstrings[0][0]);
     try testing.expect(zstrings[1][0] == cstrings[1][0]);
     try testing.expect(zstrings[0][0] != cstrings[1][0]);
