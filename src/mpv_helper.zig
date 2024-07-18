@@ -1,6 +1,6 @@
 const std = @import("std");
-const Mpv = @import("./Mpv.zig");
-const MpvRenderContext = @import("./MpvRenderContext.zig");
+const Mpv = @import("Mpv.zig");
+const MpvRenderContext = @import("MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const MpvEventLoop = @import("MpvEventLoop.zig");
 

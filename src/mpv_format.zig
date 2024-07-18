@@ -1,4 +1,4 @@
-const c = @import("./c.zig");
+const c = @import("c.zig");
 const testing = @import("std").testing;
 
 pub const MpvFormat = enum(c.mpv_format) {

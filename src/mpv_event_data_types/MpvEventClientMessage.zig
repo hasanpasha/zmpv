@@ -1,14 +1,14 @@
-const c = @import("../c.zig");
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const testing = std.testing;
 
 const Self = @This();
 
 args: [][*:0]const u8,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_client_message);
+    const data = utils.cast_anyopaque_ptr(c.mpv_event_client_message, data_ptr).*;
 
     var args: [][*:0]const u8 = undefined;
     if (data.num_args == 0) {

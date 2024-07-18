@@ -1,7 +1,7 @@
 const std = @import("std");
-const c = @import("./c.zig");
-const MpvNode = @import("./mpv_node.zig").MpvNode;
-const MpvFormat = @import("./mpv_format.zig").MpvFormat;
+const c = @import("c.zig");
+const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvFormat = @import("mpv_format.zig").MpvFormat;
 const testing = std.testing;
 
 pub const MpvNodeList = struct {

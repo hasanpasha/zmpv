@@ -1,18 +1,19 @@
 const std = @import("std");
-const c = @import("./c.zig");
-const MpvEvent = @import("./MpvEvent.zig");
-const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
-const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
-const MpvNode = @import("./mpv_node.zig").MpvNode;
-const types = @import("./types.zig");
+const c = @import("c.zig");
+const mpv_error = @import("mpv_error.zig");
+const generic_error = @import("generic_error.zig");
+const MpvEvent = @import("MpvEvent.zig");
+const MpvPropertyData = @import("mpv_property_data.zig").MpvPropertyData;
+const MpvEventId = @import("mpv_event_id.zig").MpvEventId;
+const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
-const MpvFormat = @import("./mpv_format.zig").MpvFormat;
-const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
-const mpv_error = @import("./mpv_error.zig");
+const MpvFormat = @import("mpv_format.zig").MpvFormat;
+const MpvLogLevel = @import("mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
+const MpvNode = @import("mpv_node.zig").MpvNode;
 const MpvError = mpv_error.MpvError;
 const GenericError = @import("./generic_error.zig").GenericError;
-const utils = @import("./utils.zig");
+const utils = @import("utils.zig");
 const catch_mpv_error = utils.catch_mpv_error;
 const testing = std.testing;
 
@@ -70,7 +71,7 @@ pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
 
 pub fn command(self: Self, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     try catch_mpv_error(c.mpv_command(self.handle, @ptrCast(c_args)));
 }
@@ -96,7 +97,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 /// The resulting MpvNode should be freed with `self.free(node)`
 pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     var output: c.mpv_node = undefined;
 
@@ -108,7 +109,7 @@ pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
 
 pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args)));
 }
@@ -292,8 +293,8 @@ pub fn free(self: Self, data: anytype) void {
     }
 }
 
-pub usingnamespace @import("./mpv_helper.zig");
-pub usingnamespace @import("./stream_cb.zig");
+pub usingnamespace @import("mpv_helper.zig");
+pub usingnamespace @import("stream_cb.zig");
 
 test "Mpv simple test" {
     const mpv = try Self.create(testing.allocator);
