@@ -72,7 +72,7 @@ pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
 
 pub fn command(self: Self, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     try catch_mpv_error(c.mpv_command(self.handle, @ptrCast(c_args)));
 }
@@ -98,7 +98,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 /// The resulting MpvNode should be freed with `self.free(node)`
 pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     var output: c.mpv_node = undefined;
 
@@ -110,7 +110,7 @@ pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
 
 pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
-    defer utils.free_cstring_array(c_args, args.len, self.allocator);
+    defer utils.free_cstring_array(c_args, self.allocator);
 
     try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args)));
 }
