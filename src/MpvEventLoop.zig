@@ -1,24 +1,24 @@
 const std = @import("std");
-const Mpv = @import("./Mpv.zig");
-const MpvNode = @import("./mpv_node.zig").MpvNode;
-const MpvEvent = @import("./MpvEvent.zig");
+const Mpv = @import("Mpv.zig");
+const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvEvent = @import("MpvEvent.zig");
 const MpvEventIterator = @import("MpvEventIterator.zig");
 const MpvEventIteratorWaitFlag = MpvEventIterator.MpvEventIteratorWaitFlag;
 const MpvEventData = MpvEvent.MpvEventData;
-const MpvEventId = @import("./mpv_event_id.zig").MpvEventId;
-const MpvEventProperty = @import("./mpv_event_data_types/MpvEventProperty.zig");
-const MpvEventLogMessage = @import("./mpv_event_data_types/MpvEventLogMessage.zig");
-const MpvPropertyData = @import("./mpv_property_data.zig").MpvPropertyData;
-const MpvLogLevel = @import("./mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
-const MpvError = @import("./mpv_error.zig").MpvError;
-const utils = @import("./utils.zig");
+const MpvEventId = @import("mpv_event_id.zig").MpvEventId;
+const MpvEventProperty = @import("mpv_event_data_types/MpvEventProperty.zig");
+const MpvEventLogMessage = @import("mpv_event_data_types/MpvEventLogMessage.zig");
+const MpvPropertyData = @import("mpv_property_data.zig").MpvPropertyData;
+const MpvLogLevel = @import("mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
+const MpvError = @import("mpv_error.zig").MpvError;
+const utils = @import("utils.zig");
 const ResetEvent = std.Thread.ResetEvent;
-const Future = @import("./Future.zig");
+const Future = @import("Future.zig");
 const testing = std.testing;
 
 const Self = @This();
 
-pub const MpvEventLoopError = error {
+pub const MpvEventLoopError = error{
     CoreShutdown,
 };
 
@@ -90,7 +90,7 @@ pub fn start(self: *Self, args: struct {
     iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
 }) !void {
     if (args.start_new_thread) {
-        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{self, args.iter_wait_flag });
+        var event_thread = try std.Thread.spawn(.{}, start_event_loop, .{ self, args.iter_wait_flag });
         event_thread.detach();
     } else {
         try self.start_event_loop(args.iter_wait_flag);
@@ -98,7 +98,6 @@ pub fn start(self: *Self, args: struct {
 }
 
 pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !void {
-
     var iter = MpvEventIterator{
         .handle = self.mpv_event_handle.*,
         .wait_flag = iter_wait_flag,
@@ -462,7 +461,6 @@ pub const MpvHookCallback = struct {
     callback: *const fn (?*anyopaque) void,
     user_data: ?*anyopaque = null,
 
-
     pub fn call(self: MpvHookCallback) void {
         self.callback(self.user_data);
     }
@@ -660,7 +658,7 @@ test "EventLoop: non-threading-register_event_callback" {
     try mpv.command_string("loadfile sample.mp4");
 
     _ = try event_loop.register_event_callback(.{
-        .event_ids = &.{ .FileLoaded },
+        .event_ids = &.{.FileLoaded},
         .callback = struct {
             pub fn cb(_: MpvEvent, mpv_anon: ?*anyopaque) void {
                 const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
@@ -713,7 +711,7 @@ test "EventLoop: non-threading-register_command_reply_callback" {
     const event_loop = try Self.new(mpv);
     defer event_loop.free();
 
-    var cmd_args = [_][]const u8{"loadfile", "sample.mp4"};
+    var cmd_args = [_][]const u8{ "loadfile", "sample.mp4" };
     _ = try event_loop.register_command_reply_callback(.{
         .command_args = &cmd_args,
         .callback = struct {

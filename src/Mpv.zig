@@ -12,7 +12,7 @@ const MpvFormat = @import("mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
 const MpvNode = @import("mpv_node.zig").MpvNode;
 const MpvError = mpv_error.MpvError;
-const GenericError = @import("./generic_error.zig").GenericError;
+const GenericError = @import("generic_error.zig").GenericError;
 const utils = @import("utils.zig");
 const catch_mpv_error = utils.catch_mpv_error;
 const testing = std.testing;
@@ -139,7 +139,8 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
             },
             .Node, .NodeArray, .NodeMap => {
                 c.mpv_free_node_contents(&output_mem);
-            }, else => {},
+            },
+            else => {},
         }
     }
 
@@ -440,7 +441,7 @@ test "Mpv.get_property list" {
                 defer MpvNodeMap.free_owned_hashmap(hashmap, mpv.allocator);
                 const filename = hashmap.get("filename");
                 try testing.expect(filename != null);
-                try testing.expectEqualStrings("sample.mp4" ,filename.?.String);
+                try testing.expectEqualStrings("sample.mp4", filename.?.String);
                 const filename_pair = map_iter.next().?;
                 try testing.expect(std.mem.eql(u8, filename_pair[0], "filename"));
                 try testing.expect(std.mem.eql(u8, filename_pair[1].String, "sample.mp4"));
