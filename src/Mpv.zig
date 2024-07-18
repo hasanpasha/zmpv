@@ -66,8 +66,8 @@ pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvErro
     try catch_mpv_error(c.mpv_set_option_string(self.handle, key.ptr, value.ptr));
 }
 
-pub fn load_config_file(self: Self, filename: []const u8) MpvError!void {
-    try catch_mpv_error(c.mpv_load_config_file(self.handle, filename.ptr));
+pub fn load_config_file(self: Self, filepath: []const u8) MpvError!void {
+    try catch_mpv_error(c.mpv_load_config_file(self.handle, filepath.ptr));
 }
 
 pub fn command(self: Self, args: []const []const u8) !void {
@@ -140,7 +140,8 @@ pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !M
             },
             .Node, .NodeArray, .NodeMap => {
                 c.mpv_free_node_contents(&output_mem);
-            }, else => {},
+            },
+            else => {},
         }
     }
 
@@ -298,6 +299,8 @@ pub fn free(self: Self, data: anytype) void {
 pub usingnamespace @import("mpv_helper.zig");
 pub usingnamespace @import("stream_cb.zig");
 
+const test_filepath = "resources/sample.mp4";
+
 test "Mpv simple test" {
     const mpv = try Self.create(testing.allocator);
     try mpv.initialize();
@@ -309,7 +312,7 @@ test "Mpv memory leak" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     while (true) {
         const event = mpv.wait_event(10000);
@@ -354,7 +357,7 @@ test "Mpv.command" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.command(&.{ "loadfile", "sample.mp4" });
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -370,7 +373,7 @@ test "Mpv.command_string" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -386,7 +389,7 @@ test "Mpv.command_async" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.command_async(0, &.{ "loadfile", "sample.mp4" });
+    try mpv.command_async(0, &.{ "loadfile", test_filepath });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -402,7 +405,7 @@ test "Mpv.command_node" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var args = [_]MpvNode{ .{ .String = "loadfile" }, .{ .String = "sample.mp4" } };
+    var args = [_]MpvNode{ .{ .String = "loadfile" }, .{ .String = test_filepath } };
     const result = try mpv.command_node(.{ .NodeArray = MpvNodeList.new(&args) });
     defer mpv.free(result);
 
@@ -420,7 +423,7 @@ test "Mpv.get_property list" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.command(&.{ "loadfile", "sample.mp4" });
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     while (true) {
         const event = mpv.wait_event(0);
@@ -442,10 +445,10 @@ test "Mpv.get_property list" {
                 defer MpvNodeMap.free_owned_hashmap(hashmap, mpv.allocator);
                 const filename = hashmap.get("filename");
                 try testing.expect(filename != null);
-                try testing.expectEqualStrings("sample.mp4" ,filename.?.String);
+                try testing.expectEqualStrings(test_filepath, filename.?.String);
                 const filename_pair = map_iter.next().?;
                 try testing.expect(std.mem.eql(u8, filename_pair[0], "filename"));
-                try testing.expect(std.mem.eql(u8, filename_pair[1].String, "sample.mp4"));
+                try testing.expect(std.mem.eql(u8, filename_pair[1].String, test_filepath));
                 const current_pair = map_iter.next().?;
                 try testing.expect(std.mem.eql(u8, current_pair[0], "current"));
                 const playing_pair = map_iter.next().?;

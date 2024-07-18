@@ -62,7 +62,8 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.Error);
 
-    try mpv.command_async(0, &.{ "loadfile", "sample.mp4" });
+    const filepath = "resources/sample.mp4";
+    try mpv.command_async(0, &.{ "loadfile", filepath });
 
     var tex: ?*sdl.SDL_Texture = null;
     defer sdl.SDL_DestroyTexture(tex);
