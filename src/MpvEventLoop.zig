@@ -622,6 +622,8 @@ fn future_remove(self: *Self, future: *Future) void {
     }
 }
 
+const test_filepath = "resources/sample.mp4";
+
 test "EventLoop: non-threading-simple" {
     const allocator = testing.allocator;
 
@@ -655,7 +657,7 @@ test "EventLoop: non-threading-register_event_callback" {
     const event_loop = try Self.new(mpv);
     defer event_loop.free();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     _ = try event_loop.register_event_callback(.{
         .event_ids = &.{.FileLoaded},
@@ -683,7 +685,7 @@ test "EventLoop: non-threading-register_property_callback" {
     const event_loop = try Self.new(mpv);
     defer event_loop.free();
 
-    try mpv.command_string("loadfile sample.mp4");
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     _ = try event_loop.register_property_callback(.{
         .property_name = "playlist",
@@ -712,7 +714,7 @@ test "EventLoop: non-threading-register_command_reply_callback" {
     defer event_loop.free();
 
     _ = try event_loop.register_command_reply_callback(.{
-        .command_args = &.{ "loadfile", "sample.mp4" },
+        .command_args = &.{ "loadfile", test_filepath },
         .callback = struct {
             pub fn cb(err: MpvError, _: MpvNode, mpv_anon: ?*anyopaque) void {
                 const player: *Mpv = @ptrCast(@alignCast(mpv_anon));
@@ -739,7 +741,7 @@ test "EventLoop: threading-simple" {
     defer event_loop.free();
     try event_loop.start(.{ .start_new_thread = true });
 
-    try mpv.loadfile("sample.mp4", .{});
+    try mpv.command(&.{ "loadfile", test_filepath });
 
     _ = try std.Thread.spawn(.{}, struct {
         pub fn cb(player: *Mpv) void {
@@ -771,7 +773,7 @@ test "EventLoop: threading-register_event_callback" {
             called_ptr.set();
         }
     }.cb, .user_data = @ptrCast(&callback_event) });
-    try mpv.loadfile("sample.mp4", .{});
+    try mpv.command(&.{ "loadfile", test_filepath });
     try callback_event.timedWait(1 * 1e9);
 
     _ = try std.Thread.spawn(.{}, struct {
