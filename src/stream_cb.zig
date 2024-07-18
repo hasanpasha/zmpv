@@ -126,7 +126,7 @@ pub fn stream_cb_add_ro(
     user_data: ?*anyopaque,
     open_fn: *const fn (?*anyopaque, []u8, std.mem.Allocator) MpvError!MpvStreamCBInfo,
 ) !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.c_allocator);
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
     const state_ptr = try arena.allocator().create(MpvStreamOpenState);
     state_ptr.*.cb = open_fn;
     state_ptr.*.user_data = user_data;
