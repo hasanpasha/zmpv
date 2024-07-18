@@ -1,10 +1,10 @@
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const MpvError = @import("../mpv_error.zig").MpvError;
 const MpvFormat = @import("../mpv_format.zig").MpvFormat;
 const MpvPropertyData = @import("../mpv_property_data.zig").MpvPropertyData;
 const utils = @import("../utils.zig");
-const c = @import("../c.zig");
+const testing = std.testing;
 
 const Self = @This();
 
@@ -13,7 +13,7 @@ format: MpvFormat,
 data: MpvPropertyData,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_property);
+    const data = utils.cast_anyopaque_ptr(c.mpv_event_property, data_ptr).*;
 
     const format = MpvFormat.from(data.format);
     return Self{

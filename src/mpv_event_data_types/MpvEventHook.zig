@@ -1,7 +1,7 @@
-const c = @import("../c.zig");
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const testing = std.testing;
 
 const Self = @This();
 
@@ -9,7 +9,7 @@ name: []const u8,
 id: u64,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const data = utils.cast_event_data(data_ptr, c.mpv_event_hook);
+    const data = utils.cast_anyopaque_ptr(c.mpv_event_hook, data_ptr).*;
 
     return Self{
         .name = std.mem.sliceTo(data.name, 0),

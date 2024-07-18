@@ -1,5 +1,5 @@
-const c = @import("./c.zig");
 const std = @import("std");
+const c = @import("c.zig");
 
 pub const MpvError = error{
     Success,

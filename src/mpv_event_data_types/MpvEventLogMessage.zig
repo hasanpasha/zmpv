@@ -1,7 +1,7 @@
-const c = @import("../c.zig");
 const std = @import("std");
-const testing = std.testing;
+const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const testing = std.testing;
 
 const Self = @This();
 
@@ -11,7 +11,7 @@ text: []const u8,
 log_level: MpvLogLevel,
 
 pub fn from(data_ptr: *anyopaque) Self {
-    const log = utils.cast_event_data(data_ptr, c.mpv_event_log_message);
+    const log = utils.cast_anyopaque_ptr(c.mpv_event_log_message, data_ptr).*;
     return Self{
         .prefix = std.mem.sliceTo(log.prefix, 0),
         .level = std.mem.sliceTo(log.level, 0),
