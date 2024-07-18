@@ -29,10 +29,7 @@ const s_cbs = struct {
     pub fn read_cb(inner_state_op: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
         const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
 
-        var read_buf: []u8 = undefined;
-        read_buf.ptr = buf;
-        read_buf.len = size;
-
+        const read_buf = buf[0..size];
         const read_size = inner_state_ptr.cbs.read_fn(inner_state_ptr.cbs.cookie, read_buf, size) catch |err| {
             return mpv_error.to_mpv_c_error(err);
         };
@@ -42,6 +39,7 @@ const s_cbs = struct {
 
     pub fn close_cb(inner_state_op: ?*anyopaque) callconv(.C) void {
         const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
+
         var inner_arena = inner_state_ptr.*.arena;
         defer inner_arena.deinit();
         defer inner_arena.allocator().destroy(inner_state_ptr);
@@ -106,15 +104,19 @@ const s_open_cb = struct {
             return mpv_error.to_mpv_c_error(MpvError.LoadingFailed);
         };
 
-        info_state_ptr.*.cbs = z_info;
-        info_state_ptr.*.arena = arena;
+        info_state_ptr.* = .{
+            .cbs = z_info,
+            .arena = arena,
+        };
 
-        info.*.cookie = @ptrCast(@alignCast(info_state_ptr));
-        info.*.read_fn = s_cbs.read_cb;
-        info.*.close_fn = s_cbs.close_cb;
-        info.*.seek_fn = s_cbs.seek_cb;
-        info.*.size_fn = s_cbs.size_cb;
-        info.*.cancel_fn = s_cbs.cancel_cb;
+        info.* = .{
+            .cookie = info_state_ptr,
+            .read_fn = s_cbs.read_cb,
+            .close_fn = s_cbs.close_cb,
+            .seek_fn = s_cbs.seek_cb,
+            .size_fn = s_cbs.size_cb,
+            .cancel_fn = s_cbs.cancel_cb,
+        };
 
         return mpv_error.to_mpv_c_error(MpvError.Success);
     }
@@ -128,9 +130,11 @@ pub fn stream_cb_add_ro(
 ) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     const state_ptr = try arena.allocator().create(MpvStreamOpenState);
-    state_ptr.*.cb = open_fn;
-    state_ptr.*.user_data = user_data;
-    state_ptr.*.arena = arena;
+    state_ptr.* = .{
+        .cb = open_fn,
+        .user_data = user_data,
+        .arena = arena,
+    };
 
     try utils.catch_mpv_error(c.mpv_stream_cb_add_ro(self.handle, protocol.ptr, state_ptr, s_open_cb));
 }
