@@ -6,6 +6,7 @@ const MpvNode = @import("./mpv_node.zig").MpvNode;
 const types = @import("./types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
+const utils = @import("utils.zig");
 
 pub const MpvPropertyData = union(MpvFormat) {
     None: void,
@@ -23,50 +24,45 @@ pub const MpvPropertyData = union(MpvFormat) {
         return switch (format) {
             .None => MpvPropertyData{ .None = {} },
             .String => value: {
-                const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
-                const string = string_ptr.*;
+                const string = utils.cast_anyopaque_ptr([*c]const u8, data).*;
                 const zig_string = std.mem.sliceTo(string, 0);
                 break :value MpvPropertyData{
                     .String = zig_string,
                 };
             },
             .OSDString => value: {
-                const string_ptr: *[*c]const u8 = @ptrCast(@alignCast(data));
-                const string = string_ptr.*;
+                const string = utils.cast_anyopaque_ptr([*c]const u8, data).*;
                 const zig_string = std.mem.sliceTo(string, 0);
                 break :value MpvPropertyData{
                     .OSDString = zig_string,
                 };
             },
             .Flag => value: {
-                const ret_value_ptr: *c_int = @ptrCast(@alignCast(data));
-                const ret_value = ret_value_ptr.*;
+                const ret_value = utils.cast_anyopaque_ptr(c_int, data).*;
                 break :value MpvPropertyData{ .Flag = (ret_value == 1) };
             },
             .INT64 => value: {
-                const ret_value_ptr: *i64 = @ptrCast(@alignCast(data));
-                const ret_value = ret_value_ptr.*;
+                const ret_value = utils.cast_anyopaque_ptr(i64, data).*;
                 break :value MpvPropertyData{ .INT64 = ret_value };
             },
             .Double => value: {
-                const ret_value_ptr: *f64 = @ptrCast(@alignCast(data));
-                const ret_value = ret_value_ptr.*;
+                const ret_value = utils.cast_anyopaque_ptr(f64, data).*;
                 break :value MpvPropertyData{ .Double = ret_value };
             },
             .Node => value: {
-                const node_ptr: *c.mpv_node = @ptrCast(@alignCast(data));
+                const node_ptr = utils.cast_anyopaque_ptr(c.mpv_node, data);
                 break :value MpvPropertyData{ .Node = MpvNode.from(node_ptr) };
             },
             .NodeArray => value: {
-                const list_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
+                const list_ptr = utils.cast_anyopaque_ptr(c.mpv_node_list, data);
                 break :value MpvPropertyData{ .NodeArray = MpvNodeList.from(list_ptr) };
             },
             .NodeMap => value: {
-                const map_ptr: *c.struct_mpv_node_list = @ptrCast(@alignCast(data));
+                const map_ptr = utils.cast_anyopaque_ptr(c.mpv_node_list, data);
                 break :value MpvPropertyData{ .NodeMap = MpvNodeMap.from(map_ptr) };
             },
             .ByteArray => value: {
-                const byte_ptr: *c.struct_mpv_byte_array = @ptrCast(@alignCast(data));
+                const byte_ptr = utils.cast_anyopaque_ptr(c.mpv_byte_array, data);
                 if (byte_ptr.data == null) {
                     break :value MpvPropertyData{ .ByteArray = &.{} };
                 }
