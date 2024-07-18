@@ -17,6 +17,7 @@ pub const GenericError = @import("generic_error.zig").GenericError;
 const types = @import("types.zig");
 pub const MpvNodeList = types.MpvNodeList;
 pub const MpvNodeMap = types.MpvNodeMap;
+pub const MpvEventIterator = @import("MpvEventIterator.zig");
 pub const MpvEventLoop = @import("MpvEventLoop.zig");
 pub const MpvEventCallback = MpvEventLoop.MpvEventCallback;
 pub const MpvPropertyCallback = MpvEventLoop.MpvPropertyCallback;
