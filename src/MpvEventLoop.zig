@@ -133,12 +133,20 @@ pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !
         .handle = self.mpv_event_handle.*,
         .wait_flag = iter_wait_flag,
     };
+
+    var con: bool = true;
     while (iter.next()) |event| {
         const eid = event.event_id;
         if (eid == .Shutdown) {
+            con = false;
             self.core_shutdown_mutex.lock();
             defer self.core_shutdown_mutex.unlock();
             self.core_shutdown = true;
+        }
+
+        if (self.get_should_stop()) {
+            con = false;
+            self.set_should_stop(false);
         }
 
         for (self.event_callbacks.items) |cb| {
@@ -186,15 +194,10 @@ pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !
             else => {},
         }
 
-        if (eid == .Shutdown) {
+        if (!con) {
             for (self.futures.items) |future| {
                 future.cancel();
             }
-            return;
-        }
-
-        if (self.get_should_stop()) {
-            self.set_should_stop(false);
             return;
         }
     }
