@@ -58,6 +58,8 @@ pub fn new(mpv: *Mpv) !*Self {
     return instance_ptr;
 }
 
+/// Free all of the internal data structures and destroy the mpv_event_handle,
+/// stop's the event loop if it's running.
 pub fn free(self: *Self) void {
     const allocator = self.allocator;
 
@@ -90,6 +92,7 @@ pub fn free(self: *Self) void {
     allocator.destroy(self);
 }
 
+/// start running the event loop if it's not running, returns once the Event Loop has started
 pub fn start(self: *Self, args: struct {
     start_new_thread: bool = false,
     iter_wait_flag: MpvEventIteratorWaitFlag = .{ .IndefiniteWait = {} },
