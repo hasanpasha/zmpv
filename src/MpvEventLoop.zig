@@ -508,9 +508,7 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
             var future = utils.cast_anyopaque_ptr(Future(MpvEvent), user_data);
-            future.set_result(event) catch |err| {
-                future.set_error(err);
-            };
+            future.set_result(event);
         }
     }.cb;
 
@@ -546,9 +544,7 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
             var future = utils.cast_anyopaque_ptr(Future(MpvEventProperty), user_data);
-            future.set_result(event) catch |err| {
-                future.set_error(err);
-            };
+            future.set_result(event);
         }
     }.cb;
 

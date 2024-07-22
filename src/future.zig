@@ -44,7 +44,7 @@ pub fn Future(T: type) type {
             }
         }
 
-        pub fn set_result(self: *Self, value: T) !void {
+        pub fn set_result(self: *Self, value: T) void {
             self.value = value;
 
             self.set();
