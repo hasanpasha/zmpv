@@ -38,8 +38,9 @@ pub fn main() !void {
     });
     defer mpv.terminate_destroy();
 
-    var event_loop = try mpv.create_and_run_event_loop_forever(.{});
-    // defer event_loop.free();
+    // var event_loop = try mpv.create_and_run_event_loop_forever(.{});
+    var event_loop = try MpvEventLoop.new(mpv);
+    defer event_loop.free();
 
     _ = try event_loop.register_event_callback(MpvEventCallback{
         .event_ids = &.{
@@ -239,6 +240,22 @@ pub fn main() !void {
     // std.log.debug("started playing", .{});
     // try mpv.wait_until_pause();
     // std.log.debug("exiting because pause", .{});
+
+    std.log.info("loop 1", .{});
+    try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
+    event_loop.stop();
+    std.log.info("loop 2", .{});
+    try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
+    // event_loop.stop();
+    // std.log.info("loop 3", .{});
+    // try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
+    // event_loop.stop();
+    // std.log.debug("DO", .{});
+    // while (true) {
+    //     std.log.debug("running event loop", .{});
+    //     try event_loop.start(.{ .start_new_thread = false, .iter_wait_flag= .{ .NoWait = {} }, });
+    // }
+
 
     std.log.debug("waiting for the shutdown", .{});
     const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
