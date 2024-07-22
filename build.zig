@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
 
     const examples = [_]struct { name: []const u8, src: []const u8 }{
         .{ .name = "simple", .src = "examples/simple_example.zig" },
-        .{ .name = "threaded", .src = "examples/threaded_example.zig" },
+        .{ .name = "event-loop", .src = "examples/event_loop_example.zig" },
         .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
         .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
         .{ .name = "stream-cb", .src = "examples/stream_cb_example.zig" },
