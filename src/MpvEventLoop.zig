@@ -105,7 +105,7 @@ pub fn start(self: *Self, args: struct {
         }
 
     } else {
-        try self.start_event_loop(args.iter_wait_flag);
+        self.start_event_loop(args.iter_wait_flag);
     }
 }
 
@@ -123,7 +123,7 @@ pub fn stop(self: *Self) void {
     }
 }
 
-pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !void {
+pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) void {
     if (self.is_running()) return;
 
     self.set_running(true);
@@ -189,7 +189,9 @@ pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) !
                         pair.value.call();
                     }
                 }
-                try self.mpv_event_handle.hook_continue(hook.id);
+                self.mpv_event_handle.hook_continue(hook.id) catch |err| {
+                    std.log.err("MpvEventLoop: {}", .{ err });
+                };
             },
             else => {},
         }
