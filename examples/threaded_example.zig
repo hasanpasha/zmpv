@@ -143,39 +143,3 @@ pub fn main() !void {
     std.log.debug("everything has ended: {}", .{shutdown_evt});
 }
 
-fn skip_silence(mpv: *Mpv, event_loop: *MpvEventLoop) !void {
-    try event_loop.mpv_event_handle.request_log_messages(.Debug);
-    try mpv.set_property_string("af", "lavfi=[silencedetect=n=-20dB:d=1]");
-    try mpv.set_property("speed", .INT64, .{ .INT64 = 100 });
-
-    const result = try event_loop.wait_for_event(&.{.LogMessage}, .{
-        .cond_cb = struct {
-            pub fn cb(event: MpvEvent) bool {
-                const log = event.data.LogMessage;
-                const text = log.text[0..(log.text.len - 1)];
-                var iter = std.mem.split(u8, text, " ");
-                while (iter.next()) |tok| {
-                    if (std.mem.eql(u8, tok, "silence_end:")) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }.cb,
-    });
-    const allocator = mpv.allocator;
-    const result_copy = try result.copy(allocator);
-    defer result_copy.free(allocator);
-    var iter = std.mem.split(u8, result_copy.data.LogMessage.text, " ");
-    // FIXME: set_property_string returns `MpvError.PropertyFormat` sometimes without clear cause.
-    while (iter.next()) |tok| {
-        if (std.mem.eql(u8, tok, "silence_end:")) {
-            const pos = iter.peek().?;
-            try mpv.set_property_string("time-pos", pos);
-            break;
-        }
-    }
-    try mpv.request_log_messages(.None);
-    try mpv.set_property("speed", .INT64, .{ .INT64 = 1 });
-    try mpv.set_property_string("af", "");
-}
