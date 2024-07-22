@@ -107,8 +107,8 @@ pub fn main() !void {
             }
         }.cb,
     });
-    // time_pos_callback_unregisterrer.unregister();
-    _ = time_pos_callback_unregisterrer;
+    time_pos_callback_unregisterrer.unregister();
+    // _ = time_pos_callback_unregisterrer;
 
     const log_handler_unregisterrer = try event_loop.register_log_message_handler(.{
         .level = .Debug,
@@ -120,8 +120,8 @@ pub fn main() !void {
             }
         }.cb,
     });
-    // log_handler_unregisterrer.unregister();
-    _ = log_handler_unregisterrer;
+    log_handler_unregisterrer.unregister();
+    // _ = log_handler_unregisterrer;
 
     try event_loop.register_hook_callback(.{
         .hook = .Load,
@@ -136,6 +136,9 @@ pub fn main() !void {
     try mpv.command(&loadfile_cmd_args);
 
     try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
+
+    _ = try event_loop.wait_until_playing(.{});
+    _ = try event_loop.wait_until_paused(.{});
 
     const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
         std.log.err("error waiting for shutdown: {}", .{err});

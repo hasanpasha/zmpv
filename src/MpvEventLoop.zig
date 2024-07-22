@@ -16,13 +16,30 @@ const utils = @import("utils.zig");
 const ResetEvent = std.Thread.ResetEvent;
 const Mutex = std.Thread.Mutex;
 const Condition = std.Thread.Condition;
-const Future = @import("Future.zig");
+const Future = @import("future.zig").Future;
 const testing = std.testing;
 
 const Self = @This();
 
 pub const MpvEventLoopError = error{
     CoreShutdown,
+};
+
+const LoopFuture = union(enum) {
+    Event: *Future(MpvEvent),
+    EventProperty: *Future(MpvEventProperty),
+
+    pub fn set_error(self: @This(), error_value: anyerror) void {
+        switch (self) {
+            inline else => |future| future.set_error(error_value),
+        }
+    }
+
+    pub fn cancel(self: @This()) void {
+        switch (self) {
+            inline else => |future| future.cancel(),
+        }
+    }
 };
 
 mpv_event_handle: *Mpv,
@@ -32,7 +49,8 @@ command_reply_callbacks: std.AutoHashMap(u64, MpvCommandReplyCallback),
 client_message_callbacks: std.StringHashMap(MpvClientMessageCallback),
 hook_callbacks: std.StringHashMap(*std.AutoHashMap(usize, MpvHookCallback)),
 log_callback: ?MpvLogMessageCallback = null,
-futures: std.ArrayList(*Future),
+// futures: std.ArrayList(*Future),
+futures: std.MultiArrayList(LoopFuture),
 core_shutdown: bool = false,
 core_shutdown_mutex: Mutex = Mutex{},
 running: bool = false,
@@ -53,7 +71,7 @@ pub fn new(mpv: *Mpv) !*Self {
         .command_reply_callbacks = std.AutoHashMap(u64, MpvCommandReplyCallback).init(allocator),
         .client_message_callbacks = std.StringHashMap(MpvClientMessageCallback).init(allocator),
         .hook_callbacks = std.StringHashMap(*std.AutoHashMap(usize, MpvHookCallback)).init(allocator),
-        .futures = std.ArrayList(*Future).init(allocator),
+        .futures = std.MultiArrayList(LoopFuture){},
         .allocator = allocator,
     };
     return instance_ptr;
@@ -86,7 +104,7 @@ pub fn free(self: *Self) void {
     }
     self.hook_callbacks.deinit();
 
-    self.futures.deinit();
+    self.futures.deinit(allocator);
 
     self.mpv_event_handle.destroy();
 
@@ -201,7 +219,9 @@ pub fn start_event_loop(self: *Self, iter_wait_flag: MpvEventIteratorWaitFlag) v
         }
 
         if (!con) {
-            for (self.futures.items) |future| {
+            var futures = self.futures.slice();
+            for (0..futures.len) |idx| {
+                const future = futures.get(idx);
                 future.cancel();
             }
             return;
@@ -487,14 +507,14 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
 }) !MpvEvent {
     const cb = struct {
         pub fn cb(event: MpvEvent, user_data: ?*anyopaque) void {
-            var future: *Future = utils.cast_anyopaque_ptr(Future, user_data);
+            var future = utils.cast_anyopaque_ptr(Future(MpvEvent), user_data);
             future.set_result(event) catch |err| {
                 future.set_error(err);
             };
         }
     }.cb;
 
-    var future = try Future.new(self.allocator);
+    var future = try Future(MpvEvent).new(self.allocator);
     defer future.free();
 
     try self.check_core_shutdown();
@@ -510,11 +530,10 @@ pub fn wait_for_event(self: *Self, event_ids: []const MpvEventId, args: struct {
         }
     }
 
-    try self.future_add(future);
-    defer self.future_remove(future);
+    try self.future_add(.{ .Event = future });
+    defer self.future_remove(.{ .Event = future });
 
-    const result = try future.wait_result(args.timeout);
-    return utils.cast_anyopaque_ptr(MpvEvent, result).*;
+    return try future.wait_result(args.timeout);
 }
 
 /// Wait for specified property, if `cond_cb` is specified then wait until cond_cb(property_event) is `true`.
@@ -526,14 +545,14 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
 }) !MpvEventProperty {
     const cb = struct {
         pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
-            var future: *Future = utils.cast_anyopaque_ptr(Future, user_data);
+            var future = utils.cast_anyopaque_ptr(Future(MpvEventProperty), user_data);
             future.set_result(event) catch |err| {
                 future.set_error(err);
             };
         }
     }.cb;
 
-    var future = try Future.new(self.allocator);
+    var future = try Future(MpvEventProperty).new(self.allocator);
     defer future.free();
 
     try self.check_core_shutdown();
@@ -549,11 +568,10 @@ pub fn wait_for_property(self: *Self, property_name: []const u8, args: struct {
         }
     }
 
-    try self.future_add(future);
-    defer self.future_remove(future);
+    try self.future_add(.{ .EventProperty = future });
+    defer self.future_remove(.{ .EventProperty = future });
 
-    const result = try future.wait_result(args.timeout);
-    return utils.cast_anyopaque_ptr(MpvEventProperty, result).*;
+    return try future.wait_result(args.timeout);
 }
 
 /// Wait until the playback has started
@@ -578,7 +596,7 @@ pub fn wait_until_paused(self: *Self, args: struct {
     }.cb });
 }
 
-// Wait until the current playback is finished
+/// Wait until the current playback is finished
 pub fn wait_for_playback(self: *Self, args: struct {
     timeout: ?u64 = null,
 }) !MpvEvent {
@@ -596,17 +614,17 @@ fn check_core_shutdown(self: Self) MpvEventLoopError!void {
     if (self.core_shutdown) return MpvEventLoopError.CoreShutdown;
 }
 
-// TODO: make this a generic function
-fn future_add(self: *Self, future: *Future) !void {
-    try self.futures.append(future);
+fn future_add(self: *Self, future: LoopFuture) !void {
+    try self.futures.append(self.allocator, future);
 }
 
-// TODO: make this a generic function
-fn future_remove(self: *Self, future: *Future) void {
-    for (0.., self.futures.items) |idx, item| {
+fn future_remove(self: *Self, future: LoopFuture) void {
+    var slice = self.futures.slice();
+    for (0..slice.len) |idx| {
+        const item = slice.get(idx);
         if (std.meta.eql(item, future)) {
-            _ = self.futures.swapRemove(idx);
-            break;
+            self.futures.swapRemove(idx);
+            std.log.debug("REMOVING a FUTURE", .{});
         }
     }
 }
