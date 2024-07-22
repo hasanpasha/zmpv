@@ -846,9 +846,36 @@ test "EventLoop: threading-stop" {
     const event_loop = try Self.new(mpv);
     defer event_loop.free();
     try event_loop.start(.{ .start_new_thread = true });
-    // event_loop.stop();
+    event_loop.stop();
+}
+
+test "EventLoop: threading-double-start" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
     try event_loop.start(.{ .start_new_thread = true });
-    // event_loop.stop();
+    try event_loop.start(.{ .start_new_thread = true });
+}
+
+test "EventLoop: threading-double-stop" {
+    const allocator = testing.allocator;
+
+    var mpv = try Mpv.new(allocator, .{
+        .options = &.{},
+    });
+    defer mpv.terminate_destroy();
+
+    const event_loop = try Self.new(mpv);
+    defer event_loop.free();
+    try event_loop.start(.{ .start_new_thread = true });
+    event_loop.stop();
+    event_loop.stop();
 }
 
 test "EventLoop: threading-simple" {
