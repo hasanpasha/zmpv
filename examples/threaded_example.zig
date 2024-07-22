@@ -119,60 +119,8 @@ pub fn main() !void {
             }
         }.cb,
     });
-    log_handler_unregisterrer.unregister();
-    // _ = log_handler_unregisterrer;
-
-    // try mpv.command(&loadfile_cmd_args);
-    // try mpv.wait_until_playing();
-    // const command_callback_unregisterrer = try mpv.register_command_reply_callback(.{
-    //     .command_args = &loadfile_cmd_args,
-    //     .callback = struct {
-    //         pub fn cb(cmd_error: MpvError, result: MpvNode, user_data: ?*anyopaque) void {
-    //             _ = user_data;
-    //             if (cmd_error == MpvError.Success) {
-    //                 // std.log.debug("command result: {}", .{result});
-    //             } else {
-    //                 // std.log.debug("error running command: {}", .{cmd_error});
-    //             }
-    //             // _ = cmd_error;
-    //         }
-    //     }.cb,
-    // });
-    // command_callback_unregisterrer.unregister();
-    // _ = command_callback_unregisterrer;
-
-    // _ = try mpv.wait_for_event(&.{ .Seek }, struct {
-    //     pub fn cb(event: MpvEvent) bool {
-    //         return (event.event_error == MpvError.Success);
-    //     }
-    // }.cb);
-    // std.log.debug("seeked", .{});
-
-    // const property = try mpv.wait_for_property("pause", .{
-    //     .cond_cb = struct {
-    //         pub fn cb(event: MpvEventProperty) bool {
-    //             return event.data.Node.Flag;
-    //         }
-    //     }.cb,
-    //     // .timeout = 5
-    // }); // catch |err| {
-    //     // std.log.err("error waiting for fullscreen=true property: {}", .{err});
-    // // };
-    // std.log.debug("waited property: {}", .{property});
-    // _ = try event_loop.wait_until_playing(.{});
-    // // const pause_property_copy = try pause_property.copy(mpv.allocator);
-    // // defer pause_property_copy.free(mpv.allocator);
-    // // std.log.debug("playing started: {}", .{pause_property_copy});
-    // // _ = try mpv.wait_until_paused(.{});
-    // // std.log.debug("paused", .{});
-    // _ = try event_loop.wait_for_property("fullscreen", .{
-    //     .cond_cb = struct {
-    //         pub fn cb(event: MpvEventProperty) bool {
-    //             return (event.data.Node.Flag);
-    //         }
-    //     }.cb,
-    // });
-    // std.log.debug("stopped waiting fullscreen", .{});
+    // log_handler_unregisterrer.unregister();
+    _ = log_handler_unregisterrer;
 
     try event_loop.register_hook_callback(.{
         .hook = .Load,
@@ -186,78 +134,8 @@ pub fn main() !void {
     var loadfile_cmd_args = [_][]const u8{ "loadfile", filename };
     try mpv.command(&loadfile_cmd_args);
 
-    try event_loop.register_hook_callback(.{
-        .hook = .Unload,
-        .callback = struct {
-            pub fn cb(_: ?*anyopaque) void {
-                std.log.debug("HOOK unload", .{});
-            }
-        }.cb,
-    });
-
-    try event_loop.register_hook_callback(.{
-        .hook = .Unload,
-        .callback = struct {
-            pub fn cb(_: ?*anyopaque) void {
-                std.log.debug("HOOK unload 2", .{});
-                for (0..10) |idx| {
-                    std.log.debug("doing think in unload hook: {}", .{idx});
-                }
-            }
-        }.cb,
-    });
-
-    const client_message_unregisterrer = try event_loop.register_client_message_callback(.{
-        .target = "hasan",
-        .callback = struct {
-            pub fn cb(message: [][*:0]const u8, _: ?*anyopaque) void {
-                std.log.debug("\"hasan\" received: {s}", .{message});
-            }
-        }.cb,
-    });
-    // client_message_unregisterrer.unregister();
-    _ = client_message_unregisterrer;
-
-    // try skip_silence(mpv, event_loop);
-    // std.log.debug("finished skipping", .{});
-    // // try skip_silence(mpv);
-    // _ = try event_loop.wait_for_property("fullscreen", .{
-    //     .cond_cb = struct {
-    //         pub fn cb(property: MpvEventProperty) bool {
-    //             return (property.data.Node.Flag);
-    //         }
-    //     }.cb});
-
-    // _ = try event_loop.wait_until_playing(.{});
-    // _ = try event_loop.wait_until_paused(.{});
-    // std.log.debug("paused", .{});
-
-    // _ = event_loop.wait_for_playback(.{}) catch |err| {
-    //     std.log.err("error waiting for playback: {}", .{err});
-    //     std.process.exit(1);
-    // };
-    // std.log.debug("done playing", .{});
-    // std.log.debug("started playing", .{});
-    // try mpv.wait_until_pause();
-    // std.log.debug("exiting because pause", .{});
-
-    std.log.info("loop 1", .{});
     try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
-    event_loop.stop();
-    std.log.info("loop 2", .{});
-    try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
-    // event_loop.stop();
-    // std.log.info("loop 3", .{});
-    // try event_loop.start(.{ .start_new_thread = true, .iter_wait_flag= .{ .IndefiniteWait= {} }, });
-    // event_loop.stop();
-    // std.log.debug("DO", .{});
-    // while (true) {
-    //     std.log.debug("running event loop", .{});
-    //     try event_loop.start(.{ .start_new_thread = false, .iter_wait_flag= .{ .NoWait = {} }, });
-    // }
 
-
-    std.log.debug("waiting for the shutdown", .{});
     const shutdown_evt = event_loop.wait_for_shutdown(.{ .timeout = null }) catch |err| {
         std.log.err("error waiting for shutdown: {}", .{err});
         std.process.exit(2);
@@ -276,10 +154,8 @@ fn skip_silence(mpv: *Mpv, event_loop: *MpvEventLoop) !void {
                 const log = event.data.LogMessage;
                 const text = log.text[0..(log.text.len - 1)];
                 var iter = std.mem.split(u8, text, " ");
-                std.log.debug("checking silence_end", .{});
                 while (iter.next()) |tok| {
                     if (std.mem.eql(u8, tok, "silence_end:")) {
-                        std.log.debug("found silence end: {s}", .{iter.peek().?});
                         return true;
                     }
                 }
@@ -290,13 +166,11 @@ fn skip_silence(mpv: *Mpv, event_loop: *MpvEventLoop) !void {
     const allocator = mpv.allocator;
     const result_copy = try result.copy(allocator);
     defer result_copy.free(allocator);
-    std.log.debug("got seek result", .{});
     var iter = std.mem.split(u8, result_copy.data.LogMessage.text, " ");
-    // FIXME: set_property_string returns `MpvError.PropertyFormat` sometimes without clean cause.
+    // FIXME: set_property_string returns `MpvError.PropertyFormat` sometimes without clear cause.
     while (iter.next()) |tok| {
         if (std.mem.eql(u8, tok, "silence_end:")) {
             const pos = iter.peek().?;
-            std.log.debug("seeking to: {s}", .{pos});
             try mpv.set_property_string("time-pos", pos);
             break;
         }
@@ -304,5 +178,4 @@ fn skip_silence(mpv: *Mpv, event_loop: *MpvEventLoop) !void {
     try mpv.request_log_messages(.None);
     try mpv.set_property("speed", .INT64, .{ .INT64 = 1 });
     try mpv.set_property_string("af", "");
-    std.log.debug("returning", .{});
 }
