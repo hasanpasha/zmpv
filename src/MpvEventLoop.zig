@@ -1,6 +1,7 @@
 const std = @import("std");
 const Mpv = @import("Mpv.zig");
 const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvFormat = @import("mpv_format.zig").MpvFormat;
 const MpvEvent = @import("MpvEvent.zig");
 const MpvEventIterator = @import("MpvEventIterator.zig");
 const MpvEventIteratorWaitFlag = MpvEventIterator.MpvEventIteratorWaitFlag;
@@ -271,6 +272,7 @@ pub fn unregister_event_callback(self: *Self, callback: MpvEventCallback) !void 
 pub const MpvPropertyCallback = struct {
     property_name: []const u8,
     callback: *const fn (MpvEventProperty, ?*anyopaque) void,
+    format: MpvFormat = .Node,
     user_data: ?*anyopaque = null,
     cond_cb: ?*const fn (MpvEventProperty) bool = null,
 
@@ -298,7 +300,7 @@ pub fn register_property_callback(self: *Self, callback: MpvPropertyCallback) !M
     }
     var property_observers = self.property_callbacks.get(property_name).?;
     try property_observers.append(callback);
-    try self.mpv_event_handle.observe_property(std.hash.Fnv1a_64.hash(property_name), property_name, .Node);
+    try self.mpv_event_handle.observe_property(std.hash.Fnv1a_64.hash(property_name), property_name, callback.format);
 
     return .{
         .mpv = self,

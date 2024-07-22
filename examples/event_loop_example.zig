@@ -94,20 +94,21 @@ pub fn main() !void {
 
     const time_pos_callback_unregisterrer = try event_loop.register_property_callback(MpvPropertyCallback{
         .property_name = "time-pos",
+        .format = .INT64,
         .callback = struct {
             pub fn cb(event: MpvEventProperty, user_data: ?*anyopaque) void {
                 _ = user_data;
                 switch (event.data) {
-                    .Node => |value| {
-                        std.log.debug("time-pos: {}", .{value.Double});
+                    .INT64 => |value| {
+                        std.log.debug("time-pos: {}", .{value});
                     },
                     else => {},
                 }
             }
         }.cb,
     });
-    time_pos_callback_unregisterrer.unregister();
-    // _ = time_pos_callback_unregisterrer;
+    // time_pos_callback_unregisterrer.unregister();
+    _ = time_pos_callback_unregisterrer;
 
     const log_handler_unregisterrer = try event_loop.register_log_message_handler(.{
         .level = .Debug,
