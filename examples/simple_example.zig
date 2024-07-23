@@ -20,7 +20,7 @@ pub fn main() !void {
     defer mpv.terminate_destroy();
 
     const version = Mpv.client_api_version();
-    std.debug.print("version={any}.{}\n", .{version >> 16, version & 0xffff});
+    std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
 
     try mpv.command_async(0, &.{"loadfile", filename});
 
@@ -34,6 +34,7 @@ pub fn main() !void {
     std.log.debug("fullscreen={s}", .{fullscreen_status.String});
     defer mpv.free(fullscreen_status);
 
+    var seeked = false;
     while (true) {
         const event = mpv.wait_event(10000);
         const event_id = event.event_id;
@@ -52,6 +53,13 @@ pub fn main() !void {
                     switch (property.data) {
                         .INT64 => |time_pos| {
                             std.log.debug("[time-pos] {}", .{time_pos});
+                            if (!seeked) {
+                                try mpv.run("ls", &.{"-la"});
+                                try mpv.seek("50", .{ .reference = .Absolute, .precision = .Percent });
+                                std.time.sleep(5 * 1e8);
+                                try mpv.revert_seek(.{});
+                                seeked = true;
+                            }
                         },
                         else => {},
                     }
