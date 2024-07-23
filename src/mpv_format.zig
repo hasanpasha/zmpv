@@ -1,3 +1,4 @@
+const Allocator = @import("std").mem.Allocator;
 const c = @import("c.zig");
 const testing = @import("std").testing;
 
@@ -23,15 +24,15 @@ pub const MpvFormat = enum(c.mpv_format) {
         return @intFromEnum(self);
     }
 
-    pub inline fn CDataType(comptime self: Self) type {
+    pub fn alloc_c_value(self: Self, allocator: Allocator) !*anyopaque {
         return switch (self) {
-            .String, .OSDString => [*c]u8,
-            .Flag => c_int,
-            .INT64 => i64,
-            .Double => f64,
-            .Node => c.mpv_node,
-            .NodeArray, .NodeMap => c.mpv_node_list,
-            .ByteArray => c.mpv_byte_array,
+            .String, .OSDString => @ptrCast(try allocator.create([*:0]u8)),
+            .Flag => @ptrCast(try allocator.create(c_int)),
+            .INT64 => @ptrCast(try allocator.create(i64)),
+            .Double => @ptrCast(try allocator.create(f64)),
+            .Node => @ptrCast(try allocator.create(c.mpv_node)),
+            .NodeArray, .NodeMap => @ptrCast(try allocator.create(c.mpv_node_list)),
+            .ByteArray => @ptrCast(try allocator.create(c.mpv_byte_array)),
             .None => @panic("WTH ARE YOU DOING!!"),
         };
     }
@@ -49,11 +50,4 @@ test "MpvFormat to" {
     try testing.expect(MpvFormat.to_c(.INT64) == c.MPV_FORMAT_INT64);
     try testing.expect(MpvFormat.to_c(.Double) == c.MPV_FORMAT_DOUBLE);
     try testing.expect(MpvFormat.to_c(.Node) == c.MPV_FORMAT_NODE);
-}
-
-test "MpvFormat ctype" {
-    try testing.expect(MpvFormat.CDataType(.ByteArray) == c.mpv_byte_array);
-    try testing.expect(MpvFormat.CDataType(.String) == [*c]u8);
-    try testing.expect(MpvFormat.CDataType(.NodeMap) == c.mpv_node_list);
-    try testing.expect(MpvFormat.CDataType(.INT64) != c_int);
 }
