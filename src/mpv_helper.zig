@@ -216,8 +216,7 @@ pub fn screenshot(self: Mpv, args: struct {
             self.allocator.free(flag_str);
         }
     }
-    var cmd_args = [_][]const u8{ "screenshot", flag_str };
-    return try self.command_ret(&cmd_args);
+    return try self.command_ret(&.{ "screenshot", flag_str });
 }
 
 // TODO: wrap `screenshot-raw` command
@@ -225,22 +224,19 @@ pub fn screenshot(self: Mpv, args: struct {
 pub fn screenshot_to_file(self: Mpv, filename: []const u8, args: struct {
     include: ScreenshotInclude = .Subtitles,
 }) !void {
-    var cmd_args = [_][]const u8{ "screenshot-to-file", filename, args.include.to_string() };
-    try self.command(&cmd_args);
+    try self.command(&.{ "screenshot-to-file", filename, args.include.to_string() });
 }
 
 pub fn playlist_next(self: Mpv, args: struct {
     force: bool = false,
 }) !void {
-    var cmd_args = [_][]const u8{ "playlist-next", if (args.force) "force" else "weak" };
-    try self.command(&cmd_args);
+    try self.command(&.{ "playlist-next", if (args.force) "force" else "weak" });
 }
 
 pub fn playlist_prev(self: Mpv, args: struct {
     force: bool = false,
 }) !void {
-    var cmd_args = [_][]const u8{ "playlist-prev", if (args.force) "force" else "weak" };
-    try self.command(&cmd_args);
+    try self.command(&.{ "playlist-prev", if (args.force) "force" else "weak" });
 }
 
 pub const LoadlistFlag = enum {
@@ -732,8 +728,7 @@ test "MpvHelper playlist-next" {
         std.fs.cwd().deleteFile(playlist_path) catch {};
         remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
     }
-    var load_cmd = [_][]const u8{ "loadlist", playlist_path };
-    try mpv.command(&load_cmd);
+    try mpv.command(&.{ "loadlist", playlist_path });
     try mpv.observe_property(6969, "playlist-current-pos", .INT64);
     var nums_play_next: u8 = 0;
     var finished = false;
@@ -768,8 +763,7 @@ test "MpvHelper playlist-prev" {
         std.fs.cwd().deleteFile(playlist_path) catch {};
         remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
     }
-    var load_cmd = [_][]const u8{ "loadlist", playlist_path };
-    try mpv.command(&load_cmd);
+    try mpv.command(&.{ "loadlist", playlist_path });
     try mpv.observe_property(6969, "playlist-current-pos", .INT64);
     var nums_play_next: u8 = 0;
     var finished = false;
