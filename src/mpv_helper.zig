@@ -243,6 +243,26 @@ pub fn playlist_prev(self: Mpv, args: struct {
     try self.command(&cmd_args);
 }
 
+pub const LoadlistFlag = enum {
+    Replace,
+    Append,
+    AppendPlay,
+
+    pub fn to_string(self: LoadlistFlag) []const u8 {
+        return switch (self) {
+            .Replace => "replace",
+            .Append => "append",
+            .AppendPlay => "append-play",
+        };
+    }
+};
+
+pub fn loadlist(self: Mpv, url: []const u8, args: struct {
+    flag: LoadfileFlag = .Append,
+}) !void {
+    try self.command(&.{ "loadlist", url, args.flag.to_string() });
+}
+
 pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) !void {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
@@ -774,6 +794,27 @@ test "MpvHelper playlist-prev" {
         if (finished) {
             try mpv.quit(.{});
         }
+    }
+}
+
+test "MpvHelper loadlist" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    const base_filename = test_filepath;
+    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
+    defer {
+        std.fs.cwd().deleteFile(playlist_path) catch {};
+        remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
+    }
+
+    try mpv.loadlist(playlist_path, .{});
+    try mpv.command_string("playlist-play-index 0");
+
+    while (true) {
+        const event = mpv.wait_event(0);
+        if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
     }
 }
 
