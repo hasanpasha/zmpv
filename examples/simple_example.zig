@@ -30,8 +30,8 @@ pub fn main() !void {
     try mpv.observe_property(2, "time-pos", .INT64);
 
     try mpv.cycle("fullscreen", .{ .direction = .Down });
-    const fullscreen_status = try mpv.get_property("fullscreen", .Node);
-    std.log.debug("fullscreen={}", .{fullscreen_status.Node.Flag});
+    const fullscreen_status = try mpv.get_property("fullscreen", .String);
+    std.log.debug("fullscreen={s}", .{fullscreen_status.String});
     defer mpv.free(fullscreen_status);
 
     var seeked = false;

@@ -128,22 +128,12 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
 }
 
 /// The returened value must be freed with self.free(value)
-pub fn get_property(self: Self, name: []const u8, comptime format: MpvFormat) !MpvPropertyData {
-    var output_mem: format.CDataType() = undefined;
-    const data_ptr: *anyopaque = @ptrCast(@alignCast(&output_mem));
+pub fn get_property(self: Self, name: []const u8, format: MpvFormat) !MpvPropertyData {
+    var arena = std.heap.ArenaAllocator.init(self.allocator);
+    defer arena.deinit();
+    const data_ptr = try format.alloc_c_value(arena.allocator());
 
     try catch_mpv_error(c.mpv_get_property(self.handle, name.ptr, format.to_c(), data_ptr));
-    defer {
-        switch (format) {
-            .String, .OSDString => {
-                c.mpv_free(output_mem);
-            },
-            .Node, .NodeArray, .NodeMap => {
-                c.mpv_free_node_contents(&output_mem);
-            },
-            else => {},
-        }
-    }
 
     return try MpvPropertyData.from(format, data_ptr).copy(self.allocator);
 }
@@ -330,7 +320,8 @@ test "Mpv.set_option" {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    const osc = try mpv.get_property("osc", .Flag);
+    const format = MpvFormat.Flag;
+    const osc = try mpv.get_property("osc", format);
     defer mpv.free(osc);
 
     try testing.expect(osc.Flag == true);
