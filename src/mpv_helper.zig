@@ -259,6 +259,10 @@ pub fn loadlist(self: Mpv, url: []const u8, args: struct {
     try self.command(&.{ "loadlist", url, args.flag.to_string() });
 }
 
+pub fn playlist_clear(self: Mpv) !void {
+    try self.command_string("playlist-clear");
+}
+
 pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) !void {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
@@ -810,6 +814,28 @@ test "MpvHelper loadlist" {
         const event = mpv.wait_event(0);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
     }
+}
+
+test "MpvHelper playlist-clear" {
+    const allocator = testing.allocator;
+    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    defer mpv.terminate_destroy();
+
+    const base_filename = test_filepath;
+    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
+    defer {
+        std.fs.cwd().deleteFile(playlist_path) catch {};
+        remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
+    }
+
+    try mpv.command(&.{ "loadlist", playlist_path });
+    const pc1 = try mpv.get_property("playlist-count", .INT64);
+    try testing.expect(pc1.INT64 == 2);
+
+    try mpv.playlist_clear();
+
+    const pc2 = try mpv.get_property("playlist-count", .INT64);
+    try testing.expect(pc2.INT64 == 1);
 }
 
 test "MpvHelper run" {
