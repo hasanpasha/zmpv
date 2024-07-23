@@ -801,13 +801,15 @@ test "MpvHelper loadlist" {
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
-    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 2 });
+    const playlist_path = try create_playlist(base_filename, allocator, .{ .size = 3 });
     defer {
         std.fs.cwd().deleteFile(playlist_path) catch {};
         remove_file_with_extension(".bak", allocator, .{ .path = "resources" }) catch {};
     }
 
     try mpv.loadlist(playlist_path, .{});
+    const pc = try mpv.get_property("playlist-count", .INT64);
+    try testing.expect(pc.INT64 == 3);
     try mpv.command_string("playlist-play-index 0");
 
     while (true) {
