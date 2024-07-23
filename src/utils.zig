@@ -29,6 +29,12 @@ pub fn catch_mpv_error(ret_code: c_int) MpvError!void {
     }
 }
 
+pub fn string_array_hash(allocator: std.mem.Allocator, array: []const []const u8) !u64 {
+    const args = try std.mem.concat(allocator, u8, array);
+    defer allocator.free(args);
+    return std.hash.Fnv1a_64.hash(args);
+}
+
 test "zstring to cstring array" {
     const allocator = testing.allocator;
 

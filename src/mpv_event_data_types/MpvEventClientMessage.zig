@@ -24,15 +24,13 @@ pub fn from(data_ptr: *anyopaque) Self {
 }
 
 pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
-    return Self{
-        .args = string_array: {
-            var strings = try allocator.alloc([*:0]const u8, self.args.len);
-            for (0..self.args.len) |idx| {
-                strings[idx] = try allocator.dupeZ(u8, std.mem.sliceTo(self.args[idx], 0));
-            }
-            break :string_array strings;
+    return Self{ .args = string_array: {
+        var strings = try allocator.alloc([*:0]const u8, self.args.len);
+        for (0..self.args.len) |idx| {
+            strings[idx] = try allocator.dupeZ(u8, std.mem.sliceTo(self.args[idx], 0));
         }
-    };
+        break :string_array strings;
+    } };
 }
 
 pub fn free(self: Self, allocator: std.mem.Allocator) void {
@@ -58,7 +56,7 @@ test "MpvEventClientMessage from" {
 test "MpvEventClientMessage copy" {
     const allocator = testing.allocator;
 
-    var msgs = [_][*:0]const u8{"hello", "world", "from", "copy"};
+    var msgs = [_][*:0]const u8{ "hello", "world", "from", "copy" };
     const message = Self{
         .args = &msgs,
     };

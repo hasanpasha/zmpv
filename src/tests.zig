@@ -13,4 +13,6 @@ comptime {
     _ = @import("mpv_event_data_types/MpvEventLogMessage.zig");
     _ = @import("mpv_event_data_types/MpvEventProperty.zig");
     _ = @import("mpv_event_data_types/MpvEventStartFile.zig");
+    _ = @import("MpvEventLoop.zig");
+    _ = @import("future.zig");
 }

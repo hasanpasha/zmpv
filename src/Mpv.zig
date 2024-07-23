@@ -11,12 +11,11 @@ const MpvNodeMap = types.MpvNodeMap;
 const MpvFormat = @import("mpv_format.zig").MpvFormat;
 const MpvLogLevel = @import("mpv_event_data_types/MpvEventLogMessage.zig").MpvLogLevel;
 const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvError = mpv_error.MpvError;
+const GenericError = @import("generic_error.zig").GenericError;
 const utils = @import("utils.zig");
 const catch_mpv_error = utils.catch_mpv_error;
 const testing = std.testing;
-
-const MpvError = mpv_error.MpvError;
-const GenericError = generic_error.GenericError;
 
 const Self = @This();
 
@@ -50,7 +49,7 @@ pub fn create_weak_client(self: Self, name: []const u8) !*Self {
     return instance_ptr;
 }
 
-pub fn initialize(self: Self) MpvError!void {
+pub fn initialize(self: *Self) MpvError!void {
     try catch_mpv_error(c.mpv_initialize(self.handle));
 }
 
@@ -283,7 +282,6 @@ pub fn free(self: Self, data: anytype) void {
         },
         else => {},
     }
-    std.log.debug("{any}", .{@TypeOf(data)});
 }
 
 pub usingnamespace @import("mpv_helper.zig");
