@@ -165,6 +165,16 @@ pub const MpvRenderFrameInfoFlag = struct {
     redraw: bool,
     repeat: bool,
     block_vsync: bool,
+
+    pub fn from(flags: u64) MpvRenderFrameInfoFlag {
+        return MpvRenderFrameInfoFlag{
+            .present = (flags & c.MPV_RENDER_FRAME_INFO_PRESENT) == 1,
+            .redraw = (flags & c.MPV_RENDER_FRAME_INFO_REDRAW) == 1,
+            .repeat = (flags & c.MPV_RENDER_FRAME_INFO_REPEAT) == 1,
+            .block_vsync = (flags & c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC) == 1,
+        };
+
+    }
 };
 
 pub const MpvRenderFrameInfo = struct {
@@ -172,15 +182,8 @@ pub const MpvRenderFrameInfo = struct {
     target_time: i64,
 
     pub fn from(data: c.mpv_render_frame_info) MpvRenderFrameInfo {
-        const flags = MpvRenderFrameInfoFlag{
-            .present = (data.flags & c.MPV_RENDER_FRAME_INFO_PRESENT) == 1,
-            .redraw = (data.flags & c.MPV_RENDER_FRAME_INFO_REDRAW) == 1,
-            .repeat = (data.flags & c.MPV_RENDER_FRAME_INFO_REPEAT) == 1,
-            .block_vsync = (data.flags & c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC) == 1,
-        };
-
         return MpvRenderFrameInfo{
-            .flags = flags,
+            .flags = MpvRenderFrameInfoFlag.from(data.flags),
             .target_time = data.target_time,
         };
     }
