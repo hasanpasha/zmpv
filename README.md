@@ -1,4 +1,5 @@
 # zmpv
+
 `libmpv` bindings in zig.
 
 ## Todo
@@ -57,7 +58,7 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(std.heap.page_allocator, null);
+    const mpv = try Mpv.create(std.heap.page_allocator);
 
     try mpv.set_option("osc", .Flag, .{ .Flag = true });
     try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
@@ -75,7 +76,7 @@ pub fn main() !void {
     try mpv.observe_property(2, "time-pos", .INT64);
 
     while (true) {
-        const event = try mpv.wait_event(10000);
+        const event = mpv.wait_event(-1);
         const event_id = event.event_id;
         switch (event_id) {
             .Shutdown => break,
