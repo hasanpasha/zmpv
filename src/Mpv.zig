@@ -200,7 +200,7 @@ pub fn request_log_messages(self: Self, level: MpvLogLevel) MpvError!void {
     try catch_mpv_error(c.mpv_request_log_messages(self.handle, level.to_string().ptr));
 }
 
-pub fn hook_add(self: Self, reply_userdata: u64, name: []const u8, priority: i64) MpvError!void {
+pub fn hook_add(self: Self, reply_userdata: u64, name: []const u8, priority: i32) MpvError!void {
     try catch_mpv_error(c.mpv_hook_add(self.handle, reply_userdata, name.ptr, @intCast(priority)));
 }
 
