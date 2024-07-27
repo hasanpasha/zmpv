@@ -117,9 +117,6 @@ pub fn main() !void {
         }
 
         if (redraw) {
-            const info = try mpv_render_ctx.get_info(.NextFrameInfo);
-            std.log.debug("{}", .{info});
-
             var w: c_int = undefined;
             var h: c_int = undefined;
             sdl.SDL_GetWindowSize(window, &w, &h);
