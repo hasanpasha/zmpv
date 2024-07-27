@@ -9,7 +9,7 @@ const Self = @This();
 reason: MpvEventEndFileReason,
 playlist_entry_id: i64,
 playlist_insert_id: i64,
-playlist_insert_num_entries: i64,
+playlist_insert_num_entries: i32,
 event_error: MpvError,
 
 pub fn from(data_ptr: *anyopaque) Self {
