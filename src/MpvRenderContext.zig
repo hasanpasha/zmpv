@@ -143,10 +143,10 @@ pub const MpvOpenGLInitParams = struct {
 };
 
 pub const MpvOpenGLFBO = struct {
-    fbo: i64,
-    w: i64,
-    h: i64,
-    internal_format: i64,
+    fbo: i32,
+    w: i32,
+    h: i32,
+    internal_format: i32,
 
     pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) !*c.mpv_opengl_fbo {
         const value_ptr = try allocator.create(c.mpv_opengl_fbo);
@@ -203,8 +203,8 @@ pub const MpvRenderFrameInfo = struct {
 };
 
 const MpvOpenGLDRMDrawSurfaceSize = struct {
-    width: i64,
-    height: i64,
+    width: i32,
+    height: i32,
 
     pub fn to_c(self: MpvOpenGLDRMDrawSurfaceSize, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_draw_surface_size {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_draw_surface_size);
@@ -217,11 +217,11 @@ const MpvOpenGLDRMDrawSurfaceSize = struct {
 };
 
 const MpvOpenGLDRMParams = struct {
-    fd: i64,
-    crtc_id: i64,
-    connector_id: i64,
+    fd: i32,
+    crtc_id: i32,
+    connector_id: i32,
     atomic_request_ptr: [*c]?*anyopaque, // not tested
-    render_fd: i64,
+    render_fd: i32,
 
     pub fn to_c(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_params);
@@ -249,8 +249,8 @@ const MpvOpenGLDRMParams = struct {
 };
 
 const MpvSwSize = struct {
-    w: i64,
-    h: i64,
+    w: i32,
+    h: i32,
 
     pub fn to_c(self: MpvSwSize, allocator: std.mem.Allocator) !*[2]c_int {
         const value_ptr = try allocator.create([2]c_int);
@@ -282,9 +282,9 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
     OpenglInitParams: MpvOpenGLInitParams,
     OpenglFbo: MpvOpenGLFBO,
     FlipY: bool,
-    Depth: i64,
+    Depth: i32,
     IccProfile: []u8,
-    AmbientLight: i64,
+    AmbientLight: i32,
     X11Display: *anyopaque, // *Display
     WlDisplay: *anyopaque, // *wl_display
     AdvancedControl: bool,
