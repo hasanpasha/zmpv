@@ -15,7 +15,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
     for (0..params.len) |index| {
         c_params[index] = try params[index].to_c(allocator);
     }
-    return @ptrCast(c_params);
+    return c_params.ptr;
 }
 
 pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
@@ -134,8 +134,10 @@ pub const MpvOpenGLInitParams = struct {
 
     pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
         const value_ptr = try allocator.create(c.mpv_opengl_init_params);
-        value_ptr.*.get_proc_address = @ptrCast(self.get_process_address);
-        value_ptr.*.get_proc_address_ctx = self.get_process_address_ctx;
+        value_ptr.* = .{
+            .get_proc_address = @ptrCast(self.get_process_address),
+            .get_proc_address_ctx = self.get_process_address_ctx,
+        };
         return value_ptr;
     }
 };
@@ -148,10 +150,12 @@ pub const MpvOpenGLFBO = struct {
 
     pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) !*c.mpv_opengl_fbo {
         const value_ptr = try allocator.create(c.mpv_opengl_fbo);
-        value_ptr.*.fbo = @intCast(self.fbo);
-        value_ptr.*.w = @intCast(self.w);
-        value_ptr.*.h = @intCast(self.h);
-        value_ptr.*.internal_format = @intCast(self.internal_format);
+        value_ptr.* = .{
+            .fbo = @intCast(self.fbo),
+            .w = @intCast(self.w),
+            .h = @intCast(self.h),
+            .internal_format = @intCast(self.internal_format),
+        };
         return value_ptr;
     }
 };
@@ -204,8 +208,10 @@ const MpvOpenGLDRMDrawSurfaceSize = struct {
 
     pub fn to_c(self: MpvOpenGLDRMDrawSurfaceSize, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_draw_surface_size {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_draw_surface_size);
-        value_ptr.*.width = @intCast(self.width);
-        value_ptr.*.height = @intCast(self.height);
+        value_ptr.* = .{
+            .width = @intCast(self.width),
+            .height = @intCast(self.height),
+        };
         return value_ptr;
     }
 };
@@ -219,21 +225,25 @@ const MpvOpenGLDRMParams = struct {
 
     pub fn to_c(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_params);
-        value_ptr.*.fd = @intCast(self.fd);
-        value_ptr.*.crtc_id = @intCast(self.crtc_id);
-        value_ptr.*.connector_id = @intCast(self.connector_id);
-        value_ptr.*.atomic_request_ptr = @ptrCast(self.atomic_request_ptr);
-        value_ptr.*.render_fd = @intCast(self.render_fd);
+        value_ptr.* = .{
+            .fd = @intCast(self.fd),
+            .crtc_id = @intCast(self.crtc_id),
+            .connector_id = @intCast(self.connector_id),
+            .atomic_request_ptr = @ptrCast(self.atomic_request_ptr),
+            .render_fd = @intCast(self.render_fd),
+        };
         return value_ptr;
     }
 
     pub fn to_c_v2(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params_v2 {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_params_v2);
-        value_ptr.*.fd = @intCast(self.fd);
-        value_ptr.*.crtc_id = @intCast(self.crtc_id);
-        value_ptr.*.connector_id = @intCast(self.connector_id);
-        value_ptr.*.atomic_request_ptr = @ptrCast(self.atomic_request_ptr);
-        value_ptr.*.render_fd = @intCast(self.render_fd);
+        value_ptr.* = .{
+            .fd = @intCast(self.fd),
+            .crtc_id = @intCast(self.crtc_id),
+            .connector_id = @intCast(self.connector_id),
+            .atomic_request_ptr = @ptrCast(self.atomic_request_ptr),
+            .render_fd = @intCast(self.render_fd),
+        };
         return value_ptr;
     }
 };
@@ -244,8 +254,7 @@ const MpvSwSize = struct {
 
     pub fn to_c(self: MpvSwSize, allocator: std.mem.Allocator) !*[2]c_int {
         const value_ptr = try allocator.create([2]c_int);
-        value_ptr.*[0] = @intCast(self.w);
-        value_ptr.*[1] = @intCast(self.h);
+        value_ptr.* = .{ @intCast(self.w), @intCast(self.h) };
         return value_ptr;
     }
 };
@@ -388,11 +397,11 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
             .SwSize => |size| {
                 param.type = MpvRenderParamType.SwSize.to_c();
                 const data = try size.to_c(allocator);
-                param.data = @ptrCast(data);
+                param.data = data;
             },
             .SwFormat => |format| {
                 param.type = MpvRenderParamType.SwFormat.to_c();
-                param.data = @ptrCast(format.to_c());
+                param.data = format.to_c();
             },
             .SwStride => |stride| {
                 param.type = MpvRenderParamType.SwStride.to_c();
