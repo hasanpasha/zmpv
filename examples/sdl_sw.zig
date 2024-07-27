@@ -134,7 +134,7 @@ pub fn main() !void {
 
             var zig_render_params = [_]MpvRenderParam{
                 .{ .SwSize = .{ .w = @intCast(w), .h = @intCast(h) } },
-                .{ .SwFormat = .@"0bgr" },
+                .{ .SwFormat = "0bgr" },
                 .{ .SwStride = @intCast(pitch) },
                 .{ .SwPointer = pixels },
                 .{ .SkipRendering = false },

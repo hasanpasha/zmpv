@@ -246,23 +246,6 @@ const MpvSwSize = struct {
     }
 };
 
-const MpvSwFormat = enum {
-    Rgb0,
-    Bgr0,
-    @"0bgr",
-    @"0rgb",
-
-    pub fn to_c(self: MpvSwFormat) *[4:0]u8 {
-        const value = switch (self) {
-            .Rgb0 => "rgb0",
-            .Bgr0 => "bgr0",
-            .@"0bgr" => "0bgr",
-            .@"0rgb" => "0rgb",
-        };
-        return @constCast(value);
-    }
-};
-
 pub const MpvRenderParam = union(MpvRenderParamType) {
     Invalid: void,
     ApiType: MpvRenderApiType,
@@ -282,7 +265,7 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
     DrmDrawSurfaceSize: MpvOpenGLDRMDrawSurfaceSize,
     DrmDisplayV2: MpvOpenGLDRMParams,
     SwSize: MpvSwSize,
-    SwFormat: MpvSwFormat,
+    SwFormat: []const u8,
     SwStride: usize,
     SwPointer: *anyopaque,
 
@@ -384,7 +367,7 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
             },
             .SwFormat => |format| {
                 param.type = MpvRenderParamType.SwFormat.to_c();
-                param.data = format.to_c();
+                param.data = @ptrCast(@constCast(format.ptr));
             },
             .SwStride => |stride| {
                 param.type = MpvRenderParamType.SwStride.to_c();
