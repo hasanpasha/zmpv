@@ -165,15 +165,6 @@ pub const MpvRenderFrameInfoFlag = struct {
     redraw: bool,
     repeat: bool,
     block_vsync: bool,
-
-    pub fn to_c(self: MpvRenderFrameInfoFlag) u64 {
-        var flag: u64 = 0;
-        flag = if (self.present) flag | c.MPV_RENDER_FRAME_INFO_PRESENT else flag;
-        flag = if (self.redraw) flag | c.MPV_RENDER_FRAME_INFO_REDRAW else flag;
-        flag = if (self.repeat) flag | c.MPV_RENDER_FRAME_INFO_REPEAT else flag;
-        flag = if (self.block_vsync) flag | c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC else flag;
-        return flag;
-    }
 };
 
 pub const MpvRenderFrameInfo = struct {
@@ -192,13 +183,6 @@ pub const MpvRenderFrameInfo = struct {
             .flags = flags,
             .target_time = data.target_time,
         };
-    }
-
-    pub fn to_c(self: MpvRenderFrameInfo, allocator: std.mem.Allocator) !*c.mpv_render_frame_info {
-        const value_ptr = try allocator.create(c.mpv_render_frame_info);
-        value_ptr.*.flags = self.flags.to_c();
-        value_ptr.*.target_time = self.target_time;
-        return value_ptr;
     }
 };
 
@@ -366,10 +350,6 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 value_ptr.* = if (advanced) 1 else 0;
                 param.data = value_ptr;
             },
-            .NextFrameInfo => |next_frame_info| {
-                param.type = MpvRenderParamType.NextFrameInfo.to_c();
-                param.data = try next_frame_info.to_c(allocator);
-            },
             .BlockForTargetTime => |block| {
                 param.type = MpvRenderParamType.BlockForTargetTime.to_c();
                 const value_ptr = try allocator.create(c_int);
@@ -413,6 +393,7 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
                 param.type = MpvRenderParamType.SwPointer.to_c();
                 param.data = pointer;
             },
+            else => @panic("Unimplement"),
         }
         return param;
     }
