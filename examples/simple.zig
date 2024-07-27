@@ -1,16 +1,10 @@
 const std = @import("std");
 const zmpv = @import("zmpv");
 const Mpv = zmpv.Mpv;
+const config = @import("config");
 
 pub fn main() !void {
-    const args = try std.process.argsAlloc(std.heap.page_allocator);
-
-    if (args.len < 2) {
-        std.debug.print("usage: {s} [filename]\n", .{args[0]});
-        return;
-    }
-
-    const filename = args[1];
+    const filepath = config.filepath;
 
     const mpv = try Mpv.create_and_initialize(std.heap.page_allocator, &.{
         .{ "osc", "yes" },
@@ -22,7 +16,7 @@ pub fn main() !void {
     const version = Mpv.client_api_version();
     std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
 
-    try mpv.command_async(0, &.{"loadfile", filename});
+    try mpv.command_async(0, &.{"loadfile", filepath});
 
     try mpv.request_log_messages(.Error);
 

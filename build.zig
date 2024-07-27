@@ -24,10 +24,17 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    const options = b.addOptions();
+    example.root_module.addOptions("config", options);
+    const filepath_option = b.option([]const u8, "filepath", "Filepath to play (default: 'resources/sample.mp4')") orelse "resources/sample.mp4";
+    options.addOption([]const u8, "filepath", filepath_option);
+
     example.root_module.addImport("zmpv", zmpv_module);
     example.linkLibC();
     example.linkSystemLibrary("mpv");
     if (example_option == .sdl_opengl or example_option == .sdl_sw) example.linkSystemLibrary("sdl2");
+
 
     const example_run = b.addRunArtifact(example);
     example_step.dependOn(&example_run.step);

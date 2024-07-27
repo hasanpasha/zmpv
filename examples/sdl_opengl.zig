@@ -6,6 +6,7 @@ const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const sdl = @cImport({
     @cInclude("SDL2/SDL.h");
 });
+const config = @import("config");
 
 var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
@@ -65,7 +66,7 @@ pub fn main() !void {
 
     try mpv.request_log_messages(.Error);
 
-    const filepath = "resources/sample.mp4";
+    const filepath = config.filepath;
     try mpv.command_async(0, &.{ "loadfile", filepath });
 
     const fullscreen_status = try mpv.get_property("fullscreen", .String);

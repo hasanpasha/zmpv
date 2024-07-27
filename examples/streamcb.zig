@@ -1,6 +1,7 @@
 const std = @import("std");
 const Mpv = @import("zmpv").Mpv;
 const MpvError = @import("zmpv").MpvError;
+const config = @import("config");
 
 fn seek_cb(cookie: ?*anyopaque, offset: u64) MpvError!u64 {
     if (cookie) |fdp| {
@@ -115,15 +116,7 @@ pub fn main() !void {
     }
     const allocator = gpa.allocator();
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    if (args.len < 2) {
-        std.debug.print("usage: {s} [filename]\n", .{args[0]});
-        return;
-    }
-
-    const filename = args[1];
+    const filepath = config.filepath;
 
     const mpv = try Mpv.create(allocator);
 
@@ -136,7 +129,7 @@ pub fn main() !void {
 
     try mpv.stream_cb_add_ro("zig", null, &open_cb);
 
-    const uri = try std.fmt.allocPrint(allocator, "zig://{s}", .{filename});
+    const uri = try std.fmt.allocPrint(allocator, "zig://{s}", .{filepath});
     defer allocator.free(uri);
 
     // var cmd_args = [_][]const u8{ "loadfile", uri };
