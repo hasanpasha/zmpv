@@ -8,35 +8,29 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
     });
 
-    const examples = [_]struct { name: []const u8, src: []const u8 }{
-        .{ .name = "simple", .src = "examples/simple_example.zig" },
-        .{ .name = "sdl-opengl", .src = "examples/sdl_opengl_example.zig" },
-        .{ .name = "sdl-sw", .src = "examples/sdl_sw_example.zig" },
-        .{ .name = "stream-cb", .src = "examples/stream_cb_example.zig" },
+    const Example = enum {
+        simple,
+        stream_cb,
+        sdl_opengl,
+        sdl_sw,
     };
+    const example_option = b.option(Example, "example", "Example to run (default: simple)") orelse .simple;
+    const example_step = b.step("example", "Run example");
+    const example = b.addExecutable(.{
+        .name = "example",
+        .root_source_file = b.path(
+            b.fmt("examples/{s}_example.zig", .{@tagName(example_option)}),
+        ),
+        .target = target,
+        .optimize = optimize,
+    });
+    example.root_module.addImport("zmpv", zmpv_module);
+    example.linkLibC();
+    example.linkSystemLibrary("mpv");
+    if (example_option == .sdl_opengl or example_option == .sdl_sw) example.linkSystemLibrary("sdl2");
 
-    for (examples) |example| {
-        const e_exe = b.addExecutable(.{
-            .name = example.name,
-            .root_source_file = b.path(example.src),
-            .target = target,
-            .optimize = optimize,
-        });
-
-        e_exe.root_module.addImport("zmpv", zmpv_module);
-
-        e_exe.linkLibC();
-        e_exe.linkSystemLibrary("SDL2");
-        e_exe.linkSystemLibrary("mpv");
-        b.installArtifact(e_exe);
-        const e_run_cmd = b.addRunArtifact(e_exe);
-        e_run_cmd.step.dependOn(b.getInstallStep());
-        if (b.args) |args| {
-            e_run_cmd.addArgs(args);
-        }
-        const e_run_step = b.step(example.name, "Run the example");
-        e_run_step.dependOn(&e_run_cmd.step);
-    }
+    const example_run = b.addRunArtifact(example);
+    example_step.dependOn(&example_run.step);
 
     const unit_tests = b.addTest(.{
         .root_source_file = b.path("src/tests.zig"),
