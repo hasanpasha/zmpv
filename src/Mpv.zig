@@ -283,7 +283,6 @@ pub fn free(self: Self, data: anytype) void {
         },
         else => {},
     }
-    std.log.debug("{any}", .{@TypeOf(data)});
 }
 
 pub usingnamespace @import("mpv_helper.zig");

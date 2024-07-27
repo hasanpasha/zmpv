@@ -130,8 +130,6 @@ pub const MpvPropertyData = union(MpvFormat) {
         }
     }
     pub fn free(self: MpvPropertyData, allocator: std.mem.Allocator) void {
-        // _ = allocator;
-        std.log.debug("freeing data", .{});
         switch (self) {
             .String => |string| {
                 allocator.free(string);
