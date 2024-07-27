@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
 
     const Example = enum {
         simple,
-        stream_cb,
+        streamcb,
         sdl_opengl,
         sdl_sw,
     };
@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
     const example = b.addExecutable(.{
         .name = "example",
         .root_source_file = b.path(
-            b.fmt("examples/{s}_example.zig", .{@tagName(example_option)}),
+            b.fmt("examples/{s}.zig", .{@tagName(example_option)}),
         ),
         .target = target,
         .optimize = optimize,
