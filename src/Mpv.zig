@@ -74,7 +74,7 @@ pub fn command(self: Self, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, self.allocator);
 
-    try catch_mpv_error(c.mpv_command(self.handle, @ptrCast(c_args)));
+    try catch_mpv_error(c.mpv_command(self.handle, c_args.ptr));
 }
 
 pub fn command_string(self: Self, args: []const u8) MpvError!void {
@@ -89,10 +89,10 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 
     var output: c.mpv_node = undefined;
 
-    try catch_mpv_error(c.mpv_command_node(self.handle, @ptrCast(c_node_ptr), @ptrCast(&output)));
+    try catch_mpv_error(c.mpv_command_node(self.handle, c_node_ptr, &output));
     defer c.mpv_free_node_contents(&output);
 
-    return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
+    return try MpvNode.from(&output).copy(self.allocator);
 }
 
 /// The resulting MpvNode should be freed with `self.free(node)`
@@ -102,17 +102,17 @@ pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
 
     var output: c.mpv_node = undefined;
 
-    try catch_mpv_error(c.mpv_command_ret(self.handle, @ptrCast(c_args), @ptrCast(&output)));
+    try catch_mpv_error(c.mpv_command_ret(self.handle, c_args.ptr, &output));
     defer c.mpv_free_node_contents(&output);
 
-    return try MpvNode.from(@ptrCast(&output)).copy(self.allocator);
+    return try MpvNode.from(&output).copy(self.allocator);
 }
 
 pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) !void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, self.allocator);
 
-    try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, @ptrCast(c_args)));
+    try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, c_args.ptr));
 }
 
 pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void {
@@ -120,7 +120,7 @@ pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void 
     defer arena.deinit();
     const c_node_ptr = try args.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_command_node_async(self.handle, reply_userdata, @ptrCast(c_node_ptr)));
+    try catch_mpv_error(c.mpv_command_node_async(self.handle, reply_userdata, c_node_ptr));
 }
 
 pub fn abort_async_command(self: Self, reply_userdata: u64) void {
