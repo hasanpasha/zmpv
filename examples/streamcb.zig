@@ -79,31 +79,25 @@ fn read_cb(cookie: ?*anyopaque, buf: []u8, size: u64) MpvError!u64 {
 fn close_cb(cookie: ?*anyopaque) void {
     const fdp: *std.fs.File = @ptrCast(@alignCast(cookie));
     fdp.close();
+    std.heap.c_allocator.destroy(fdp);
 }
 
-fn open_cb(user_data: ?*anyopaque, uri: []u8, allocator: std.mem.Allocator) MpvError!Mpv.MpvStreamCBInfo {
+fn open_cb(user_data: ?*anyopaque, uri: []u8) MpvError!?*anyopaque {
     _ = user_data;
 
-    const filename = std.mem.sliceTo(uri[6..], 0);
+    const filename = uri[6..];
     std.log.debug("opening {s}", .{filename});
 
     const fd = std.fs.cwd().openFile(filename, .{}) catch {
         return MpvError.LoadingFailed;
     };
 
-    const file_ptr = allocator.create(std.fs.File) catch {
+    const file_ptr = std.heap.c_allocator.create(std.fs.File) catch {
         return MpvError.LoadingFailed;
     };
     file_ptr.* = fd;
 
-    return Mpv.MpvStreamCBInfo{
-        .cookie = @ptrCast(file_ptr),
-        .read_fn = &read_cb,
-        .close_fn = &close_cb,
-        .seek_fn = &seek_cb,
-        .size_fn = &size_cb,
-        .cancel_fn = null,
-    };
+    return file_ptr;
 }
 
 pub fn main() !void {
@@ -127,12 +121,20 @@ pub fn main() !void {
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    try mpv.stream_cb_add_ro("zig", null, &open_cb);
+    try mpv.stream_cb_add_ro(.{
+        .protocol = "zig",
+        // .userdata = null,
+        .open_fn = &open_cb,
+        .read_fn = &read_cb,
+        .close_fn = &close_cb,
+        // .cancel_fn = null,
+        .seek_fn = &seek_cb,
+        .size_fn = &size_cb,
+    });
 
     const uri = try std.fmt.allocPrint(allocator, "zig://{s}", .{filepath});
     defer allocator.free(uri);
 
-    // var cmd_args = [_][]const u8{ "loadfile", uri };
     try mpv.command_async(0, &.{ "loadfile", uri });
 
     try mpv.request_log_messages(.Error);

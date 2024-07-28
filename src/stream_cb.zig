@@ -6,135 +6,81 @@ const MpvError = mpv_error.MpvError;
 const utils = @import("utils.zig");
 
 pub const MpvStreamCBInfo = struct {
-    cookie: ?*anyopaque,
-    read_fn: *const fn (?*anyopaque, []u8, u64) MpvError!u64,
-    seek_fn: ?*const fn (?*anyopaque, u64) MpvError!u64,
-    size_fn: ?*const fn (?*anyopaque) MpvError!u64,
-    close_fn: ?*const fn (?*anyopaque) void,
-    cancel_fn: ?*const fn (?*anyopaque) void,
-};
-
-const MpvStreamOpenState = struct {
-    cb: *const fn (?*anyopaque, []u8, std.mem.Allocator) MpvError!MpvStreamCBInfo,
-    user_data: ?*anyopaque,
-    arena: std.heap.ArenaAllocator,
-};
-
-const MpvStreamState = struct {
-    cbs: MpvStreamCBInfo,
-    arena: std.heap.ArenaAllocator,
-};
-
-const s_cbs = struct {
-    pub fn read_cb(inner_state_op: ?*anyopaque, buf: [*c]u8, size: u64) callconv(.C) i64 {
-        const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
-
-        const read_buf = buf[0..size];
-        const read_size = inner_state_ptr.cbs.read_fn(inner_state_ptr.cbs.cookie, read_buf, size) catch |err| {
-            return mpv_error.to_mpv_c_error(err);
-        };
-
-        return @intCast(read_size);
-    }
-
-    pub fn close_cb(inner_state_op: ?*anyopaque) callconv(.C) void {
-        const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
-
-        var inner_arena = inner_state_ptr.*.arena;
-        defer inner_arena.deinit();
-        defer inner_arena.allocator().destroy(inner_state_ptr);
-
-        if (inner_state_ptr.cbs.close_fn) |close_fn| {
-            close_fn(inner_state_ptr.cbs.cookie);
-        }
-    }
-
-    pub fn seek_cb(inner_state_op: ?*anyopaque, offset: i64) callconv(.C) i64 {
-        const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
-
-        if (inner_state_ptr.cbs.seek_fn) |seek_fn| {
-            const npos = seek_fn(inner_state_ptr.cbs.cookie, @intCast(offset)) catch |err| {
-                return mpv_error.to_mpv_c_error(err);
-            };
-            return @intCast(npos);
-        } else {
-            return mpv_error.to_mpv_c_error(MpvError.Unsupported);
-        }
-    }
-
-    pub fn size_cb(inner_state_op: ?*anyopaque) callconv(.C) i64 {
-        const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
-
-        if (inner_state_ptr.cbs.size_fn) |size_fn| {
-            const npos = size_fn(inner_state_ptr.cbs.cookie) catch |err| {
-                return mpv_error.to_mpv_c_error(err);
-            };
-            return @intCast(npos);
-        } else {
-            return mpv_error.to_mpv_c_error(MpvError.Unsupported);
-        }
-    }
-
-    pub fn cancel_cb(inner_state_op: ?*anyopaque) callconv(.C) void {
-        const inner_state_ptr = utils.cast_anyopaque_ptr(MpvStreamState, inner_state_op);
-
-        if (inner_state_ptr.cbs.close_fn) |cancel_fn| {
-            cancel_fn(inner_state_ptr.cbs.cookie);
-        }
-    }
-};
-
-const s_open_cb = struct {
-    pub fn cb(state_op: ?*anyopaque, c_protocol: [*c]u8, info: [*c]c.mpv_stream_cb_info) callconv(.C) c_int {
-        const state_ptr = utils.cast_anyopaque_ptr(MpvStreamOpenState, state_op);
-
-        var arena = state_ptr.arena;
-        const allocator = arena.allocator();
-        defer allocator.destroy(state_ptr);
-
-        const z_info = state_ptr.cb(
-            state_ptr.user_data,
-            std.mem.sliceTo(c_protocol, 0),
-            allocator,
-        ) catch |err| {
-            return mpv_error.to_mpv_c_error(err);
-        };
-
-        const info_state_ptr = allocator.create(MpvStreamState) catch {
-            return mpv_error.to_mpv_c_error(MpvError.LoadingFailed);
-        };
-
-        info_state_ptr.* = .{
-            .cbs = z_info,
-            .arena = arena,
-        };
-
-        info.* = .{
-            .cookie = info_state_ptr,
-            .read_fn = s_cbs.read_cb,
-            .close_fn = s_cbs.close_cb,
-            .seek_fn = s_cbs.seek_cb,
-            .size_fn = s_cbs.size_cb,
-            .cancel_fn = s_cbs.cancel_cb,
-        };
-
-        return mpv_error.to_mpv_c_error(MpvError.Success);
-    }
-}.cb;
-
-pub fn stream_cb_add_ro(
-    self: Mpv,
     protocol: []const u8,
-    user_data: ?*anyopaque,
-    open_fn: *const fn (?*anyopaque, []u8, std.mem.Allocator) MpvError!MpvStreamCBInfo,
-) !void {
-    var arena = std.heap.ArenaAllocator.init(self.allocator);
-    const state_ptr = try arena.allocator().create(MpvStreamOpenState);
-    state_ptr.* = .{
-        .cb = open_fn,
-        .user_data = user_data,
-        .arena = arena,
-    };
+    userdata: ?*anyopaque = null,
+    open_fn: *const fn (?*anyopaque, []u8) MpvError!?*anyopaque,
+    read_fn: *const fn (?*anyopaque, []u8, u64) MpvError!u64,
+    cancel_fn: ?*const fn (?*anyopaque) void = null,
+    seek_fn: ?*const fn (?*anyopaque, u64) MpvError!u64 = null,
+    size_fn: ?*const fn (?*anyopaque) MpvError!u64 = null,
+    close_fn: *const fn (?*anyopaque) void,
+};
 
-    try utils.catch_mpv_error(c.mpv_stream_cb_add_ro(self.handle, protocol.ptr, state_ptr, s_open_cb));
+pub inline fn stream_cb_add_ro(
+    self: Mpv,
+    cb_info: MpvStreamCBInfo,
+) !void {
+
+    const c_open_wrapper = struct {
+        pub fn cb(data: ?*anyopaque, uri: [*c]u8, c_info: [*c]c.mpv_stream_cb_info) callconv(.C) c_int  {
+            const cookie = @call(.always_inline, cb_info.open_fn, .{ data, std.mem.sliceTo(uri, 0) }) catch |err| {
+                return mpv_error.to_mpv_c_error(err);
+            };
+
+            c_info.*.cookie = cookie;
+
+            c_info.*.read_fn = struct {
+                pub fn cb(cookie_p: ?*anyopaque, buf: [*c]u8, s: u64) callconv(.C) i64 {
+                    var bb: []u8 = undefined;
+                    bb.ptr = buf;
+                    bb.len = @intCast(s);
+                    const ss = @call(.always_inline, cb_info.read_fn, .{ cookie_p, bb, s }) catch |err| {
+                        return mpv_error.to_mpv_c_error(err);
+                    };
+                    return @intCast(ss);
+                }
+            }.cb;
+
+            c_info.*.close_fn = struct {
+                pub fn cb(cookie_p: ?*anyopaque) callconv(.C) void {
+                    @call(.always_inline, cb_info.close_fn, .{ cookie_p });
+                }
+            }.cb;
+
+            if (cb_info.cancel_fn) |fun| {
+                c_info.*.cancel_fn = struct {
+                    pub fn cb(cookie_p: ?*anyopaque) callconv(.C) void {
+                        @call(.always_inline, fun, .{ cookie_p });
+                    }
+                }.cb;
+            }
+
+            if (cb_info.seek_fn) |fun| {
+                c_info.*.seek_fn = struct {
+                    pub fn cb(cookie_p: ?*anyopaque, offset: i64) callconv(.C) i64 {
+                        const offset_arg: u64 = @intCast(offset);
+                        const result_offset = @call(.always_inline, fun, .{ cookie_p, offset_arg }) catch |err| {
+                            return mpv_error.to_mpv_c_error(err);
+                        };
+                        return @intCast(result_offset);
+                    }
+                }.cb;
+            }
+
+            if (cb_info.size_fn) |fun| {
+                c_info.*.size_fn = struct {
+                    pub fn cb(cookie_p: ?*anyopaque) callconv(.C) i64 {
+                        const size = @call(.always_inline, fun, .{ cookie_p }) catch |err| {
+                            return mpv_error.to_mpv_c_error(err);
+                        };
+                        return @intCast(size);
+                    }
+                }.cb;
+            }
+
+            return mpv_error.to_mpv_c_error(MpvError.Success);
+        }
+    }.cb;
+
+    try utils.catch_mpv_error(c.mpv_stream_cb_add_ro(self.handle, cb_info.protocol.ptr, cb_info.userdata, c_open_wrapper));
 }
