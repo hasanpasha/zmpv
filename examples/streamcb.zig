@@ -114,9 +114,9 @@ pub fn main() !void {
 
     const mpv = try Mpv.create(allocator);
 
-    try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+    try mpv.set_option("osc",.{ .Flag = true });
+    try mpv.set_option("input-default-bindings", .{ .Flag = true });
+    try mpv.set_option("input-vo-keyboard", .{ .Flag = true });
 
     try mpv.initialize();
     defer mpv.terminate_destroy();

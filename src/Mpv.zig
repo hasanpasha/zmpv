@@ -54,12 +54,12 @@ pub fn initialize(self: Self) MpvError!void {
     try catch_mpv_error(c.mpv_initialize(self.handle));
 }
 
-pub fn set_option(self: Self, key: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
+pub fn set_option(self: Self, key: []const u8, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, format.to_c(), data_ptr));
+    try catch_mpv_error(c.mpv_set_option(self.handle, key.ptr, std.meta.activeTag(value).to_c(), data_ptr));
 }
 
 pub fn set_option_string(self: Self, key: []const u8, value: []const u8) MpvError!void {
@@ -321,7 +321,7 @@ test "Mpv memory leak" {
 
 test "Mpv.set_option" {
     const mpv = try Self.create(testing.allocator);
-    try mpv.set_option("osc", .Flag, .{ .Flag = true });
+    try mpv.set_option("osc",.{ .Flag = true });
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
@@ -334,7 +334,7 @@ test "Mpv.set_option" {
 
 test "Mpv.set_option_string" {
     const mpv = try Self.create(testing.allocator);
-    try mpv.set_option("title", .String, .{ .String = "zmpv" });
+    try mpv.set_option_string("title", "zmpv");
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
