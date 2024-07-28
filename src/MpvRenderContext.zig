@@ -155,10 +155,10 @@ pub const MpvOpenGLInitParams = struct {
 };
 
 pub const MpvOpenGLFBO = struct {
-    fbo: i32,
+    fbo: i32 = 0,
     w: i32,
     h: i32,
-    internal_format: i32,
+    internal_format: i32 = 0,
 
     pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) !*c.mpv_opengl_fbo {
         const value_ptr = try allocator.create(c.mpv_opengl_fbo);
