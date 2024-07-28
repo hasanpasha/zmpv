@@ -3,6 +3,7 @@ const c = @import("c.zig");
 const Mpv = @import("Mpv.zig");
 const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
+const GenericError = @import("generic_error.zig").GenericError;
 const catch_mpv_error = @import("utils.zig").catch_mpv_error;
 
 const Self = @This();
@@ -19,7 +20,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
 }
 
 pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
-    var context: *c.mpv_render_context = undefined;
+    var context: ?*c.mpv_render_context = undefined;
 
     const allocator = mpv.allocator;
 
@@ -27,12 +28,17 @@ pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
     defer arena.deinit();
 
     const c_params = try Self.params_list_to_c(params, arena.allocator());
-    try catch_mpv_error(c.mpv_render_context_create(@ptrCast(&context), mpv.handle, c_params));
+    try catch_mpv_error(c.mpv_render_context_create(&context, mpv.handle, c_params));
 
-    return Self{
-        .context = context,
-        .allocator = allocator,
-    };
+    if (context) |ctx| {
+        return Self{
+            .context = ctx,
+            .allocator = allocator,
+        };
+    } else {
+        return GenericError.NullValue;
+    }
+
 }
 
 pub fn free(self: Self) void {
