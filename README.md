@@ -49,8 +49,14 @@ const zmpv = @import("zmpv");
 const Mpv = zmpv.Mpv;
 
 pub fn main() !void {
-    const args = try std.process.argsAlloc(std.heap.page_allocator);
+    var gpa = std.heap.GeneralPurposeAllocator(.{ .verbose_log = true }){};
+    defer {
+        if (gpa.deinit() == .leak) @panic("detected memory leak");
+    }
+    const allocator = gpa.allocator();
 
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
     if (args.len < 2) {
         std.debug.print("usage: {s} [filename]\n", .{args[0]});
         return;
@@ -58,28 +64,29 @@ pub fn main() !void {
 
     const filename = args[1];
 
-    const mpv = try Mpv.create(std.heap.page_allocator);
+    const mpv = try Mpv.create(allocator);
 
-    try mpv.set_option("osc", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-default-bindings", .Flag, .{ .Flag = true });
-    try mpv.set_option("input-vo-keyboard", .Flag, .{ .Flag = true });
+    try mpv.set_option("osc",.{ .Flag = true });
+    try mpv.set_option("input-default-bindings",.{ .Flag = true });
+    try mpv.set_option("input-vo-keyboard",.{ .Flag = true });
 
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
-    var cmd_args = [_][]const u8{ "loadfile", filename };
-    try mpv.command_async(0, &cmd_args);
+    try mpv.command_async(0, &.{ "loadfile", filename });
 
     try mpv.request_log_messages(.Error);
 
     try mpv.observe_property(1, "fullscreen", .Flag);
     try mpv.observe_property(2, "time-pos", .INT64);
 
+    try mpv.set_property("fullscreen", .{ .Flag = true });
+
     while (true) {
         const event = mpv.wait_event(-1);
         const event_id = event.event_id;
         switch (event_id) {
-            .Shutdown => break,
+            .Shutdown, .EndFile => break,
             .LogMessage => {
                 const log = event.data.LogMessage;
                 std.log.debug("[{s}] \"{s}\"", .{ log.prefix, log.text });
