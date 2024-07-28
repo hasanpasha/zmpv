@@ -43,7 +43,7 @@ pub fn main() !void {
                 if (std.mem.eql(u8, property.name, "fullscreen")) {
                     std.log.debug("[fullscreen] {}", .{property.data.Flag});
                 } else if (std.mem.eql(u8, property.name, "time-pos")) {
-                    if (property.format == .INT64) {
+                    if (property.format() == .INT64) {
                         std.log.debug("[time-pos] {}", .{property.data.INT64});
                     }
                 }

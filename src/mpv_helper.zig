@@ -397,7 +397,7 @@ test "MpvHelper seek" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !seeked) {
+            if (event.data.PropertyChange.format() == .INT64 and !seeked) {
                 try mpv.seek("1", .{});
                 std.log.debug("seeked", .{});
                 seeked = true;
@@ -423,7 +423,7 @@ test "MpvHelper revert_seek" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !seeked) {
+            if (event.data.PropertyChange.format() == .INT64 and !seeked) {
                 try mpv.seek("1", .{});
                 seeked = true;
                 std.time.sleep(SLEEP_AMOUNT);
@@ -453,7 +453,7 @@ test "MpvHelper frame-step" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !stepped) {
+            if (event.data.PropertyChange.format() == .INT64 and !stepped) {
                 try mpv.frame_step();
                 stepped = true;
                 std.time.sleep(SLEEP_AMOUNT * 5);
@@ -479,7 +479,7 @@ test "MpvHelper frame-back-step" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !stepped) {
+            if (event.data.PropertyChange.format() == .INT64 and !stepped) {
                 try mpv.frame_back_step();
                 stepped = true;
                 std.time.sleep(SLEEP_AMOUNT * 3);
@@ -507,7 +507,7 @@ test "MpvHelper add" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !added) {
+            if (event.data.PropertyChange.format() == .INT64 and !added) {
                 time_pos = event.data.PropertyChange.data.INT64;
                 try mpv.property_add("time-pos", .{ .value = "50" });
                 added = true;
@@ -538,7 +538,7 @@ test "MpvHelper multiply" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !multiplied) {
+            if (event.data.PropertyChange.format() == .INT64 and !multiplied) {
                 const current_speed = try mpv.get_property("speed", .INT64);
                 defer mpv.free(current_speed);
                 try mpv.property_multiply("speed", "3");
@@ -566,7 +566,7 @@ test "MpvHelper cycle" {
         const event = mpv.wait_event(-1);
         if (event.event_id == .EndFile) break;
         if (event.reply_userdata == 6969) {
-            if (event.data.PropertyChange.format == .INT64 and !paused) {
+            if (event.data.PropertyChange.format() == .INT64 and !paused) {
                 try mpv.cycle("pause", .{});
                 paused = true;
                 std.time.sleep(SLEEP_AMOUNT);
@@ -630,7 +630,7 @@ test "MpvHelper screenshot" {
         const event = mpv.wait_event(0);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969 and !screenshoted) {
-            if (event.data.PropertyChange.format == .Double) {
+            if (event.data.PropertyChange.format() == .Double) {
                 const time_pos = event.data.PropertyChange.data.Double;
                 if (!screenshoted and time_pos > 0.3) {
                     const screenshot_ret = try mpv.screenshot(.{ .each_frame = true });
@@ -681,7 +681,7 @@ test "MpvHelper screenshot-to-file" {
         const event = mpv.wait_event(0);
         if (event.event_id == .EndFile or event.event_id == .Shutdown) break;
         if (event.reply_userdata == 6969 and !screenshoted) {
-            if (event.data.PropertyChange.format == .Double) {
+            if (event.data.PropertyChange.format() == .Double) {
                 const time_pos = event.data.PropertyChange.data.Double;
                 if (!screenshoted and time_pos > 0.3) {
                     try mpv.screenshot_to_file(custom_screenshot_filename, .{});

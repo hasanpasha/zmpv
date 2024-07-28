@@ -9,24 +9,25 @@ const testing = std.testing;
 const Self = @This();
 
 name: []const u8,
-format: MpvFormat,
 data: MpvPropertyData,
 
 pub fn from(data_ptr: *anyopaque) Self {
     const data = utils.cast_anyopaque_ptr(c.mpv_event_property, data_ptr).*;
 
-    const format = MpvFormat.from(data.format);
+    const frmt = MpvFormat.from(data.format);
     return Self{
         .name = std.mem.sliceTo(data.name, 0),
-        .format = format,
-        .data = MpvPropertyData.from(format, data.data),
+        .data = MpvPropertyData.from(frmt, data.data),
     };
+}
+
+pub fn format(self: Self) MpvFormat {
+    return std.meta.activeTag(self.data);
 }
 
 pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
     return .{
         .name = try allocator.dupe(u8, self.name),
-        .format = self.format,
         .data = try self.data.copy(allocator),
     };
 }
@@ -45,7 +46,7 @@ test "MpvEventProperty from" {
     };
     const z_property = Self.from(&property_event);
 
-    try testing.expect(z_property.format == .Flag);
+    try testing.expect(z_property.format() == .Flag);
     try testing.expect(z_property.data.Flag == false);
     try testing.expect(std.mem.eql(u8, z_property.name, "fullscreen"));
 }
@@ -55,13 +56,12 @@ test "MpvEventProperty copy" {
 
     const property = Self {
         .name = "pause",
-        .format = .String,
         .data = .{ .String = "yes" },
     };
     const property_copy = try property.copy(allocator);
     defer property_copy.free(allocator);
 
-    try testing.expect(property.format == .String);
+    try testing.expect(property.format() == .String);
     try testing.expectEqualStrings("pause", property_copy.name);
     try testing.expectEqualStrings("yes", property_copy.data.String);
 }
