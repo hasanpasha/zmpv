@@ -141,7 +141,7 @@ pub const MpvRenderApiType = enum {
 };
 
 pub const MpvOpenGLInitParams = struct {
-    get_process_address: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque,
+    get_process_address: *const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque,
     get_process_address_ctx: ?*anyopaque,
 
     pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
