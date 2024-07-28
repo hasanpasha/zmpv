@@ -21,7 +21,7 @@ pub fn main() !void {
     defer mpv.terminate_destroy();
 
     try mpv.set_option_string("vo", "libmpv");
-    try mpv.set_option_string("hwdec", "vaapi");
+    try mpv.set_option_string("hwdec", "auto");
     try mpv.initialize();
 
     _ = sdl.SDL_SetHint(sdl.SDL_HINT_NO_SIGNAL_HANDLERS, "no");
@@ -48,7 +48,7 @@ pub fn main() !void {
         .{ .ApiType = .OpenGL },
         .{ .OpenglInitParams = .{
             .get_process_address = &get_process_address,
-            .get_process_address_ctx = null,
+            .get_process_address_ctx = mpv,
         } },
         .{ .AdvancedControl = true },
         .{ .Invalid = {} },
@@ -153,7 +153,8 @@ fn on_mpv_render_update(data: ?*anyopaque) void {
     _ = sdl.SDL_PushEvent(@ptrCast(&event));
 }
 
-export fn get_process_address(ctx: ?*anyopaque, name: [*c]const u8) ?*anyopaque {
-    _ = ctx;
-    return sdl.SDL_GL_GetProcAddress(name);
+fn get_process_address(ctx: ?*anyopaque, name: []const u8) ?*anyopaque {
+    var mpv: *Mpv = @ptrCast(@alignCast(ctx));
+    std.log.debug("mpv ID: {}, name: {s}", .{ mpv.client_id(), name });
+    return sdl.SDL_GL_GetProcAddress(name.ptr);
 }

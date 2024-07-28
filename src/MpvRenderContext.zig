@@ -5,6 +5,7 @@ const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
 const GenericError = @import("generic_error.zig").GenericError;
 const catch_mpv_error = @import("utils.zig").catch_mpv_error;
+const utils = @import("utils.zig");
 
 const Self = @This();
 
@@ -141,14 +142,25 @@ pub const MpvRenderApiType = enum {
 };
 
 pub const MpvOpenGLInitParams = struct {
-    get_process_address: *const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque,
+    get_process_address: *const fn (?*anyopaque, []const u8) ?*anyopaque,
     get_process_address_ctx: ?*anyopaque,
 
     pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
+        const c_callback = struct {
+            pub fn cb(params_ptr: ?*anyopaque, n: [*c]const u8) callconv(.C) ?*anyopaque {
+                var params: *MpvOpenGLInitParams = utils.cast_anyopaque_ptr(MpvOpenGLInitParams, params_ptr);
+                const zname = std.mem.sliceTo(n, 0);
+                return params.get_process_address(params.get_process_address_ctx, zname);
+            }
+        }.cb;
+
+        const params_ptr = try allocator.create(MpvOpenGLInitParams);
+        params_ptr.* = self;
+
         const value_ptr = try allocator.create(c.mpv_opengl_init_params);
         value_ptr.* = .{
-            .get_proc_address = self.get_process_address,
-            .get_proc_address_ctx = self.get_process_address_ctx,
+            .get_proc_address = c_callback,
+            .get_proc_address_ctx = params_ptr,
         };
         return value_ptr;
     }
