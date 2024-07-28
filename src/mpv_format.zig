@@ -3,8 +3,6 @@ const c = @import("c.zig");
 const testing = @import("std").testing;
 
 pub const MpvFormat = enum(c.mpv_format) {
-    const Self = @This();
-
     None = c.MPV_FORMAT_NONE,
     String = c.MPV_FORMAT_STRING,
     OSDString = c.MPV_FORMAT_OSD_STRING,
@@ -16,15 +14,15 @@ pub const MpvFormat = enum(c.mpv_format) {
     NodeMap = c.MPV_FORMAT_NODE_MAP,
     ByteArray = c.MPV_FORMAT_BYTE_ARRAY,
 
-    pub fn from(format: c.mpv_format) Self {
+    pub fn from(format: c.mpv_format) MpvFormat {
         return @enumFromInt(format);
     }
 
-    pub fn to_c(self: Self) c.mpv_format {
+    pub fn to_c(self: MpvFormat) c.mpv_format {
         return @intFromEnum(self);
     }
 
-    pub fn alloc_c_value(self: Self, allocator: Allocator) !*anyopaque {
+    pub fn alloc_c_value(self: MpvFormat, allocator: Allocator) !*anyopaque {
         return switch (self) {
             .String, .OSDString => @ptrCast(try allocator.create([*:0]u8)),
             .Flag => @ptrCast(try allocator.create(c_int)),
