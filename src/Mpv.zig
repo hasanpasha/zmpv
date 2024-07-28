@@ -164,24 +164,24 @@ pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, for
     try catch_mpv_error(c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to_c()));
 }
 
-pub fn set_property(self: Self, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
+pub fn set_property(self: Self, name: []const u8, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_property(self.handle, name.ptr, format.to_c(), data_ptr));
+    try catch_mpv_error(c.mpv_set_property(self.handle, name.ptr, std.meta.activeTag(value).to_c(), data_ptr));
 }
 
 pub fn set_property_string(self: Self, name: []const u8, value: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_set_property_string(self.handle, name.ptr, value.ptr));
 }
 
-pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, format: MpvFormat, value: MpvPropertyData) !void {
+pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, value: MpvPropertyData) !void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, format.to_c(), data_ptr));
+    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr,std.meta.activeTag(value).to_c(), data_ptr));
 }
 
 pub fn del_property(self: Self, name: []const u8) MpvError!void {
