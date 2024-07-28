@@ -226,8 +226,14 @@ pub fn wakeup(self: Self) void {
     c.mpv_wakeup(self.handle);
 }
 
-pub fn set_wakeup_callback(self: Self, callback_function: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
-    c.mpv_set_wakeup_callback(self.handle, @ptrCast(callback_function), data);
+pub inline fn set_wakeup_callback(self: Self, callback: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
+    const c_wrapper = struct {
+        pub fn cb(ctx: ?*anyopaque) callconv(.C) void {
+            @call(.always_inline, callback, .{ ctx });
+        }
+    }.cb;
+
+    c.mpv_set_wakeup_callback(self.handle, c_wrapper, data);
 }
 
 pub fn get_wakeup_pipe(self: Self) MpvError!c_int {

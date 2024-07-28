@@ -67,8 +67,14 @@ pub fn render(self: Self, params: []MpvRenderParam) !void {
     try catch_mpv_error(c.mpv_render_context_render(self.context, c_params));
 }
 
-pub fn set_update_callback(self: Self, callback: ?*const fn (?*anyopaque) void, ctx: ?*anyopaque) void {
-    c.mpv_render_context_set_update_callback(self.context, @ptrCast(callback), ctx);
+pub inline fn set_update_callback(self: Self, callback: *const fn (?*anyopaque) void, ctx: ?*anyopaque) void {
+    const c_wrapper = struct {
+        pub fn cb(cx: ?*anyopaque) callconv(.C) void {
+            @call(.always_inline, callback, .{ cx });
+        }
+    }.cb;
+
+    c.mpv_render_context_set_update_callback(self.context, c_wrapper, ctx);
 }
 
 pub fn update(self: Self) bool {
@@ -129,13 +135,13 @@ pub const MpvRenderApiType = enum {
 };
 
 pub const MpvOpenGLInitParams = struct {
-    get_process_address: ?*const fn (?*anyopaque, [*c]const u8) ?*anyopaque,
+    get_process_address: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque,
     get_process_address_ctx: ?*anyopaque,
 
     pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
         const value_ptr = try allocator.create(c.mpv_opengl_init_params);
         value_ptr.* = .{
-            .get_proc_address = @ptrCast(self.get_process_address),
+            .get_proc_address = self.get_process_address,
             .get_proc_address_ctx = self.get_process_address_ctx,
         };
         return value_ptr;

@@ -153,7 +153,7 @@ fn on_mpv_render_update(data: ?*anyopaque) void {
     _ = sdl.SDL_PushEvent(@ptrCast(&event));
 }
 
-fn get_process_address(ctx: ?*anyopaque, name: [*c]const u8) ?*anyopaque {
+export fn get_process_address(ctx: ?*anyopaque, name: [*c]const u8) ?*anyopaque {
     _ = ctx;
     return sdl.SDL_GL_GetProcAddress(name);
 }
