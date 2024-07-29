@@ -35,7 +35,8 @@ pub fn create(allocator: std.mem.Allocator) !*Self {
 pub fn create_client(self: Self, args: struct {
     name: ?[]const u8 = null,
 }) !*Self {
-    const client_handle = c.mpv_create_client(self.handle, if (args.name) |nm| nm.ptr else null) orelse return GenericError.NullValue;
+    const name_arg = if (args.name) |name| name.ptr else null;
+    const client_handle = c.mpv_create_client(self.handle, name_arg) orelse return GenericError.NullValue;
 
     const instance_ptr = try self.allocator.create(Self);
     instance_ptr.* = Self{ .handle = client_handle, .allocator = self.allocator };
@@ -46,7 +47,8 @@ pub fn create_client(self: Self, args: struct {
 pub fn create_weak_client(self: Self, args: struct {
     name: ?[]const u8 = null,
 }) !*Self {
-    const weak_client_handle = c.mpv_create_weak_client(self.handle, if (args.name) |nm| nm.ptr else null) orelse return GenericError.NullValue;
+    const name_arg = if (args.name) |name| name.ptr else null;
+    const weak_client_handle = c.mpv_create_weak_client(self.handle, name_arg) orelse return GenericError.NullValue;
 
     const instance_ptr = try self.allocator.create(Self);
     instance_ptr.* = Self{ .handle = weak_client_handle, .allocator = self.allocator };
