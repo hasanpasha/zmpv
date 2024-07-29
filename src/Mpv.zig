@@ -43,8 +43,10 @@ pub fn create_client(self: Self, args: struct {
     return instance_ptr;
 }
 
-pub fn create_weak_client(self: Self, name: []const u8) !*Self {
-    const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr) orelse return GenericError.NullValue;
+pub fn create_weak_client(self: Self, args: struct {
+    name: ?[]const u8 = null,
+}) !*Self {
+    const weak_client_handle = c.mpv_create_weak_client(self.handle, if (args.name) |nm| nm.ptr else null) orelse return GenericError.NullValue;
 
     const instance_ptr = try self.allocator.create(Self);
     instance_ptr.* = Self{ .handle = weak_client_handle, .allocator = self.allocator };
@@ -330,6 +332,15 @@ test "Mpv.create_client" {
     const client = try mpv.create_client(.{ .name = name });
     defer client.destroy();
     try testing.expectEqualStrings(name, client.client_name());
+}
+
+test "Mpv.create_weak_client" {
+    const mpv = try Self.create(testing.allocator);
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+
+    const client = try mpv.create_weak_client(.{});
+    defer client.destroy();
 }
 
 test "Mpv.set_option" {
