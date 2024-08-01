@@ -2,29 +2,6 @@
 
 `libmpv` bindings in zig.
 
-## Todo
-
-- [X] Finish wrapping all exported `libmpv` functions.
-  - [X] `mpv/client.h`
-  - [X] `mpv/render.h`
-  - [X] `mpv/render_gl.h`
-  - [X] `mpv/stream_cb.h`
-- [X] ~~Fix memory leak~~
-  - [X] ~~Free memory that is allocated by libmpv.~~ (mostly, please open an issue if you come across unallocated memory)
-- [ ] write more tests.
-- [ ] Add another struct that contains helper functions.
-  - [ ] try implementing [python-mpv](https://github.com/jaseg/python-mpv) functionality.
-- [X] Add Examples.
-  - [ ] wayland rendering
-  - [ ] x11 rendering
-  - [ ] drm rendering
-  - [X] simple usage
-  - [X] opengl rendering
-  - [X] software rendering
-- [X] ~~Export as a library Make the library~~
-  - [X] ~~cross-platform compatible~~ (the module user should link to `libmpv`)
-- [X] Add usage guide.
-
 ## Usage
 
 - first fetch the package into your project:
