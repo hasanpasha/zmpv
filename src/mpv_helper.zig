@@ -35,7 +35,7 @@ pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
 }
 
 /// destroy the `Mpv` instance and it's memory
-pub fn deinit(self: Mpv, args: struct {
+pub fn deinit(self: *Mpv, args: struct {
     /// Destroy All other `Mpv` instance that references the same core instance
     terminate: bool = true,
 }) void {
