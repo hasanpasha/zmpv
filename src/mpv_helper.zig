@@ -34,6 +34,18 @@ pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
     return instance;
 }
 
+/// destroy the `Mpv` instance and it's memory
+pub fn deinit(self: Mpv, args: struct {
+    /// Destroy All other `Mpv` instance that references the same core instance
+    terminate: bool = true,
+}) void {
+    if (args.terminate) {
+        self.terminate_destroy();
+    } else {
+        self.destroy();
+    }
+}
+
 /// an alternative helper function to create `MpvRenderContext`
 pub fn create_render_context(self: *Mpv, params: []MpvRenderParam) !MpvRenderContext {
     return MpvRenderContext.create(self, params);
