@@ -2,6 +2,7 @@ const std = @import("std");
 const Mpv = @import("Mpv.zig");
 const GenericError = @import("generic_error.zig").GenericError;
 const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvPropertyData = @import("mpv_property_data.zig").MpvPropertyData;
 const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
@@ -10,19 +11,24 @@ const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const utils = @import("utils.zig");
 const testing = std.testing;
 
+const MpvOption = struct {
+    name: []const u8,
+    value: MpvPropertyData,
+};
+
 /// Create an `Mpv` instance and set options if provided
-pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !*Mpv {
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
     const instance = try Mpv.create(allocator);
 
     for (options) |option| {
-        try instance.set_option_string(option[0], option[1]);
+        try instance.set_option(option.name, option.value);
     }
 
     return instance;
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) !*Mpv {
+pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
@@ -385,6 +391,21 @@ pub fn quit(self: Mpv, args: struct {
 // tests
 const SLEEP_AMOUNT: u64 = 1 * 1e7;
 const test_filepath = "resources/sample.mp4";
+
+test "MpvHelper create-and-set-options" {
+    const mpv = try Mpv.create_and_set_options(testing.allocator, &[_]MpvOption{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+    });
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+}
+
+test "MpvHelper create-and-initialize" {
+    const mpv = try Mpv.create_and_initialize(testing.allocator, &[_]MpvOption{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+    });
+    defer mpv.terminate_destroy();
+}
 
 test "MpvHelper seek" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
