@@ -17,13 +17,14 @@ const testing = std.testing;
 
 const MpvError = mpv_error.MpvError;
 const GenericError = generic_error.GenericError;
+const AllocatorError = std.mem.Allocator.Error;
 
 const Self = @This();
 
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
-pub fn create(allocator: std.mem.Allocator) !*Self {
+pub fn create(allocator: std.mem.Allocator) (AllocatorError || GenericError)!*Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
 
     const instance_ptr = try allocator.create(Self);
@@ -32,7 +33,7 @@ pub fn create(allocator: std.mem.Allocator) !*Self {
     return instance_ptr;
 }
 
-pub fn create_client(self: Self, name: []const u8) !*Self {
+pub fn create_client(self: Self, name: []const u8) (AllocatorError || GenericError)!*Self {
     const client_handle = c.mpv_create_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
     const instance_ptr = try self.allocator.create(Self);
@@ -41,7 +42,7 @@ pub fn create_client(self: Self, name: []const u8) !*Self {
     return instance_ptr;
 }
 
-pub fn create_weak_client(self: Self, name: []const u8) !*Self {
+pub fn create_weak_client(self: Self, name: []const u8) (AllocatorError || GenericError)!*Self {
     const weak_client_handle = c.mpv_create_weak_client(self.handle, name.ptr) orelse return GenericError.NullValue;
 
     const instance_ptr = try self.allocator.create(Self);
@@ -54,7 +55,7 @@ pub fn initialize(self: Self) MpvError!void {
     try catch_mpv_error(c.mpv_initialize(self.handle));
 }
 
-pub fn set_option(self: Self, key: []const u8, value: MpvPropertyData) !void {
+pub fn set_option(self: Self, key: []const u8, value: MpvPropertyData) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
@@ -70,7 +71,7 @@ pub fn load_config_file(self: Self, filepath: []const u8) MpvError!void {
     try catch_mpv_error(c.mpv_load_config_file(self.handle, filepath.ptr));
 }
 
-pub fn command(self: Self, args: []const []const u8) !void {
+pub fn command(self: Self, args: []const []const u8) (AllocatorError || MpvError)!void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, self.allocator);
 
@@ -82,7 +83,7 @@ pub fn command_string(self: Self, args: []const u8) MpvError!void {
 }
 
 /// The resulting MpvNode should be freed with `self.free(node)`
-pub fn command_node(self: Self, args: MpvNode) !MpvNode {
+pub fn command_node(self: Self, args: MpvNode) (AllocatorError || MpvError)!MpvNode {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const c_node_ptr = try args.to_c(arena.allocator());
@@ -96,7 +97,7 @@ pub fn command_node(self: Self, args: MpvNode) !MpvNode {
 }
 
 /// The resulting MpvNode should be freed with `self.free(node)`
-pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
+pub fn command_ret(self: Self, args: []const []const u8) (AllocatorError || MpvError)!MpvNode {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, self.allocator);
 
@@ -108,14 +109,14 @@ pub fn command_ret(self: Self, args: []const []const u8) !MpvNode {
     return try MpvNode.from(&output).copy(self.allocator);
 }
 
-pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) !void {
+pub fn command_async(self: Self, reply_userdata: u64, args: []const []const u8) (AllocatorError || MpvError)!void {
     const c_args = try utils.create_cstring_array(args, self.allocator);
     defer utils.free_cstring_array(c_args, self.allocator);
 
     try catch_mpv_error(c.mpv_command_async(self.handle, reply_userdata, c_args.ptr));
 }
 
-pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) !void {
+pub fn command_node_async(self: Self, reply_userdata: u64, args: MpvNode) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const c_node_ptr = try args.to_c(arena.allocator());
@@ -128,7 +129,7 @@ pub fn abort_async_command(self: Self, reply_userdata: u64) void {
 }
 
 /// The returened value must be freed with self.free(value)
-pub fn get_property(self: Self, name: []const u8, format: MpvFormat) !MpvPropertyData {
+pub fn get_property(self: Self, name: []const u8, format: MpvFormat) (AllocatorError || MpvError)!MpvPropertyData {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try format.alloc_c_value(arena.allocator());
@@ -139,7 +140,7 @@ pub fn get_property(self: Self, name: []const u8, format: MpvFormat) !MpvPropert
 }
 
 /// The returened value must be freed with self.free(value)
-pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
+pub fn get_property_string(self: Self, name: []const u8) (AllocatorError || GenericError)![]u8 {
     const returned_value = c.mpv_get_property_string(self.handle, name.ptr);
     if (returned_value == null) {
         return GenericError.NullValue;
@@ -150,7 +151,7 @@ pub fn get_property_string(self: Self, name: []const u8) ![]u8 {
 }
 
 /// The returened value must be freed with self.free(value)
-pub fn get_property_osd_string(self: Self, name: []const u8) ![]u8 {
+pub fn get_property_osd_string(self: Self, name: []const u8) (AllocatorError || GenericError)![]u8 {
     const returned_value = c.mpv_get_property_osd_string(self.handle, name.ptr);
     if (returned_value == null) {
         return GenericError.NullValue;
@@ -164,7 +165,7 @@ pub fn get_property_async(self: Self, reply_userdata: u64, name: []const u8, for
     try catch_mpv_error(c.mpv_get_property_async(self.handle, reply_userdata, name.ptr, format.to_c()));
 }
 
-pub fn set_property(self: Self, name: []const u8, value: MpvPropertyData) !void {
+pub fn set_property(self: Self, name: []const u8, value: MpvPropertyData) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
@@ -176,7 +177,7 @@ pub fn set_property_string(self: Self, name: []const u8, value: []const u8) MpvE
     try catch_mpv_error(c.mpv_set_property_string(self.handle, name.ptr, value.ptr));
 }
 
-pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, value: MpvPropertyData) !void {
+pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, value: MpvPropertyData) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());

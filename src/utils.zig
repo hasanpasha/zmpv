@@ -1,9 +1,10 @@
 const std = @import("std");
 const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
-pub fn create_cstring_array(z_array: []const []const u8, allocator: std.mem.Allocator) ![:0][*c]const u8 {
+pub fn create_cstring_array(z_array: []const []const u8, allocator: std.mem.Allocator) AllocatorError![:0][*c]const u8 {
     const array = try allocator.allocSentinel([*c]const u8, z_array.len, 0);
     for (0..z_array.len) |index| {
         array[index] = try allocator.dupeZ(u8, z_array[index]);

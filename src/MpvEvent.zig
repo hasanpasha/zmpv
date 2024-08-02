@@ -2,6 +2,7 @@ const std = @import("std");
 const c = @import("c.zig");
 const mpv_error = @import("mpv_error.zig");
 const MpvError = mpv_error.MpvError;
+const AllocatorError = std.mem.Allocator.Error;
 const MpvEventEndFile = @import("mpv_event_data_types//MpvEventEndFile.zig");
 const MpvEventStartFile = @import("mpv_event_data_types//MpvEventStartFile.zig");
 const MpvEventProperty = @import("mpv_event_data_types//MpvEventProperty.zig");
@@ -53,7 +54,7 @@ pub fn from(event: *c.mpv_event) Self {
     };
 }
 
-pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+pub fn copy(self: Self, allocator: std.mem.Allocator) AllocatorError!Self {
     return Self{
         .event_id = self.event_id,
         .event_error = self.event_error,
@@ -77,7 +78,7 @@ pub const MpvEventData = union(enum) {
     PropertyChange: MpvEventProperty,
     Hook: MpvEventHook,
 
-    pub fn copy(self: MpvEventData, allocator: std.mem.Allocator) !MpvEventData {
+    pub fn copy(self: MpvEventData, allocator: std.mem.Allocator) AllocatorError!MpvEventData {
         return switch (self) {
             .LogMessage => |log| .{ .LogMessage = try log.copy(allocator) },
             .GetPropertyReply => |property| .{ .GetPropertyReply = try property.copy(allocator) },

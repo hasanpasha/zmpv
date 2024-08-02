@@ -1,4 +1,5 @@
 const Allocator = @import("std").mem.Allocator;
+const AllocatorError = Allocator.Error;
 const c = @import("c.zig");
 const testing = @import("std").testing;
 
@@ -22,7 +23,7 @@ pub const MpvFormat = enum(c.mpv_format) {
         return @intFromEnum(self);
     }
 
-    pub fn alloc_c_value(self: MpvFormat, allocator: Allocator) !*anyopaque {
+    pub fn alloc_c_value(self: MpvFormat, allocator: Allocator) AllocatorError!*anyopaque {
         return switch (self) {
             .String, .OSDString => @ptrCast(try allocator.create([*:0]u8)),
             .Flag => @ptrCast(try allocator.create(c_int)),

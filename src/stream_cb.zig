@@ -19,7 +19,7 @@ pub const MpvStreamCBInfo = struct {
 pub inline fn stream_cb_add_ro(
     self: Mpv,
     cb_info: MpvStreamCBInfo,
-) !void {
+) MpvError!void {
 
     const c_open_wrapper = struct {
         pub fn cb(data: ?*anyopaque, uri: [*c]u8, c_info: [*c]c.mpv_stream_cb_info) callconv(.C) c_int  {

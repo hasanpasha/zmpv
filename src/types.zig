@@ -2,6 +2,7 @@ const std = @import("std");
 const c = @import("c.zig");
 const MpvNode = @import("mpv_node.zig").MpvNode;
 const MpvFormat = @import("mpv_format.zig").MpvFormat;
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
 pub const MpvNodeList = struct {
@@ -64,7 +65,7 @@ pub const MpvNodeList = struct {
         return .{ .value = .{ .CValue = data } };
     }
 
-    pub fn to_c(self: *Self, allocator: std.mem.Allocator) anyerror!*c.mpv_node_list {
+    pub fn to_c(self: *Self, allocator: std.mem.Allocator) AllocatorError!*c.mpv_node_list {
         var iter = self.iterator();
         const len = iter.size();
 
@@ -81,7 +82,7 @@ pub const MpvNodeList = struct {
         return node_list_ptr;
     }
 
-    pub fn copy(self: *Self, allocator: std.mem.Allocator) anyerror!Self {
+    pub fn copy(self: *Self, allocator: std.mem.Allocator) AllocatorError!Self {
         var iter = self.iterator();
         const len = iter.size();
 
@@ -106,7 +107,7 @@ pub const MpvNodeList = struct {
         }
     }
 
-    pub fn to_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+    pub fn to_arraylist(self: Self, allocator: std.mem.Allocator) AllocatorError!std.ArrayList(MpvNode) {
         var array = std.ArrayList(MpvNode).init(allocator);
 
         var iter = self.iterator();
@@ -118,7 +119,7 @@ pub const MpvNodeList = struct {
     }
 
     /// Must be freed with `MpvNodeList.free_owned_arraylist` before calling `.deinit()` on it.
-    pub fn to_owned_arraylist(self: Self, allocator: std.mem.Allocator) !std.ArrayList(MpvNode) {
+    pub fn to_owned_arraylist(self: Self, allocator: std.mem.Allocator) AllocatorError!std.ArrayList(MpvNode) {
         var array = std.ArrayList(MpvNode).init(allocator);
 
         var iter = self.iterator();
@@ -200,7 +201,7 @@ pub const MpvNodeMap = struct {
         return .{ .value = .{ .CValue = data } };
     }
 
-    pub fn to_c(self: *Self, allocator: std.mem.Allocator) anyerror!*c.mpv_node_list {
+    pub fn to_c(self: *Self, allocator: std.mem.Allocator) AllocatorError!*c.mpv_node_list {
         var iter = self.iterator();
         const len = iter.size();
 
@@ -220,7 +221,7 @@ pub const MpvNodeMap = struct {
         return node_list_ptr;
     }
 
-    pub fn copy(self: *Self, allocator: std.mem.Allocator) anyerror!Self {
+    pub fn copy(self: *Self, allocator: std.mem.Allocator) AllocatorError!Self {
         var iter = self.iterator();
         const len = iter.size();
 
@@ -246,7 +247,7 @@ pub const MpvNodeMap = struct {
         }
     }
 
-    pub fn to_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+    pub fn to_hashmap(self: Self, allocator: std.mem.Allocator) AllocatorError!std.StringHashMap(MpvNode) {
         var map = std.StringHashMap(MpvNode).init(allocator);
 
         var iter = self.iterator();
@@ -257,7 +258,7 @@ pub const MpvNodeMap = struct {
     }
 
     /// Must be freed with with `MpvNodeMap.free_owned_hashmap` before calling `.deinit()` on it.
-    pub fn to_owned_hashmap(self: Self, allocator: std.mem.Allocator) !std.StringHashMap(MpvNode) {
+    pub fn to_owned_hashmap(self: Self, allocator: std.mem.Allocator) AllocatorError!std.StringHashMap(MpvNode) {
         var map = std.StringHashMap(MpvNode).init(allocator);
 
         var iter = self.iterator();
