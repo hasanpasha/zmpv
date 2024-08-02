@@ -12,12 +12,11 @@ var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
 
 pub fn main() !void {
-    var mpv = try Mpv.create(std.heap.page_allocator);
-    defer mpv.terminate_destroy();
-
-    try mpv.set_option_string("vo", "libmpv");
-    try mpv.set_option_string("hwdec", "vaapi");
-    try mpv.initialize();
+    var mpv = try Mpv.init(std.heap.page_allocator, &.{
+        .{ .name = "vo", .value = .{ .String = "libmpv" } },
+        .{ .name = "hwdec", .value = .{ .String = "vaapi" } },
+    });
+    defer mpv.deinit(.{});
 
     _ = sdl.SDL_SetHint(sdl.SDL_HINT_NO_SIGNAL_HANDLERS, "no");
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) < 0) {

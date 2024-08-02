@@ -17,12 +17,11 @@ pub fn main() !void {
         if (gpa.deinit() == .leak) @panic("leak");
     }
 
-    var mpv = try Mpv.create(gpa.allocator());
-    defer mpv.terminate_destroy();
-
-    try mpv.set_option_string("vo", "libmpv");
-    try mpv.set_option_string("hwdec", "auto");
-    try mpv.initialize();
+    var mpv = try Mpv.init(gpa.allocator(), &.{
+        .{ .name = "vo", .value = .{ .String = "libmpv" } },
+        .{ .name = "hwdec", .value = .{ .String = "auto" } },
+    });
+    defer mpv.deinit(.{});
 
     _ = sdl.SDL_SetHint(sdl.SDL_HINT_NO_SIGNAL_HANDLERS, "no");
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) < 0) {

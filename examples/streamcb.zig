@@ -112,14 +112,12 @@ pub fn main() !void {
 
     const filepath = config.filepath;
 
-    const mpv = try Mpv.create(allocator);
-
-    try mpv.set_option("osc",.{ .Flag = true });
-    try mpv.set_option("input-default-bindings", .{ .Flag = true });
-    try mpv.set_option("input-vo-keyboard", .{ .Flag = true });
-
-    try mpv.initialize();
-    defer mpv.terminate_destroy();
+    var mpv = try Mpv.init(allocator, &.{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+        .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
+        .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
+    });
+    defer mpv.deinit(.{});
 
     try mpv.stream_cb_add_ro(.{
         .protocol = "zig",
