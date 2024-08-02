@@ -11,7 +11,7 @@ const MpvRenderParam = MpvRenderContext.MpvRenderParam;
 const utils = @import("utils.zig");
 const testing = std.testing;
 
-const MpvOption = struct {
+pub const MpvOption = struct {
     name: []const u8,
     value: MpvPropertyData,
 };
