@@ -28,7 +28,7 @@ pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const Mpv
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
+pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) !*Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
@@ -401,14 +401,14 @@ test "MpvHelper create-and-set-options" {
 }
 
 test "MpvHelper create-and-initialize" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &[_]MpvOption{
+    const mpv = try Mpv.init(testing.allocator, &[_]MpvOption{
         .{ .name = "osc", .value = .{ .Flag = true } },
     });
     defer mpv.terminate_destroy();
 }
 
 test "MpvHelper seek" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -433,7 +433,7 @@ test "MpvHelper seek" {
 }
 
 test "MpvHelper revert_seek" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -464,7 +464,7 @@ test "MpvHelper revert_seek" {
 }
 
 test "MpvHelper frame-step" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -490,7 +490,7 @@ test "MpvHelper frame-step" {
 }
 
 test "MpvHelper frame-back-step" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -516,7 +516,7 @@ test "MpvHelper frame-back-step" {
 }
 
 test "MpvHelper add" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -549,7 +549,7 @@ test "MpvHelper add" {
 
 test "MpvHelper multiply" {
     // return error.SkipZigTest;
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -577,7 +577,7 @@ test "MpvHelper multiply" {
 }
 
 test "MpvHelper cycle" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -604,7 +604,7 @@ test "MpvHelper cycle" {
 }
 
 test "MpvHelper loadfile" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.loadfile(test_filepath, .{});
@@ -640,7 +640,7 @@ fn clean_saved_screen_shots(path: []const u8, allocator: std.mem.Allocator) !voi
 
 test "MpvHelper screenshot" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -691,7 +691,7 @@ test "MpvHelper screenshot" {
 
 test "MpvHelper screenshot-to-file" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const custom_screenshot_filename = "hender.jpg";
@@ -744,7 +744,7 @@ fn create_playlist(base_file_path: []const u8, allocator: std.mem.Allocator, arg
 
 test "MpvHelper playlist-next" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -779,7 +779,7 @@ test "MpvHelper playlist-next" {
 
 test "MpvHelper playlist-prev" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -818,7 +818,7 @@ test "MpvHelper playlist-prev" {
 
 test "MpvHelper loadlist" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -841,7 +841,7 @@ test "MpvHelper loadlist" {
 
 test "MpvHelper playlist-clear" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -884,7 +884,7 @@ test "MpvHelper run" {
 
 test "MpvHelper subprocess" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -937,7 +937,7 @@ test "MpvHelper subprocess" {
 }
 
 test "MpvHelper quit" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });

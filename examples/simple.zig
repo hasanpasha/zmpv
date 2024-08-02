@@ -6,7 +6,7 @@ const config = @import("config");
 pub fn main() !void {
     const filepath = config.filepath;
 
-    const mpv = try Mpv.create_and_initialize(std.heap.page_allocator, &.{
+    const mpv = try Mpv.init(std.heap.page_allocator, &.{
         .{ .name = "osc", .value = .{ .Flag = true } },
         .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
         .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
