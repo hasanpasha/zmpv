@@ -7,9 +7,9 @@ pub fn main() !void {
     const filepath = config.filepath;
 
     const mpv = try Mpv.create_and_initialize(std.heap.page_allocator, &.{
-        .{ "osc", "yes" },
-        .{ "input-default-bindings", "yes" },
-        .{ "input-vo-keyboard", "yes" },
+        .{ .name = "osc", .value = .{ .Flag = true } },
+        .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
+        .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
     });
     defer mpv.terminate_destroy();
 
