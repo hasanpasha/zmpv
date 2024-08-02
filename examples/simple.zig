@@ -11,7 +11,7 @@ pub fn main() !void {
         .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
         .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
     });
-    defer mpv.terminate_destroy();
+    defer mpv.deinit(.{});
 
     const version = Mpv.client_api_version();
     std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
