@@ -20,7 +20,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
     return c_params.ptr;
 }
 
-pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
+pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
     var context: ?*c.mpv_render_context = undefined;
 
     const allocator = mpv.allocator;
@@ -39,7 +39,6 @@ pub fn create(mpv: *Mpv, params: []MpvRenderParam) !Self {
     } else {
         return GenericError.NullValue;
     }
-
 }
 
 pub fn free(self: Self) void {
@@ -77,7 +76,7 @@ pub fn render(self: Self, params: []MpvRenderParam) !void {
 pub inline fn set_update_callback(self: Self, callback: *const fn (?*anyopaque) void, ctx: ?*anyopaque) void {
     const c_wrapper = struct {
         pub fn cb(cx: ?*anyopaque) callconv(.C) void {
-            @call(.always_inline, callback, .{ cx });
+            @call(.always_inline, callback, .{cx});
         }
     }.cb;
 
@@ -197,7 +196,6 @@ pub const MpvRenderFrameInfoFlag = struct {
             .repeat = (flags & c.MPV_RENDER_FRAME_INFO_REPEAT) == 1,
             .block_vsync = (flags & c.MPV_RENDER_FRAME_INFO_BLOCK_VSYNC) == 1,
         };
-
     }
 };
 
