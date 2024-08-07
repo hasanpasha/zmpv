@@ -48,7 +48,7 @@ pub fn main() !void {
         .{ .ApiType = .OpenGL },
         .{ .OpenglInitParams = .{
             .get_process_address = &get_process_address,
-            .get_process_address_ctx = mpv,
+            .get_process_address_ctx = &mpv,
         } },
         .{ .AdvancedControl = true },
         .{ .Invalid = {} },
