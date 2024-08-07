@@ -1,6 +1,7 @@
 const std = @import("std");
 const Mpv = @import("Mpv.zig");
 const MpvNode = @import("mpv_node.zig").MpvNode;
+const MpvPropertyData = @import("mpv_property_data.zig").MpvPropertyData;
 const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
@@ -12,22 +13,39 @@ const GenericError = @import("generic_error.zig").GenericError;
 const utils = @import("utils.zig");
 const testing = std.testing;
 
+pub const MpvOption = struct {
+    name: []const u8,
+    value: MpvPropertyData,
+};
+
 /// Create an `Mpv` instance and set options if provided
-pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (MpvError || GenericError)!Mpv {
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const MpvOption) (AllocatorError || MpvError || GenericError)!Mpv {
     const instance = try Mpv.create(allocator);
 
     for (options) |option| {
-        try instance.set_option_string(option[0], option[1]);
+        try instance.set_option(option.name, option.value);
     }
 
     return instance;
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (MpvError || GenericError)!Mpv {
+pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) (AllocatorError || MpvError || GenericError)!Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
+}
+
+/// destroy the `Mpv` instance and it's memory
+pub fn deinit(self: Mpv, args: struct {
+    /// Destroy All other `Mpv` instance that references the same core instance
+    terminate: bool = true,
+}) void {
+    if (args.terminate) {
+        self.terminate_destroy();
+    } else {
+        self.destroy();
+    }
 }
 
 /// an alternative helper function to create `MpvRenderContext`
@@ -388,8 +406,23 @@ pub fn quit(self: Mpv, args: struct {
 const SLEEP_AMOUNT: u64 = 1 * 1e7;
 const test_filepath = "resources/sample.mp4";
 
+test "MpvHelper create-and-set-options" {
+    const mpv = try Mpv.create_and_set_options(testing.allocator, &[_]MpvOption{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+    });
+    try mpv.initialize();
+    defer mpv.terminate_destroy();
+}
+
+test "MpvHelper create-and-initialize" {
+    const mpv = try Mpv.init(testing.allocator, &[_]MpvOption{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+    });
+    defer mpv.terminate_destroy();
+}
+
 test "MpvHelper seek" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -414,7 +447,7 @@ test "MpvHelper seek" {
 }
 
 test "MpvHelper revert_seek" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -445,7 +478,7 @@ test "MpvHelper revert_seek" {
 }
 
 test "MpvHelper frame-step" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -471,7 +504,7 @@ test "MpvHelper frame-step" {
 }
 
 test "MpvHelper frame-back-step" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -497,7 +530,7 @@ test "MpvHelper frame-back-step" {
 }
 
 test "MpvHelper add" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -530,7 +563,7 @@ test "MpvHelper add" {
 
 test "MpvHelper multiply" {
     // return error.SkipZigTest;
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -558,7 +591,7 @@ test "MpvHelper multiply" {
 }
 
 test "MpvHelper cycle" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -586,7 +619,7 @@ test "MpvHelper cycle" {
 
 // FIXME `loadfile` randomly returns error for unknow reasons
 test "MpvHelper loadfile" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.loadfile(test_filepath, .{});
@@ -622,7 +655,7 @@ fn clean_saved_screen_shots(path: []const u8, allocator: std.mem.Allocator) !voi
 
 test "MpvHelper screenshot" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -673,7 +706,7 @@ test "MpvHelper screenshot" {
 
 test "MpvHelper screenshot-to-file" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const custom_screenshot_filename = "hender.jpg";
@@ -726,7 +759,7 @@ fn create_playlist(base_file_path: []const u8, allocator: std.mem.Allocator, arg
 
 test "MpvHelper playlist-next" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -761,7 +794,7 @@ test "MpvHelper playlist-next" {
 
 test "MpvHelper playlist-prev" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -800,7 +833,7 @@ test "MpvHelper playlist-prev" {
 
 test "MpvHelper loadlist" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -823,7 +856,7 @@ test "MpvHelper loadlist" {
 
 test "MpvHelper playlist-clear" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     const base_filename = test_filepath;
@@ -867,7 +900,7 @@ test "MpvHelper run" {
 // FIXME sync process gets unexpected stdout text
 test "MpvHelper subprocess" {
     const allocator = testing.allocator;
-    const mpv = try Mpv.create_and_initialize(allocator, &.{});
+    const mpv = try Mpv.init(allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });
@@ -920,7 +953,7 @@ test "MpvHelper subprocess" {
 }
 
 test "MpvHelper quit" {
-    const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
+    const mpv = try Mpv.init(testing.allocator, &.{});
     defer mpv.terminate_destroy();
 
     try mpv.command(&.{ "loadfile", test_filepath });

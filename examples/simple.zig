@@ -6,12 +6,12 @@ const config = @import("config");
 pub fn main() !void {
     const filepath = config.filepath;
 
-    const mpv = try Mpv.create_and_initialize(std.heap.page_allocator, &.{
-        .{ "osc", "yes" },
-        .{ "input-default-bindings", "yes" },
-        .{ "input-vo-keyboard", "yes" },
+    const mpv = try Mpv.init(std.heap.page_allocator, &.{
+        .{ .name = "osc", .value = .{ .Flag = true } },
+        .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
+        .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
     });
-    defer mpv.terminate_destroy();
+    defer mpv.deinit(.{});
 
     const version = Mpv.client_api_version();
     std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
