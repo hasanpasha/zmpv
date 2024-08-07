@@ -23,37 +23,27 @@ const Self = @This();
 handle: *c.mpv_handle,
 allocator: std.mem.Allocator,
 
-pub fn create(allocator: std.mem.Allocator) !*Self {
+pub fn create(allocator: std.mem.Allocator) GenericError!Self {
     const handle = c.mpv_create() orelse return GenericError.NullValue;
-
-    const instance_ptr = try allocator.create(Self);
-    instance_ptr.* = Self{ .handle = handle, .allocator = allocator };
-
-    return instance_ptr;
+    return Self{ .handle = handle, .allocator = allocator };
 }
 
 pub fn create_client(self: Self, args: struct {
     name: ?[]const u8 = null,
-}) !*Self {
+}) GenericError!Self {
     const name_arg = if (args.name) |name| name.ptr else null;
     const client_handle = c.mpv_create_client(self.handle, name_arg) orelse return GenericError.NullValue;
 
-    const instance_ptr = try self.allocator.create(Self);
-    instance_ptr.* = Self{ .handle = client_handle, .allocator = self.allocator };
-
-    return instance_ptr;
+    return Self{ .handle = client_handle, .allocator = self.allocator };
 }
 
 pub fn create_weak_client(self: Self, args: struct {
     name: ?[]const u8 = null,
-}) !*Self {
+}) GenericError!Self {
     const name_arg = if (args.name) |name| name.ptr else null;
     const weak_client_handle = c.mpv_create_weak_client(self.handle, name_arg) orelse return GenericError.NullValue;
 
-    const instance_ptr = try self.allocator.create(Self);
-    instance_ptr.* = Self{ .handle = weak_client_handle, .allocator = self.allocator };
-
-    return instance_ptr;
+    return Self{ .handle = weak_client_handle, .allocator = self.allocator };
 }
 
 pub fn initialize(self: Self) MpvError!void {
@@ -187,7 +177,7 @@ pub fn set_property_async(self: Self, reply_userdata: u64, name: []const u8, val
     defer arena.deinit();
     const data_ptr = try value.to_c(arena.allocator());
 
-    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr,std.meta.activeTag(value).to_c(), data_ptr));
+    try catch_mpv_error(c.mpv_set_property_async(self.handle, reply_userdata, name.ptr, std.meta.activeTag(value).to_c(), data_ptr));
 }
 
 pub fn del_property(self: Self, name: []const u8) MpvError!void {
@@ -235,7 +225,7 @@ pub fn wakeup(self: Self) void {
 pub inline fn set_wakeup_callback(self: Self, callback: *const fn (?*anyopaque) void, data: ?*anyopaque) void {
     const c_wrapper = struct {
         pub fn cb(ctx: ?*anyopaque) callconv(.C) void {
-            @call(.always_inline, callback, .{ ctx });
+            @call(.always_inline, callback, .{ctx});
         }
     }.cb;
 
@@ -270,14 +260,12 @@ pub fn get_time_us(self: Self) i64 {
     return c.mpv_get_time_us(self.handle);
 }
 
-pub fn destroy(self: *Self) void {
+pub fn destroy(self: Self) void {
     c.mpv_destroy(self.handle);
-    self.allocator.destroy(self);
 }
 
-pub fn terminate_destroy(self: *Self) void {
+pub fn terminate_destroy(self: Self) void {
     c.mpv_terminate_destroy(self.handle);
-    self.allocator.destroy(self);
 }
 
 pub fn error_string(err: MpvError) []const u8 {
@@ -347,7 +335,7 @@ test "Mpv.create_weak_client" {
 
 test "Mpv.set_option" {
     const mpv = try Self.create(testing.allocator);
-    try mpv.set_option("osc",.{ .Flag = true });
+    try mpv.set_option("osc", .{ .Flag = true });
     try mpv.initialize();
     defer mpv.terminate_destroy();
 
