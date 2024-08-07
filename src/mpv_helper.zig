@@ -49,7 +49,7 @@ pub fn deinit(self: Mpv, args: struct {
 }
 
 /// an alternative helper function to create `MpvRenderContext`
-pub fn create_render_context(self: Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!MpvRenderContext {
+pub fn create_render_context(self: Mpv, params: []const MpvRenderParam) (AllocatorError || MpvError || GenericError)!MpvRenderContext {
     return MpvRenderContext.create(self, params);
 }
 

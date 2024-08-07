@@ -13,7 +13,7 @@ const Self = @This();
 context: *c.mpv_render_context,
 allocator: std.mem.Allocator,
 
-fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) AllocatorError![*c]c.mpv_render_param {
+fn params_list_to_c(params: []const MpvRenderParam, allocator: std.mem.Allocator) AllocatorError![*c]c.mpv_render_param {
     var c_params = try allocator.alloc(c.mpv_render_param, params.len);
     for (0..params.len) |index| {
         c_params[index] = try params[index].to_c(allocator);
@@ -21,7 +21,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) Allo
     return c_params.ptr;
 }
 
-pub fn create(mpv: Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!Self {
+pub fn create(mpv: Mpv, params: []const MpvRenderParam) (AllocatorError || MpvError || GenericError)!Self {
     var context: ?*c.mpv_render_context = undefined;
 
     const allocator = mpv.allocator;
