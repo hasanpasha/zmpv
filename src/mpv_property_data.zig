@@ -5,6 +5,7 @@ const MpvNode = @import("mpv_node.zig").MpvNode;
 const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
+const AllocatorError = std.mem.Allocator.Error;
 const utils = @import("utils.zig");
 const testing = std.testing;
 
@@ -73,7 +74,7 @@ pub const MpvPropertyData = union(MpvFormat) {
     }
 
     // TODO a better way to free the allocated memory (maybe return a union type!)
-    pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) !*anyopaque {
+    pub fn to_c(self: MpvPropertyData, allocator: std.mem.Allocator) AllocatorError!*anyopaque {
         return switch (self) {
             .String, .OSDString => |str| ptr: {
                 const cstr_ptr = try allocator.create([*c]u8);
@@ -104,7 +105,7 @@ pub const MpvPropertyData = union(MpvFormat) {
         };
     }
 
-    pub fn copy(self: MpvPropertyData, allocator: std.mem.Allocator) !MpvPropertyData {
+    pub fn copy(self: MpvPropertyData, allocator: std.mem.Allocator) AllocatorError!MpvPropertyData {
         switch (self) {
             .String => |string| {
                 return MpvPropertyData{ .String = try allocator.dupe(u8, string) };

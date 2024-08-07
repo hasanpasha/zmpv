@@ -4,6 +4,7 @@ const MpvError = @import("../mpv_error.zig").MpvError;
 const MpvFormat = @import("../mpv_format.zig").MpvFormat;
 const MpvPropertyData = @import("../mpv_property_data.zig").MpvPropertyData;
 const utils = @import("../utils.zig");
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
 const Self = @This();
@@ -25,7 +26,7 @@ pub fn format(self: Self) MpvFormat {
     return std.meta.activeTag(self.data);
 }
 
-pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+pub fn copy(self: Self, allocator: std.mem.Allocator) AllocatorError!Self {
     return .{
         .name = try allocator.dupe(u8, self.name),
         .data = try self.data.copy(allocator),

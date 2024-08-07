@@ -2,6 +2,7 @@ const std = @import("std");
 const c = @import("c.zig");
 const Mpv = @import("Mpv.zig");
 const mpv_error = @import("mpv_error.zig");
+const AllocatorError = std.mem.Allocator.Error;
 const MpvError = mpv_error.MpvError;
 const GenericError = @import("generic_error.zig").GenericError;
 const catch_mpv_error = @import("utils.zig").catch_mpv_error;
@@ -12,7 +13,7 @@ const Self = @This();
 context: *c.mpv_render_context,
 allocator: std.mem.Allocator,
 
-fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c]c.mpv_render_param {
+fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) AllocatorError![*c]c.mpv_render_param {
     var c_params = try allocator.alloc(c.mpv_render_param, params.len);
     for (0..params.len) |index| {
         c_params[index] = try params[index].to_c(allocator);
@@ -20,7 +21,7 @@ fn params_list_to_c(params: []MpvRenderParam, allocator: std.mem.Allocator) ![*c
     return c_params.ptr;
 }
 
-pub fn create(mpv: Mpv, params: []MpvRenderParam) !Self {
+pub fn create(mpv: Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!Self {
     var context: ?*c.mpv_render_context = undefined;
 
     const allocator = mpv.allocator;
@@ -45,7 +46,7 @@ pub fn free(self: Self) void {
     c.mpv_render_context_free(self.context);
 }
 
-pub fn set_parameter(self: Self, param: MpvRenderParam) !void {
+pub fn set_parameter(self: Self, param: MpvRenderParam) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
 
@@ -53,7 +54,7 @@ pub fn set_parameter(self: Self, param: MpvRenderParam) !void {
     try catch_mpv_error(c.mpv_render_context_set_parameter(self.context, c_param));
 }
 
-pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) !MpvRenderParam {
+pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) (AllocatorError || MpvError)!MpvRenderParam {
     const param_data_type = param_type.CDataType();
     var data: param_data_type = undefined;
     const param = c.mpv_render_param{
@@ -65,7 +66,7 @@ pub fn get_info(self: Self, comptime param_type: MpvRenderParamType) !MpvRenderP
     return MpvRenderParam.from(param_type, data);
 }
 
-pub fn render(self: Self, params: []MpvRenderParam) !void {
+pub fn render(self: Self, params: []MpvRenderParam) (AllocatorError || MpvError)!void {
     var arena = std.heap.ArenaAllocator.init(self.allocator);
     defer arena.deinit();
 
@@ -144,7 +145,7 @@ pub const MpvOpenGLInitParams = struct {
     get_process_address: *const fn (?*anyopaque, []const u8) ?*anyopaque,
     get_process_address_ctx: ?*anyopaque,
 
-    pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) !*c.mpv_opengl_init_params {
+    pub fn to_c(self: MpvOpenGLInitParams, allocator: std.mem.Allocator) AllocatorError!*c.mpv_opengl_init_params {
         const c_callback = struct {
             pub fn cb(params_ptr: ?*anyopaque, n: [*c]const u8) callconv(.C) ?*anyopaque {
                 var params: *MpvOpenGLInitParams = utils.cast_anyopaque_ptr(MpvOpenGLInitParams, params_ptr);
@@ -171,7 +172,7 @@ pub const MpvOpenGLFBO = struct {
     h: i32,
     internal_format: i32 = 0,
 
-    pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) !*c.mpv_opengl_fbo {
+    pub fn to_c(self: MpvOpenGLFBO, allocator: std.mem.Allocator) AllocatorError!*c.mpv_opengl_fbo {
         const value_ptr = try allocator.create(c.mpv_opengl_fbo);
         value_ptr.* = .{
             .fbo = @intCast(self.fbo),
@@ -215,7 +216,7 @@ const MpvOpenGLDRMDrawSurfaceSize = struct {
     width: i32,
     height: i32,
 
-    pub fn to_c(self: MpvOpenGLDRMDrawSurfaceSize, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_draw_surface_size {
+    pub fn to_c(self: MpvOpenGLDRMDrawSurfaceSize, allocator: std.mem.Allocator) AllocatorError!*c.mpv_opengl_drm_draw_surface_size {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_draw_surface_size);
         value_ptr.* = .{
             .width = @intCast(self.width),
@@ -232,7 +233,7 @@ const MpvOpenGLDRMParams = struct {
     atomic_request_ptr: [*c]?*anyopaque, // not tested
     render_fd: i32,
 
-    pub fn to_c(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params {
+    pub fn to_c(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) AllocatorError!*c.mpv_opengl_drm_params {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_params);
         value_ptr.* = .{
             .fd = @intCast(self.fd),
@@ -244,7 +245,7 @@ const MpvOpenGLDRMParams = struct {
         return value_ptr;
     }
 
-    pub fn to_c_v2(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) !*c.mpv_opengl_drm_params_v2 {
+    pub fn to_c_v2(self: MpvOpenGLDRMParams, allocator: std.mem.Allocator) AllocatorError!*c.mpv_opengl_drm_params_v2 {
         const value_ptr = try allocator.create(c.mpv_opengl_drm_params_v2);
         value_ptr.* = .{
             .fd = @intCast(self.fd),
@@ -261,7 +262,7 @@ const MpvSwSize = struct {
     w: i32,
     h: i32,
 
-    pub fn to_c(self: MpvSwSize, allocator: std.mem.Allocator) !*[2]c_int {
+    pub fn to_c(self: MpvSwSize, allocator: std.mem.Allocator) AllocatorError!*[2]c_int {
         const value_ptr = try allocator.create([2]c_int);
         value_ptr.* = .{ @intCast(self.w), @intCast(self.h) };
         return value_ptr;
@@ -300,7 +301,7 @@ pub const MpvRenderParam = union(MpvRenderParamType) {
         }
     }
 
-    pub fn to_c(self: MpvRenderParam, allocator: std.mem.Allocator) !c.mpv_render_param {
+    pub fn to_c(self: MpvRenderParam, allocator: std.mem.Allocator) AllocatorError!c.mpv_render_param {
         var param: c.mpv_render_param = undefined;
         switch (self) {
             .Invalid => {

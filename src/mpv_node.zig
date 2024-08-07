@@ -4,6 +4,7 @@ const MpvFormat = @import("mpv_format.zig").MpvFormat;
 const types = @import("types.zig");
 const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
 pub const MpvNode = union(enum) {
@@ -37,7 +38,7 @@ pub const MpvNode = union(enum) {
         };
     }
 
-    pub fn to_c(self: MpvNode, allocator: std.mem.Allocator) !*c.mpv_node {
+    pub fn to_c(self: MpvNode, allocator: std.mem.Allocator) AllocatorError!*c.mpv_node {
         const node_ptr = try allocator.create(c.mpv_node);
         switch (self) {
             .None => {
@@ -74,7 +75,7 @@ pub const MpvNode = union(enum) {
         return node_ptr;
     }
 
-    pub fn copy(self: MpvNode, allocator: std.mem.Allocator) !MpvNode {
+    pub fn copy(self: MpvNode, allocator: std.mem.Allocator) AllocatorError!MpvNode {
         switch (self) {
             .String => |string| {
                 return MpvNode{ .String = try allocator.dupe(u8, string) };

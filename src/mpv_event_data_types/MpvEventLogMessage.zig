@@ -1,6 +1,7 @@
 const std = @import("std");
 const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
 const Self = @This();
@@ -20,7 +21,7 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
-pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+pub fn copy(self: Self, allocator: std.mem.Allocator) AllocatorError!Self {
     return .{
         .log_level = self.log_level,
         .level = try allocator.dupe(u8, self.level),

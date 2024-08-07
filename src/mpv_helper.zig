@@ -1,6 +1,5 @@
 const std = @import("std");
 const Mpv = @import("Mpv.zig");
-const GenericError = @import("generic_error.zig").GenericError;
 const MpvNode = @import("mpv_node.zig").MpvNode;
 const MpvPropertyData = @import("mpv_property_data.zig").MpvPropertyData;
 const types = @import("types.zig");
@@ -8,6 +7,9 @@ const MpvNodeList = types.MpvNodeList;
 const MpvNodeMap = types.MpvNodeMap;
 const MpvRenderContext = @import("MpvRenderContext.zig");
 const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const AllocatorError = std.mem.Allocator.Error;
+const MpvError = @import("mpv_error.zig").MpvError;
+const GenericError = @import("generic_error.zig").GenericError;
 const utils = @import("utils.zig");
 const testing = std.testing;
 
@@ -17,7 +19,7 @@ pub const MpvOption = struct {
 };
 
 /// Create an `Mpv` instance and set options if provided
-pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const MpvOption) !Mpv {
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const MpvOption) (AllocatorError || MpvError || GenericError)!Mpv {
     const instance = try Mpv.create(allocator);
 
     for (options) |option| {
@@ -28,7 +30,7 @@ pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const Mpv
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) !Mpv {
+pub fn init(allocator: std.mem.Allocator, options: []const MpvOption) (AllocatorError || MpvError || GenericError)!Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
@@ -47,7 +49,7 @@ pub fn deinit(self: Mpv, args: struct {
 }
 
 /// an alternative helper function to create `MpvRenderContext`
-pub fn create_render_context(self: Mpv, params: []MpvRenderParam) !MpvRenderContext {
+pub fn create_render_context(self: Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!MpvRenderContext {
     return MpvRenderContext.create(self, params);
 }
 
@@ -82,7 +84,7 @@ pub const SeekPrecision = enum {
 pub fn seek(self: Mpv, target: []const u8, args: struct {
     reference: SeekReference = .Relative,
     precision: SeekPrecision = .Keyframes,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     const flag_str = try std.fmt.allocPrint(self.allocator, "{s}{s}{s}", .{
         args.reference.to_string(),
         if (args.precision == .Percent) "-" else "+",
@@ -108,7 +110,7 @@ pub const RevertSeekFlag = enum {
 
 pub fn revert_seek(self: Mpv, args: struct {
     flag: ?RevertSeekFlag = null,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
 
@@ -121,22 +123,22 @@ pub fn revert_seek(self: Mpv, args: struct {
     try self.command(cmd_args.items);
 }
 
-pub fn frame_step(self: Mpv) !void {
+pub fn frame_step(self: Mpv) MpvError!void {
     try self.command_string("frame-step");
 }
 
-pub fn frame_back_step(self: Mpv) !void {
+pub fn frame_back_step(self: Mpv) MpvError!void {
     try self.command_string("frame-back-step");
 }
 
 pub fn property_add(self: Mpv, name: []const u8, args: struct {
     value: []const u8 = "1",
-}) !void {
+}) (AllocatorError || MpvError)!void {
     var cmd_args = [_][]const u8{ "add", name, args.value };
     try self.command(&cmd_args);
 }
 
-pub fn property_multiply(self: Mpv, name: []const u8, factor: []const u8) !void {
+pub fn property_multiply(self: Mpv, name: []const u8, factor: []const u8) (AllocatorError || MpvError)!void {
     var cmd_args = [_][]const u8{ "multiply", name, factor };
     try self.command(&cmd_args);
 }
@@ -167,7 +169,7 @@ pub fn loadfile(self: Mpv, filename: []const u8, args: struct {
     flag: LoadfileFlag = .Replace,
     index: usize = 0,
     options: []const u8 = "",
-}) !void {
+}) (AllocatorError || MpvError)!void {
     const flag_str = args.flag.to_string();
     const index_str = try std.fmt.allocPrint(self.allocator, "{}", .{args.index});
     defer self.allocator.free(index_str);
@@ -198,7 +200,7 @@ pub const CycleDirection = enum {
 
 pub fn cycle(self: Mpv, property_name: []const u8, args: struct {
     direction: CycleDirection = .Up,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     var cmd_args = [_][]const u8{ "cycle", property_name, args.direction.to_string() };
     try self.command(&cmd_args);
 }
@@ -221,7 +223,7 @@ pub const ScreenshotInclude = enum {
 pub fn screenshot(self: Mpv, args: struct {
     include: ScreenshotInclude = .Subtitles,
     each_frame: bool = false,
-}) !MpvNode {
+}) (AllocatorError || MpvError)!MpvNode {
     var flag_str: []const u8 = undefined;
     if (args.each_frame) {
         flag_str = try std.fmt.allocPrint(self.allocator, "{s}+each-frame", .{args.include.to_string()});
@@ -241,19 +243,19 @@ pub fn screenshot(self: Mpv, args: struct {
 
 pub fn screenshot_to_file(self: Mpv, filename: []const u8, args: struct {
     include: ScreenshotInclude = .Subtitles,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     try self.command(&.{ "screenshot-to-file", filename, args.include.to_string() });
 }
 
 pub fn playlist_next(self: Mpv, args: struct {
     force: bool = false,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     try self.command(&.{ "playlist-next", if (args.force) "force" else "weak" });
 }
 
 pub fn playlist_prev(self: Mpv, args: struct {
     force: bool = false,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     try self.command(&.{ "playlist-prev", if (args.force) "force" else "weak" });
 }
 
@@ -273,15 +275,15 @@ pub const LoadlistFlag = enum {
 
 pub fn loadlist(self: Mpv, url: []const u8, args: struct {
     flag: LoadfileFlag = .Append,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     try self.command(&.{ "loadlist", url, args.flag.to_string() });
 }
 
-pub fn playlist_clear(self: Mpv) !void {
+pub fn playlist_clear(self: Mpv) MpvError!void {
     try self.command_string("playlist-clear");
 }
 
-pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) !void {
+pub fn run(self: Mpv, command: []const u8, command_args: []const []const u8) (AllocatorError || MpvError)!void {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
     try cmd_args.appendSlice(&.{ "run", command });
@@ -337,7 +339,7 @@ pub fn subprocess(self: Mpv, command: []const []const u8, args: struct {
     /// This is not part of the mpv command arguments but is used by this function
     /// itself to determine whether to run the command asynchronously or not.
     sync: bool = true,
-}) !union {
+}) (AllocatorError || MpvError)!union {
     value: SubprocessCommandResult,
     reply_code: u64,
 } {
@@ -381,7 +383,7 @@ pub fn subprocess(self: Mpv, command: []const []const u8, args: struct {
 
 pub fn quit(self: Mpv, args: struct {
     code: ?u8 = null,
-}) !void {
+}) (AllocatorError || MpvError)!void {
     var cmd_args = std.ArrayList([]const u8).init(self.allocator);
     defer cmd_args.deinit();
     var code_str: []u8 = undefined;

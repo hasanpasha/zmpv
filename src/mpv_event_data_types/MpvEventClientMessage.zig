@@ -1,6 +1,7 @@
 const std = @import("std");
 const c = @import("../c.zig");
 const utils = @import("../utils.zig");
+const AllocatorError = std.mem.Allocator.Error;
 const testing = std.testing;
 
 const Self = @This();
@@ -23,7 +24,7 @@ pub fn from(data_ptr: *anyopaque) Self {
     };
 }
 
-pub fn copy(self: Self, allocator: std.mem.Allocator) !Self {
+pub fn copy(self: Self, allocator: std.mem.Allocator) AllocatorError!Self {
     return Self{
         .args = string_array: {
             var strings = try allocator.alloc([*:0]const u8, self.args.len);
