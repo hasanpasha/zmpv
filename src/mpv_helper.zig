@@ -13,7 +13,7 @@ const utils = @import("utils.zig");
 const testing = std.testing;
 
 /// Create an `Mpv` instance and set options if provided
-pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (AllocatorError || MpvError || GenericError)!*Mpv {
+pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (MpvError || GenericError)!Mpv {
     const instance = try Mpv.create(allocator);
 
     for (options) |option| {
@@ -24,14 +24,14 @@ pub fn create_and_set_options(allocator: std.mem.Allocator, options: []const str
 }
 
 /// Create an `Mpv` instance and initialize it with the given options
-pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (AllocatorError || MpvError || GenericError)!*Mpv {
+pub fn create_and_initialize(allocator: std.mem.Allocator, options: []const struct { []const u8, []const u8 }) (MpvError || GenericError)!Mpv {
     var instance = try Mpv.create_and_set_options(allocator, options);
     try instance.initialize();
     return instance;
 }
 
 /// an alternative helper function to create `MpvRenderContext`
-pub fn create_render_context(self: *Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!MpvRenderContext {
+pub fn create_render_context(self: Mpv, params: []MpvRenderParam) (AllocatorError || MpvError || GenericError)!MpvRenderContext {
     return MpvRenderContext.create(self, params);
 }
 
@@ -584,6 +584,7 @@ test "MpvHelper cycle" {
     try testing.expect(paused);
 }
 
+// FIXME `loadfile` randomly returns error for unknow reasons
 test "MpvHelper loadfile" {
     const mpv = try Mpv.create_and_initialize(testing.allocator, &.{});
     defer mpv.terminate_destroy();
@@ -863,6 +864,7 @@ test "MpvHelper run" {
     // }
 }
 
+// FIXME sync process gets unexpected stdout text
 test "MpvHelper subprocess" {
     const allocator = testing.allocator;
     const mpv = try Mpv.create_and_initialize(allocator, &.{});
