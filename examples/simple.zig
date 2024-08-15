@@ -1,52 +1,57 @@
 const std = @import("std");
+// const zmpv = @import("zmpv");
 const zmpv = @import("zmpv");
-const Mpv = zmpv.Mpv;
+const MpvHandle = zmpv.MpvHandle;
 const config = @import("config");
 
 pub fn main() !void {
     const filepath = config.filepath;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        if (gpa.deinit() == .leak) @panic("memory leak");
+    }
+    const allocator = gpa.allocator();
 
-    const mpv = try Mpv.init(std.heap.page_allocator, &.{
-        .{ .name = "osc", .value = .{ .Flag = true } },
-        .{ .name = "input-default-bindings", .value = .{ .Flag = true } },
-        .{ .name = "input-vo-keyboard", .value = .{ .Flag = true } },
-    });
-    defer mpv.deinit(.{});
+    const mpv = try MpvHandle.create_z();
+    try mpv.initialize_z();
+    try mpv.set_option_z(allocator, "osc", .{ .flag = true });
+    try mpv.set_option_z(allocator, "input-default-bindings", .{ .flag = true });
+    try mpv.set_option_z(allocator, "input-vo-keyboard", .{ .flag = true });
+    defer mpv.terminate_destroy();
 
-    const version = Mpv.client_api_version();
-    std.debug.print("version={any}.{}\n", .{ version >> 16, version & 0xffff });
+    const version = zmpv.client_api_version_z();
+    std.debug.print("version={any}\n", .{version});
 
-    try mpv.command_async(0, &.{"loadfile", filepath});
+    try mpv.command_async_z(allocator, 0, &.{ "loadfile", filepath });
 
-    try mpv.request_log_messages(.Error);
+    try zmpv.check_error_z(mpv.request_log_messages("error"));
 
-    try mpv.observe_property(1, "fullscreen", .Flag);
-    try mpv.observe_property(2, "time-pos", .INT64);
+    try zmpv.check_error_z(mpv.observe_property(1, "fullscreen", .flag));
+    try zmpv.check_error_z(mpv.observe_property(2, "time-pos", .int64));
 
-    try mpv.cycle("fullscreen", .{ .direction = .Down });
-    const fullscreen_status = try mpv.get_property("fullscreen", .String);
-    std.log.debug("fullscreen={s}", .{fullscreen_status.String});
-    defer mpv.free(fullscreen_status);
+    // try mpv.cycle("fullscreen", .{ .direction = .Down });
+    const fullscreen_status = try mpv.get_property_z(allocator, "fullscreen", .string);
+    defer fullscreen_status.free(allocator);
+    // defer zmpv.free_z(allocator, fullscreen_status);
+    std.log.debug("fullscreen={s}", .{fullscreen_status.string});
 
     while (true) {
-        const event = mpv.wait_event(10000);
-        const event_id = event.event_id;
-        switch (event_id) {
-            .Shutdown => break,
-            .LogMessage => {
-                const log = event.data.LogMessage;
+        const event = mpv.wait_event_z(.{ .indefinite = {} });
+        if (event.id == .shutdown or event.id == .end_file) break;
+        switch (event.get_data_z()) {
+            .log_message => |log| {
                 std.log.debug("[{s}] \"{s}\"", .{ log.prefix, log.text });
             },
-            .PropertyChange, .GetPropertyReply => {
-                const property = event.data.PropertyChange;
+            .property_change => |_| {
+                // std.log.debug("property: {}", .{property});
 
-                if (std.mem.eql(u8, property.name, "fullscreen")) {
-                    std.log.debug("[fullscreen] {}", .{property.data.Flag});
-                } else if (std.mem.eql(u8, property.name, "time-pos")) {
-                    if (property.format() == .INT64) {
-                        std.log.debug("[time-pos] {}", .{property.data.INT64});
-                    }
-                }
+                // if (std.mem.eql(u8, property.name, "fullscreen")) {
+                //     std.log.debug("[fullscreen] {}", .{property.data.Flag});
+                // } else if (std.mem.eql(u8, property.name, "time-pos")) {
+                //     if (property.format() == .INT64) {
+                //         std.log.debug("[time-pos] {}", .{property.data.INT64});
+                //     }
+                // }
             },
             else => {},
         }

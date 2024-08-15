@@ -1,8 +1,8 @@
 const std = @import("std");
 const zmpv = @import("zmpv");
-const Mpv = zmpv.Mpv;
+const Mpv = zmpv.MpvHandle;
 const MpvRenderContext = zmpv.MpvRenderContext;
-const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const MpvRenderParam = zmpv.MpvRenderParam;
 const sdl = @cImport({
     @cInclude("SDL2/SDL.h");
 });

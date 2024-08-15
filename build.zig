@@ -4,8 +4,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // const zmpv_module = b.addModule("zmpv", .{
+    //     .root_source_file = b.path("src/root.zig"),
+    // });
+
     const zmpv_module = b.addModule("zmpv", .{
-        .root_source_file = b.path("src/root.zig"),
+        .root_source_file = b.path("src/mpv.zig"),
+        .link_libc = true,
     });
 
     const Example = enum {
@@ -31,10 +36,9 @@ pub fn build(b: *std.Build) void {
     options.addOption([]const u8, "filepath", filepath_option);
 
     example.root_module.addImport("zmpv", zmpv_module);
-    example.linkLibC();
+
     example.linkSystemLibrary("mpv");
     if (example_option == .sdl_opengl or example_option == .sdl_sw) example.linkSystemLibrary("sdl2");
-
 
     const example_run = b.addRunArtifact(example);
     example_step.dependOn(&example_run.step);
