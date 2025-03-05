@@ -14,11 +14,6 @@ pub fn client_api_version_z() struct { major: u16, minor: u16 } {
     return .{ .major = @intCast(version >> 16), .minor = @intCast(version & 0xffff) };
 }
 
-pub fn error_string(ret_code: c_int) [*c]const u8 {
-    const cFn = @extern(*const fn (c_int) callconv(.C) [*c]const u8, .{ .name = "mpv_error_string" });
-    return cFn(ret_code);
-}
-
 /// `mpv_free`
 pub fn free(data: ?*anyopaque) void {
     const cFn = @extern(*const fn (?*anyopaque) callconv(.C) void, .{ .name = "mpv_free" });
@@ -247,6 +242,41 @@ pub const MpvHandle = opaque {
         return sliceTo(self.client_name(), 0);
     }
 
+    pub fn init_z(alloc: std.mem.Allocator, options: anytype) anyerror!*MpvHandle {
+        var instance = try MpvHandle.create_z();
+        const opts_type = @TypeOf(options);
+        const opts_type_info = @typeInfo(opts_type);
+        if (opts_type_info != .Struct) {
+            @compileError("expected tuple or struct argument, found " ++ @typeName(opts_type));
+        }
+
+        const fields_info = opts_type_info.Struct.fields;
+        if (fields_info.len > 32) {
+            @compileError("32 arguments max are supported per format call");
+        }
+
+        inline for (fields_info) |field| {
+            const field_value = @field(options, field.name);
+
+            switch (field.type) {
+                comptime_int => try instance.set_option_z(alloc, field.name, .{ .int64 = field_value }),
+                comptime_float => try instance.set_option_z(alloc, field.name, .{ .double = field_value }),
+                bool => try instance.set_option_z(alloc, field.name, .{ .flag = field_value }),
+                MpvFormatDataZ => try instance.set_option_z(alloc, field.name, field_value),
+                else => {
+                    if (isZigString(field.type)) {
+                        try instance.set_option_string_z(field.name, field_value);
+                    } else {
+                        @panic("not supported option type " ++ @typeName(field.type));
+                    }
+                },
+            }
+        }
+
+        try instance.initialize_z();
+        return instance;
+    }
+
     pub fn create_z() error{null_value}!*MpvHandle {
         return MpvHandle.create() orelse error.null_value;
     }
@@ -295,21 +325,36 @@ pub const MpvHandle = opaque {
         return MpvNodeZ.from_c_data(allocator, &output);
     }
 
-    pub fn command_async_z(self: *MpvHandle, allocator: Allocator, reply_userdata: u64, args: []const []const u8) (MpvErrorZ || AllocatorError)!void {
+    pub fn command_async_z(
+        self: *MpvHandle,
+        allocator: Allocator,
+        reply_userdata: u64,
+        args: []const []const u8,
+    ) (MpvErrorZ || AllocatorError)!void {
         const cmd_args = try create_cstring_array(args, allocator);
         defer free_cstring_array(cmd_args, allocator);
 
         try check_error_z(self.command_async(reply_userdata, cmd_args.ptr));
     }
 
-    pub fn set_property_z(self: *MpvHandle, allocator: Allocator, name: []const u8, data: MpvFormatDataZ) (MpvErrorZ || AllocatorError)!void {
+    pub fn set_property_z(
+        self: *MpvHandle,
+        allocator: Allocator,
+        name: []const u8,
+        data: MpvFormatDataZ,
+    ) (MpvErrorZ || AllocatorError)!void {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
 
         try check_error_z(self.set_property(name.ptr, data.get_format(), try data.to_c_data(arena.allocator())));
     }
 
-    pub fn get_property_z(self: *MpvHandle, allocator: Allocator, name: []const u8, format: MpvFormat) !MpvFormatDataZ {
+    pub fn get_property_z(
+        self: *MpvHandle,
+        allocator: Allocator,
+        name: []const u8,
+        format: MpvFormat,
+    ) !MpvFormatDataZ {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
 
@@ -330,6 +375,30 @@ pub const MpvHandle = opaque {
     }
 };
 
+pub fn isZigString(comptime T: type) bool {
+    return comptime blk: {
+        // Only pointer types can be strings, no optionals
+        const info = @typeInfo(T);
+        if (info != .Pointer) break :blk false;
+        const ptr = &info.Pointer;
+        // Check for CV qualifiers that would prevent coerction to []const u8
+        if (ptr.is_volatile or ptr.is_allowzero) break :blk false;
+        // If it's already a slice, simple check.
+        if (ptr.size == .Slice) {
+            break :blk ptr.child == u8;
+        }
+        // Otherwise check if it's an array type that coerces to slice.
+        if (ptr.size == .One) {
+            const child = @typeInfo(ptr.child);
+            if (child == .Array) {
+                const arr = &child.Array;
+                break :blk arr.child == u8;
+            }
+        }
+        break :blk false;
+    };
+}
+
 pub const MpvRenderContext = opaque {
     pub fn create(res: *?*MpvRenderContext, mpv: *MpvHandle, params: [*c]MpvRenderParam) c_int {
         const cFn = @extern(*const fn ([*c]?*MpvRenderContext, ?*MpvHandle, [*c]MpvRenderParam) callconv(.C) c_int, .{
@@ -347,6 +416,7 @@ pub const MpvRenderContext = opaque {
     // TODO mpv_render_context_free(ctx: ?*mpv_render_context) void;
     // TODO mpv_stream_cb_add_ro(ctx: ?*mpv_handle, protocol: [*c]const u8, user_data: ?*anyopaque, open_fn: mpv_stream_cb_open_ro_fn) c_int;
 
+    pub fn create_z(alloc: Allocator, mpv: *MpvHandle, z_params: []MpvRenderParamZ) anyerror!*MpvRenderContext {}
 };
 
 pub const MpvRenderParam = extern struct {
@@ -379,10 +449,10 @@ pub const MpvRenderParamType = enum(c_uint) {
 };
 
 pub const MpvRenderParamZ = union(MpvRenderParamType) {
-    Invalid: void,
+    invalid,
     api_type: MpvRenderApiTypeZ,
     opengl_init_params: MpvOpenGLInitParamsZ,
-    opengl_fbo: MpvOpenGLFBO,
+    // opengl_fbo: MpvOpenGLFBO,
     flip_y: bool,
     Depth: i32,
     icc_profile: []u8,
@@ -390,16 +460,49 @@ pub const MpvRenderParamZ = union(MpvRenderParamType) {
     x11_display: ?*anyopaque, // *Display
     wl_display: ?*anyopaque, // *wl_display
     advanced_control: bool,
-    next_frame_info: MpvRenderFrameInfo,
+    // next_frame_info: MpvRenderFrameInfo,
     block_for_target_time: bool,
     skip_rendering: bool,
-    drm_display: MpvOpenGLDRMParams,
-    drm_draw_surface_size: MpvOpenGLDRMDrawSurfaceSize,
-    drm_display_v2: MpvOpenGLDRMParams,
-    sw_size: MpvSwSize,
+    // drm_display: MpvOpenGLDRMParams,
+    // drm_draw_surface_size: MpvOpenGLDRMDrawSurfaceSize,
+    // drm_display_v2: MpvOpenGLDRMParams,
+    // sw_size: MpvSwSize,
     sw_format: []const u8,
     sw_stride: usize,
-    sw_pointer: *anyopaque,
+    sw_pointer: ?*anyopaque,
+
+    pub fn to_c(self: MpvRenderParamZ, alloc: Allocator) !MpvRenderParam {
+        var param: MpvRenderParam = undefined;
+        switch (self) {
+            .invalid => |val| {
+                param.type = .invalid;
+                param.data = null;
+            },
+            .api_type => |val| {
+                param.type = .api_type;
+                param.data = val
+            },
+            .opengl_init_params => |val| {},
+            .opengl_fbo => |val| {},
+            .flip_y => |val| {},
+            .Depth => |val| {},
+            .icc_profile => |val| {},
+            .ambient_light => |val| {},
+            .x11_display => |val| {},
+            .wl_display => |val| {},
+            .advanced_control => |val| {},
+            .next_frame_info => |val| {},
+            .block_for_target_time => |val| {},
+            .skip_rendering => |val| {},
+            .drm_display => |val| {},
+            .drm_draw_surface_size => |val| {},
+            .drm_display_v2 => |val| {},
+            .sw_size => |val| {},
+            .sw_format => |val| {},
+            .sw_stride => |val| {},
+            .sw_pointer => |val| {},
+        }
+    }
 };
 
 pub const MpvRenderApiType = struct {
@@ -410,6 +513,8 @@ pub const MpvRenderApiType = struct {
 pub const MpvRenderApiTypeZ = enum {
     opengl,
     sw,
+
+    pub fn to_c(self: MpvRenderApiTypeZ) *const
 };
 
 pub const MpvOpenGLInitParams = extern struct {
@@ -423,8 +528,8 @@ pub const MpvOpenGLInitParamsZ = struct {
 };
 
 const EventWaitFlag = union(enum) {
-    none: void,
-    indefinite: void,
+    none,
+    indefinite,
     timed: f64,
 
     pub fn get_wait(self: EventWaitFlag) f64 {
@@ -463,8 +568,13 @@ pub const MpvError = enum(c_int) {
         return @enumFromInt(ret_code);
     }
 
-    pub fn to_string_z(self: MpvError) []const u8 {
-        return sliceTo(error_string(@intFromEnum(self)), 0);
+    pub fn string(self: MpvError) [*c]const u8 {
+        const cFn = @extern(*const fn (MpvError) callconv(.C) [*c]const u8, .{ .name = "mpv_error_string" });
+        return cFn(self);
+    }
+
+    pub fn string_z(self: MpvError) []const u8 {
+        return sliceTo(self.string(), 0);
     }
 
     pub fn raise_error_z(self: MpvError) MpvErrorZ!void {
@@ -538,7 +648,7 @@ pub const MpvEvent = extern struct {
 };
 
 pub const MpvEventDataZ = union(enum) {
-    none: void,
+    none,
     log_message: *MpvEventLogMessage,
     get_property_reply: *MpvEventProperty,
     command_reply: *MpvEventCommand,
@@ -559,10 +669,10 @@ pub const MpvEventDataZ = union(enum) {
                 .client_message => .{ .client_message = @ptrCast(@alignCast(ptr)) },
                 .property_change => .{ .property_change = @ptrCast(@alignCast(ptr)) },
                 .hook => .{ .hook = @ptrCast(@alignCast(ptr)) },
-                else => .{ .none = {} },
+                else => .none,
             };
         } else {
-            return .{ .none = {} }; //
+            return .none; //
         }
     }
 };
@@ -663,7 +773,7 @@ pub const MpvNodeData = extern union {
 };
 
 pub const MpvNode = extern struct {
-    u: MpvNodeData,
+    data: MpvNodeData,
     format: MpvFormat,
 
     pub fn free_node_contents(node: [*c]MpvNode) void {
@@ -679,7 +789,7 @@ pub const MpvEventCommand = extern struct {
 pub const NodeMapEntry = struct { key: []const u8, value: MpvNodeZ };
 
 pub const MpvNodeZ = union(enum) {
-    none: void,
+    none,
     string: []const u8,
     flag: bool,
     int64: i64,
@@ -691,14 +801,14 @@ pub const MpvNodeZ = union(enum) {
     pub fn from_c_data(allocator: Allocator, node: *MpvNode) AllocatorError!MpvNodeZ {
         const format = node.format;
         return switch (format) {
-            .string => .{ .string = try allocator.dupe(u8, sliceTo(node.u.string, 0)) },
-            .flag => .{ .flag = node.u.flag == 1 },
-            .int64 => .{ .int64 = node.u.int64 },
-            .double => .{ .double = node.u.double },
-            .node_array => .{ .node_array = try from_node_array(allocator, node.u.list) },
-            .node_map => .{ .node_map = try from_node_map(allocator, node.u.list) },
-            .byte_array => .{ .byte_array = try from_byte_array(allocator, node.u.byte_array) },
-            else => .{ .none = {} },
+            .string => .{ .string = try allocator.dupe(u8, sliceTo(node.data.string, 0)) },
+            .flag => .{ .flag = node.data.flag == 1 },
+            .int64 => .{ .int64 = node.data.int64 },
+            .double => .{ .double = node.data.double },
+            .node_array => .{ .node_array = try from_node_array(allocator, node.data.list) },
+            .node_map => .{ .node_map = try from_node_map(allocator, node.data.list) },
+            .byte_array => .{ .byte_array = try from_byte_array(allocator, node.data.byte_array) },
+            else => .none,
         };
     }
 
@@ -767,36 +877,34 @@ pub const MpvNodeZ = union(enum) {
         var node = try allocator.create(MpvNode);
 
         switch (self) {
-            .none => {
-                node.format = .none;
-            },
+            .none => node.format = .none,
             .string => |string| {
                 node.format = .string;
-                node.u.string = try allocator.dupeZ(u8, string);
+                node.data.string = try allocator.dupeZ(u8, string);
             },
             .flag => |flag| {
                 node.format = .flag;
-                node.u.flag = @intFromBool(flag);
+                node.data.flag = @intFromBool(flag);
             },
             .int64 => |num| {
                 node.format = .int64;
-                node.u.int64 = num;
+                node.data.int64 = num;
             },
             .double => |num| {
                 node.format = .double;
-                node.u.double = num;
+                node.data.double = num;
             },
             .node_array => |array| {
                 node.format = .node_array;
-                node.u.list = try node_array_to_cdata(array, allocator);
+                node.data.list = try node_array_to_cdata(array, allocator);
             },
             .node_map => |map| {
                 node.format = .node_map;
-                node.u.list = try node_map_to_cdata(map, allocator);
+                node.data.list = try node_map_to_cdata(map, allocator);
             },
             .byte_array => |bytes| {
                 node.format = .byte_array;
-                node.u.byte_array = try byte_array_to_cdata(bytes, allocator);
+                node.data.byte_array = try byte_array_to_cdata(bytes, allocator);
             },
         }
         return node;
@@ -843,7 +951,7 @@ pub const MpvNodeZ = union(enum) {
 };
 
 pub const MpvFormatDataZ = union(MpvFormat) {
-    none: void,
+    none,
     string: []const u8,
     osd_string: []const u8,
     flag: bool,
@@ -869,7 +977,7 @@ pub const MpvFormatDataZ = union(MpvFormat) {
 
     pub fn from_c_data(allocator: Allocator, format: MpvFormat, data_ptr: ?*anyopaque) !MpvFormatDataZ {
         switch (format) {
-            .none => return .{ .none = {} },
+            .none => return .none,
             .string => {
                 const data = cast_anyopaque_ptr([*c]u8, data_ptr);
                 return .{ .string = try allocator.dupe(u8, sliceTo(data.*, 0)) };

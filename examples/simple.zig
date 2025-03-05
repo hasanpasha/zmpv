@@ -12,11 +12,13 @@ pub fn main() !void {
     }
     const allocator = gpa.allocator();
 
-    const mpv = try MpvHandle.create_z();
-    try mpv.initialize_z();
-    try mpv.set_option_z(allocator, "osc", .{ .flag = true });
-    try mpv.set_option_z(allocator, "input-default-bindings", .{ .flag = true });
-    try mpv.set_option_z(allocator, "input-vo-keyboard", .{ .flag = true });
+    const mpv = try MpvHandle.init_z(allocator, .{
+        .osc = zmpv.MpvFormatDataZ{ .flag = true },
+        .@"input-default-bindings" = true,
+        .@"input-vo-keyboard" = true,
+        .speed = 2,
+        .@"term-title" = "helloworld",
+    });
     defer mpv.terminate_destroy();
 
     const version = zmpv.client_api_version_z();

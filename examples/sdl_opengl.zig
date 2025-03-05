@@ -1,6 +1,5 @@
 const std = @import("std");
 const zmpv = @import("zmpv");
-const Mpv = zmpv.MpvHandle;
 const MpvRenderContext = zmpv.MpvRenderContext;
 const MpvRenderParam = zmpv.MpvRenderParam;
 const sdl = @cImport({
@@ -16,12 +15,12 @@ pub fn main() !void {
     defer {
         if (gpa.deinit() == .leak) @panic("leak");
     }
+    const alloc = gpa.allocator();
 
-    var mpv = try Mpv.init(gpa.allocator(), &.{
-        .{ .name = "vo", .value = .{ .String = "libmpv" } },
-        .{ .name = "hwdec", .value = .{ .String = "auto" } },
+    const mpv = try zmpv.MpvHandle.init_z(alloc, .{
+        .vo = "libmpv",
+        .hwdec = "auto",
     });
-    defer mpv.deinit(.{});
 
     _ = sdl.SDL_SetHint(sdl.SDL_HINT_NO_SIGNAL_HANDLERS, "no");
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) < 0) {
@@ -44,13 +43,13 @@ pub fn main() !void {
     };
 
     var params = [_]MpvRenderParam{
-        .{ .ApiType = .OpenGL },
-        .{ .OpenglInitParams = .{
+        .{ .api_type = .OpenGL },
+        .{ .opengl_init_params = .{
             .get_process_address = &get_process_address,
             .get_process_address_ctx = &mpv,
         } },
-        .{ .AdvancedControl = true },
-        .{ .Invalid = {} },
+        .{ .advanced_control = true },
+        .{.invalid},
     };
     const mpv_render_ctx = try mpv.create_render_context(&params);
     defer mpv_render_ctx.free();
@@ -153,7 +152,7 @@ fn on_mpv_render_update(data: ?*anyopaque) void {
 }
 
 fn get_process_address(ctx: ?*anyopaque, name: []const u8) ?*anyopaque {
-    var mpv: *Mpv = @ptrCast(@alignCast(ctx));
+    var mpv: *zmpv.MpvHandle = @ptrCast(@alignCast(ctx));
     std.log.debug("mpv ID: {}, name: {s}", .{ mpv.client_id(), name });
     return sdl.SDL_GL_GetProcAddress(name.ptr);
 }
