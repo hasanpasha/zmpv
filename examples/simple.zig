@@ -12,12 +12,15 @@ pub fn main() !void {
     }
     const allocator = gpa.allocator();
 
+    const speed: u2 = 3;
+    const term_title = "helloworld";
     const mpv = try MpvHandle.init_z(allocator, .{
         .osc = zmpv.MpvFormatDataZ{ .flag = true },
         .@"input-default-bindings" = true,
         .@"input-vo-keyboard" = true,
-        .speed = 2,
-        .@"term-title" = "helloworld",
+        .speed = speed,
+        .title = .helloworld,
+        .@"term-title" = term_title,
     });
     defer mpv.terminate_destroy();
 

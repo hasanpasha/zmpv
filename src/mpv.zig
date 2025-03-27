@@ -130,6 +130,7 @@ pub const MpvHandle = opaque {
     extern fn mpv_get_wakeup_pipe(self: *MpvHandle) c_int;
     pub const get_wakeup_pipe = mpv_get_wakeup_pipe;
 
+    // TODO implement mpv custom stream binding
     extern fn mpv_stream_cb_add_ro(ctx: *MpvHandle, protocol: [*c]const u8, user_data: ?*anyopaque, open_fn: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) c_int) MpvError;
     pub const stream_cb_add_ro = mpv_stream_cb_add_ro;
 
@@ -137,35 +138,39 @@ pub const MpvHandle = opaque {
         return sliceTo(self.client_name(), 0);
     }
 
-    pub fn init_z(alloc: std.mem.Allocator, options: anytype) anyerror!*MpvHandle {
+    pub fn init_z(alloc: Allocator, options: anytype) anyerror!*MpvHandle {
         var instance = try MpvHandle.create_z();
         const opts_type = @TypeOf(options);
         const opts_type_info = @typeInfo(opts_type);
         if (opts_type_info != .@"struct") {
-            @compileError("expected tuple or struct argument, found " ++ @typeName(opts_type));
+            @compileError("expected struct argument, found " ++ @typeName(opts_type));
         }
 
         const fields_info = opts_type_info.@"struct".fields;
-        if (fields_info.len > 32) {
-            @compileError("32 arguments max are supported per format call");
-        }
 
         inline for (fields_info) |field| {
             const field_value = @field(options, field.name);
+            const field_type = field.type;
+            const field_type_info = @typeInfo(field_type);
 
-            switch (field.type) {
-                comptime_int => try instance.set_option_z(alloc, field.name, .{ .int64 = field_value }),
-                comptime_float => try instance.set_option_z(alloc, field.name, .{ .double = field_value }),
-                bool => try instance.set_option_z(alloc, field.name, .{ .flag = field_value }),
-                MpvFormatDataZ => try instance.set_option_z(alloc, field.name, field_value),
-                else => {
-                    if (isZigString(field.type)) {
-                        try instance.set_option_string_z(field.name, field_value);
-                    } else {
-                        @panic("not supported option type " ++ @typeName(field.type));
-                    }
-                },
+            if (field_type_info == .comptime_int or (field_type_info == .int and field_type_info.int.bits <= 64)) {
+                try instance.set_option_z(alloc, field.name, .{ .int64 = field_value });
+            } else if (field_type_info == .comptime_float or (field_type_info == .float and field_type_info.float.bits <= 64)) {
+                try instance.set_option_z(alloc, field.name, .{ .double = field_value });
+            } else if (field_type_info == .bool) {
+                try instance.set_option_z(alloc, field.name, .{ .flag = field_value });
+            } else if (field_type == MpvFormatDataZ) {
+                try instance.set_option_z(alloc, field.name, field_value);
+            } else if (field_type_info == .enum_literal) {
+                try instance.set_option_string_z(field.name, @tagName(field_value));
+            } else {
+                // FIXME check if it's string
+                // if (is_zig_string(field_type)) {
+                try instance.set_option_string_z(field.name, field_value);
             }
+            // else {
+            //     @compileError("not supported option type " ++ @typeName(field_type));
+            // }
         }
 
         try instance.initialize_z();
@@ -270,27 +275,23 @@ pub const MpvHandle = opaque {
     }
 };
 
-pub fn isZigString(comptime T: type) bool {
-    return comptime blk: {
-        // Only pointer types can be strings, no optionals
-        const info = @typeInfo(T);
-        if (info != .pointer) break :blk false;
-        const ptr = &info.pointer;
-        // Check for CV qualifiers that would prevent coerction to []const u8
-        if (ptr.is_volatile or ptr.is_allowzero) break :blk false;
-        // If it's already a slice, simple check.
-        if (ptr.size == .slice) {
-            break :blk ptr.child == u8;
-        }
-        // Otherwise check if it's an array type that coerces to slice.
-        if (ptr.size == .one) {
-            const child = @typeInfo(ptr.child);
-            if (child == .array) {
-                const arr = &child.array;
-                break :blk arr.child == u8;
-            }
-        }
-        break :blk false;
+// FIXME: check for string not working for some reason, fix it!
+pub fn is_zig_string(comptime T: type) bool {
+    return comptime switch (@typeInfo(T)) {
+        .pointer => |ptr| ptr_result: {
+            if (ptr.is_allowzero or ptr.is_volatile) break :ptr_result false;
+
+            break :ptr_result switch (ptr.size) {
+                .one => ptr.child == u8,
+                .slice => {
+                    const ptr_child_info = @typeInfo(ptr.child);
+                    break :ptr_result ptr_child_info == .array and ptr_child_info.array.child == u8;
+                },
+                else => false,
+            };
+        },
+        .array => |array| array.child == u8,
+        else => false,
     };
 }
 
@@ -319,7 +320,7 @@ pub const MpvRenderContext = opaque {
     extern fn mpv_render_context_free(ctx: *MpvRenderContext) void;
     pub const free = mpv_render_context_free;
 
-    // pub fn create_z(alloc: Allocator, mpv: *MpvHandle, z_params: []MpvRenderParamZ) anyerror!*MpvRenderContext {}
+    // TODO pub fn create_z(alloc: Allocator, mpv: *MpvHandle, z_params: []MpvRenderParamZ) anyerror!*MpvRenderContext {}
 };
 
 pub const MpvRenderParam = extern struct {
