@@ -4,239 +4,134 @@ const AllocatorError = Allocator.Error;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const sliceTo = std.mem.sliceTo;
 
-pub fn client_api_version() c_ulong {
-    const cFn = @extern(*const fn () callconv(.C) c_ulong, .{ .name = "mpv_client_api_version" });
-    return cFn();
-}
+extern fn mpv_client_api_version() c_ulong;
+pub const client_api_version = mpv_client_api_version;
 
 pub fn client_api_version_z() struct { major: u16, minor: u16 } {
     const version = client_api_version();
-    return .{ .major = @intCast(version >> 16), .minor = @intCast(version & 0xffff) };
+    return .{ .major = @truncate(version >> 16), .minor = @truncate(version & 0xffff) };
 }
 
-/// `mpv_free`
-pub fn free(data: ?*anyopaque) void {
-    const cFn = @extern(*const fn (?*anyopaque) callconv(.C) void, .{ .name = "mpv_free" });
-    return cFn(data);
-}
-
-/// Generic functions to free memory allocated by the library's helper functions
-pub fn free_z(allocator: Allocator, data: anytype) void {
-    switch (@TypeOf(data)) {
-        MpvFormatDataZ => data.free(allocator),
-        MpvNodeZ => data.free(allocator),
-        else => {},
-    }
-}
-
-pub fn check_error_z(ret_code: c_int) MpvErrorZ!void {
-    if (ret_code < 0) {
-        return MpvError.raise_error_z(MpvError.from_ret_code_z(ret_code));
-    }
-}
+extern fn mpv_free(data: ?*anyopaque) void;
+pub const free = mpv_free;
 
 pub const MpvHandle = opaque {
-    pub fn client_name(self: *MpvHandle) [*c]const u8 {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) [*c]const u8, .{ .name = "mpv_client_name" });
-        return cFn(self);
-    }
+    extern fn mpv_client_name(self: *MpvHandle) [*c]const u8;
+    pub const client_name = mpv_client_name;
 
-    pub fn client_id(self: *MpvHandle) i64 {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) i64, .{ .name = "mpv_client_id" });
-        return cFn(self);
-    }
+    extern fn mpv_client_id(self: *MpvHandle) i64;
+    pub const client_id = mpv_client_id;
 
-    pub fn create() ?*MpvHandle {
-        const cFn = @extern(*const fn () callconv(.C) ?*MpvHandle, .{ .name = "mpv_create" });
-        return cFn();
-    }
+    extern fn mpv_create() ?*MpvHandle;
+    pub const create = mpv_create;
 
-    pub fn initialize(self: *MpvHandle) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) c_int, .{ .name = "mpv_initialize" });
-        return cFn(self);
-    }
+    extern fn mpv_initialize(self: *MpvHandle) MpvError;
+    pub const initialize = mpv_initialize;
 
-    pub fn destroy(self: *MpvHandle) void {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) void, .{ .name = "mpv_destroy" });
-        return cFn(self);
-    }
+    extern fn mpv_destroy(self: *MpvHandle) void;
+    pub const destroy = mpv_destroy;
 
-    pub fn terminate_destroy(self: *MpvHandle) void {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) void, .{ .name = "mpv_terminate_destroy" });
-        return cFn(self);
-    }
+    extern fn mpv_terminate_destroy(self: *MpvHandle) void;
+    pub const terminate_destroy = mpv_terminate_destroy;
 
-    pub fn create_client(self: *MpvHandle, name: [*c]const u8) ?*MpvHandle {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) ?*MpvHandle, .{ .name = "mpv_create_client" });
-        return cFn(self, name);
-    }
+    extern fn mpv_create_client(self: *MpvHandle, name: [*c]const u8) *MpvHandle;
+    pub const create_client = mpv_create_client;
 
-    pub fn create_weak_client(self: *MpvHandle, name: [*c]const u8) ?*MpvHandle {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) ?*MpvHandle, .{ .name = "mpv_create_weak_client" });
-        return cFn(self, name);
-    }
+    extern fn mpv_create_weak_client(self: *MpvHandle, name: [*c]const u8) *MpvHandle;
+    pub const create_weak_client = mpv_create_weak_client;
 
-    pub fn load_config_file(self: *MpvHandle, filename: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_load_config_file" });
-        return cFn(self, filename);
-    }
+    extern fn mpv_load_config_file(self: *MpvHandle, filename: [*c]const u8) MpvError;
+    pub const load_config_file = mpv_load_config_file;
 
-    pub fn get_time_ns(self: *MpvHandle) i64 {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) i64, .{ .name = "mpv_get_time_ns" });
-        return cFn(self);
-    }
+    extern fn mpv_get_time_ns(self: *MpvHandle) i64;
+    pub const get_time_ns = mpv_get_time_ns;
 
-    pub fn get_time_us(self: *MpvHandle) i64 {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) i64, .{ .name = "mpv_get_time_us" });
-        return cFn(self);
-    }
+    extern fn mpv_get_time_us(self: *MpvHandle) i64;
+    pub const get_time_us = mpv_get_time_us;
 
-    pub fn set_option(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8, MpvFormat, ?*anyopaque) callconv(.C) c_int, .{ .name = "mpv_set_option" });
-        return cFn(self, name, format, data);
-    }
+    extern fn mpv_set_option(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) MpvError;
+    pub const set_option = mpv_set_option;
 
-    pub fn set_option_string(self: *MpvHandle, name: [*c]const u8, data: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_set_option_string" });
-        return cFn(self, name, data);
-    }
+    extern fn mpv_set_option_string(self: *MpvHandle, name: [*c]const u8, data: [*c]const u8) MpvError;
+    pub const set_option_string = mpv_set_option_string;
 
-    pub fn command(self: *MpvHandle, args: [*c][*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c][*c]const u8) callconv(.C) c_int, .{ .name = "mpv_command" });
-        return cFn(self, args);
-    }
+    extern fn mpv_command(self: *MpvHandle, args: [*c][*c]const u8) MpvError;
+    pub const command = mpv_command;
 
-    pub fn command_node(self: *MpvHandle, args: [*c]MpvNode, result: [*c]MpvNode) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]MpvNode, [*c]MpvNode) callconv(.C) c_int, .{ .name = "mpv_command_node" });
-        return cFn(self, args, result);
-    }
+    extern fn mpv_command_node(self: *MpvHandle, args: [*c]MpvNode, result: [*c]MpvNode) MpvError;
+    pub const command_node = mpv_command_node;
 
-    pub fn command_ret(self: *MpvHandle, args: [*c][*c]const u8, result: [*c]MpvNode) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c][*c]const u8, [*c]MpvNode) callconv(.C) c_int, .{ .name = "mpv_command_ret" });
-        return cFn(self, args, result);
-    }
+    extern fn mpv_command_ret(self: *MpvHandle, args: [*c][*c]const u8, result: [*c]MpvNode) MpvError;
+    pub const command_ret = mpv_command_ret;
 
-    pub fn command_string(self: *MpvHandle, args: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_command_string" });
-        return cFn(self, args);
-    }
+    extern fn mpv_command_string(self: *MpvHandle, args: [*c]const u8) MpvError;
+    pub const command_string = mpv_command_string;
 
-    pub fn command_async(self: *MpvHandle, reply_userdata: u64, args: [*c][*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c][*c]const u8) callconv(.C) c_int, .{ .name = "mpv_command_async" });
-        return cFn(self, reply_userdata, args);
-    }
+    extern fn mpv_command_async(self: *MpvHandle, reply_userdata: u64, args: [*c][*c]const u8) MpvError;
+    pub const command_async = mpv_command_async;
 
-    pub fn command_node_async(self: *MpvHandle, reply_userdata: u64, args: [*c]MpvNode) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c]MpvNode) callconv(.C) c_int, .{ .name = "mpv_command_node_async" });
-        return cFn(self, reply_userdata, args);
-    }
-    // TODO mpv_command_node_async(ctx: ?*mpv_handle, reply_userdata: u64, args: [*c]mpv_node) c_int;
+    extern fn mpv_command_node_async(self: *MpvHandle, reply_userdata: u64, args: [*c]MpvNode) MpvError;
+    pub const command_node_async = mpv_command_node_async;
 
-    pub fn abort_async_command(self: *MpvHandle, reply_userdata: u64) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64) callconv(.C) c_int, .{ .name = "mpv_abort_async_command" });
-        return cFn(self, reply_userdata);
-    }
-    // TODO mpv_abort_async_command(ctx: ?*mpv_handle, reply_userdata: u64) void;
+    extern fn mpv_abort_async_command(self: *MpvHandle, reply_userdata: u64) MpvError;
+    pub const abort_async_command = mpv_abort_async_command;
 
-    pub fn set_property(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8, MpvFormat, ?*anyopaque) callconv(.C) c_int, .{ .name = "mpv_set_property" });
-        return cFn(self, name, format, data);
-    }
+    extern fn mpv_set_property(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) MpvError;
+    pub const set_property = mpv_set_property;
 
-    pub fn set_property_string(self: *MpvHandle, name: [*c]const u8, data: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_set_property_string" });
-        return cFn(self, name, data);
-    }
+    extern fn mpv_set_property_string(self: *MpvHandle, name: [*c]const u8, data: [*c]const u8) MpvError;
+    pub const set_property_string = mpv_set_property_string;
 
-    pub fn del_property(self: *MpvHandle, name: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_del_property" });
-        return cFn(self, name);
-    }
-    // TODO mpv_del_property(ctx: ?*mpv_handle, name: [*c]const u8) c_int;
+    extern fn mpv_del_property(self: *MpvHandle, name: [*c]const u8) MpvError;
+    pub const del_property = mpv_del_property;
 
-    pub fn set_property_async(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c]const u8, MpvFormat, ?*anyopaque) callconv(.C) c_int, .{ .name = "mpv_set_property_async" });
-        return cFn(self, reply_userdata, name, format, data);
-    }
-    // TODO mpv_set_property_async(ctx: ?*mpv_handle, reply_userdata: u64, name: [*c]const u8, format: mpv_format, data: ?*anyopaque) c_int;
+    extern fn mpv_set_property_async(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) MpvError;
+    pub const set_property_async = mpv_set_property_async;
 
-    pub fn get_property(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8, MpvFormat, ?*anyopaque) callconv(.C) c_int, .{ .name = "mpv_get_property" });
-        return cFn(self, name, format, data);
-    }
+    extern fn mpv_get_property(self: *MpvHandle, name: [*c]const u8, format: MpvFormat, data: ?*anyopaque) MpvError;
+    pub const get_property = mpv_get_property;
 
-    pub fn get_property_string(self: *MpvHandle, name: [*c]const u8) [*c]const u8 {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) [*c]const u8, .{ .name = "mpv_get_property_string" });
-        return cFn(self, name);
-    }
+    extern fn mpv_get_property_string(self: *MpvHandle, name: [*c]const u8) [*c]const u8;
+    pub const get_property_string = mpv_get_property_string;
 
-    pub fn get_property_osdString(self: *MpvHandle, name: [*c]const u8) [*c]const u8 {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) [*c]const u8, .{ .name = "mpv_get_property_osd_string" });
-        return cFn(self, name);
-    }
+    extern fn mpv_get_property_osd_string(self: *MpvHandle, name: [*c]const u8) [*c]const u8;
+    pub const get_property_osd_string = mpv_get_property_osd_string;
 
-    pub fn get_property_async(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c]const u8, MpvFormat) callconv(.C) c_int, .{ .name = "mpv_get_property_async" });
-        return cFn(self, reply_userdata, name, format);
-    }
-    // TODO mpv_get_property_async(ctx: ?*mpv_handle, reply_userdata: u64, name: [*c]const u8, format: mpv_format) c_int;
+    extern fn mpv_get_property_async(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat) MpvError;
+    pub const get_property_async = mpv_get_property_async;
 
-    pub fn observe_property(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c]const u8, MpvFormat) callconv(.C) c_int, .{ .name = "mpv_observe_property" });
-        return cFn(self, reply_userdata, name, format);
-    }
+    extern fn mpv_observe_property(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, format: MpvFormat) MpvError;
+    pub const observe_property = mpv_observe_property;
 
-    pub fn request_event(self: *MpvHandle, event: MpvEventId, enable: c_int) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, MpvEventId, c_int) callconv(.C) c_int, .{ .name = "mpv_request_event" });
-        return cFn(self, event, enable);
-    }
-    // TODO mpv_request_event(ctx: ?*mpv_handle, event: mpv_event_id, enable: c_int) c_int;
+    extern fn mpv_request_event(self: *MpvHandle, event: MpvEventId, enable: c_int) MpvError;
+    pub const request_event = mpv_request_event;
 
-    pub fn wait_event(self: *MpvHandle, timeout: f64) *MpvEvent {
-        const cFn = @extern(*const fn (?*MpvHandle, f64) callconv(.C) [*c]MpvEvent, .{ .name = "mpv_wait_event" });
-        return cFn(self, timeout);
-    }
+    extern fn mpv_wait_event(self: *MpvHandle, timeout: f64) *MpvEvent;
+    pub const wait_event = mpv_wait_event;
 
-    pub fn request_log_messages(self: *MpvHandle, min_level: [*c]const u8) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, [*c]const u8) callconv(.C) c_int, .{ .name = "mpv_request_log_messages" });
-        return cFn(self, min_level);
-    }
+    extern fn mpv_request_log_messages(self: *MpvHandle, min_level: [*c]const u8) MpvError;
+    pub const request_log_messages = mpv_request_log_messages;
 
-    pub fn wakeup(self: *MpvHandle) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) void, .{ .name = "mpv_wakeup" });
-        return cFn(self);
-    }
-    // TODO mpv_wakeup(ctx: ?*mpv_handle) void;
+    extern fn mpv_wakeup(self: *MpvHandle) void;
+    pub const wakeup = mpv_wakeup;
 
-    pub fn set_wakeup_callback(self: *MpvHandle, cb: ?*const fn (?*anyopaque) callconv(.C) void) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, ?*const fn (?*anyopaque) callconv(.C) void) callconv(.C) void, .{
-            .name = "mpv_set_wakeup_callback",
-        });
-        return cFn(self, cb);
-    }
-    // TODO mpv_set_wakeup_callback(ctx: ?*mpv_handle, cb: ?*const fn (?*anyopaque) callconv(.C) void, d: ?*anyopaque) void;
+    extern fn mpv_set_wakeup_callback(self: *MpvHandle, cb: ?*const fn (?*anyopaque) void) void;
+    pub const set_wakeup_callback = mpv_set_wakeup_callback;
 
-    pub fn wait_async_requests(self: *MpvHandle) void {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) void, .{ .name = "mpv_wait_async_requests" });
-        return cFn(self);
-    }
-    // TODO mpv_wait_async_requests(ctx: ?*mpv_handle) void;
+    extern fn mpv_wait_async_requests(self: *MpvHandle) void;
+    pub const wait_async_requests = mpv_wait_async_requests;
 
-    pub fn hook_add(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, priority: c_int) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64, [*c]const u8, c_int) callconv(.C) c_int, .{ .name = "mpv_hook_add" });
-        return cFn(self, reply_userdata, name, priority);
-    }
+    extern fn mpv_hook_add(self: *MpvHandle, reply_userdata: u64, name: [*c]const u8, priority: c_int) MpvError;
+    pub const hook_add = mpv_hook_add;
 
-    pub fn hook_continue(self: *MpvHandle, id: u64) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle, u64) callconv(.C) c_int, .{ .name = "mpv_hook_continue" });
-        return cFn(self, id);
-    }
+    extern fn mpv_hook_continue(self: *MpvHandle, id: u64) MpvError;
+    pub const hook_continue = mpv_hook_continue;
 
-    pub fn get_wakeup_pipe(self: *MpvHandle) c_int {
-        const cFn = @extern(*const fn (?*MpvHandle) callconv(.C) c_int, .{ .name = "mpv_get_wakeup_pipe" });
-        return cFn(self);
-    }
-    // TODO mpv_get_wakeup_pipe(ctx: ?*mpv_handle) c_int;
+    extern fn mpv_get_wakeup_pipe(self: *MpvHandle) c_int;
+    pub const get_wakeup_pipe = mpv_get_wakeup_pipe;
+
+    extern fn mpv_stream_cb_add_ro(ctx: *MpvHandle, protocol: [*c]const u8, user_data: ?*anyopaque, open_fn: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) c_int) MpvError;
+    pub const stream_cb_add_ro = mpv_stream_cb_add_ro;
 
     pub fn client_name_z(self: *MpvHandle) []const u8 {
         return sliceTo(self.client_name(), 0);
@@ -246,11 +141,11 @@ pub const MpvHandle = opaque {
         var instance = try MpvHandle.create_z();
         const opts_type = @TypeOf(options);
         const opts_type_info = @typeInfo(opts_type);
-        if (opts_type_info != .Struct) {
+        if (opts_type_info != .@"struct") {
             @compileError("expected tuple or struct argument, found " ++ @typeName(opts_type));
         }
 
-        const fields_info = opts_type_info.Struct.fields;
+        const fields_info = opts_type_info.@"struct".fields;
         if (fields_info.len > 32) {
             @compileError("32 arguments max are supported per format call");
         }
@@ -282,7 +177,7 @@ pub const MpvHandle = opaque {
     }
 
     pub fn initialize_z(self: *MpvHandle) MpvErrorZ!void {
-        try check_error_z(self.initialize());
+        try self.initialize().check_error_z();
     }
 
     pub fn create_client_z(self: *MpvHandle, args: struct {
@@ -301,18 +196,18 @@ pub const MpvHandle = opaque {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
 
-        try check_error_z(self.set_option(name.ptr, data.get_format(), try data.to_c_data(arena.allocator())));
+        try self.set_option(name.ptr, data.get_format(), try data.to_c_data(arena.allocator())).check_error_z();
     }
 
     pub fn set_option_string_z(self: *MpvHandle, name: []const u8, data: []const u8) MpvErrorZ!void {
-        try check_error_z(self.set_option_string(name.ptr, data.ptr));
+        try self.set_option_string(name.ptr, data.ptr).check_error_z();
     }
 
     pub fn command_z(self: *MpvHandle, allocator: Allocator, args: []const []const u8) (MpvErrorZ || AllocatorError)!void {
         const cmd_args = try create_cstring_array(args, allocator);
         defer free_cstring_array(cmd_args, allocator);
 
-        try check_error_z(self.command(cmd_args.ptr));
+        try self.command(cmd_args.ptr).check_error_z();
     }
 
     pub fn command_node_z(self: *MpvHandle, allocator: Allocator, args: MpvNodeZ) !MpvNodeZ {
@@ -320,7 +215,7 @@ pub const MpvHandle = opaque {
         defer arena.deinit();
 
         var output: MpvNode = undefined;
-        try check_error_z(self.command_node(try args.to_c_data(arena.allocator()), &output));
+        try self.command_node(try args.to_c_data(arena.allocator()), &output).check_error_z();
 
         return MpvNodeZ.from_c_data(allocator, &output);
     }
@@ -334,7 +229,7 @@ pub const MpvHandle = opaque {
         const cmd_args = try create_cstring_array(args, allocator);
         defer free_cstring_array(cmd_args, allocator);
 
-        try check_error_z(self.command_async(reply_userdata, cmd_args.ptr));
+        try self.command_async(reply_userdata, cmd_args.ptr).check_error_z();
     }
 
     pub fn set_property_z(
@@ -346,7 +241,7 @@ pub const MpvHandle = opaque {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
 
-        try check_error_z(self.set_property(name.ptr, data.get_format(), try data.to_c_data(arena.allocator())));
+        try self.set_property(name.ptr, data.get_format(), try data.to_c_data(arena.allocator())).check_error_z();
     }
 
     pub fn get_property_z(
@@ -365,7 +260,7 @@ pub const MpvHandle = opaque {
             else => {},
         };
 
-        try check_error_z(self.get_property(name.ptr, format, output_ptr));
+        try self.get_property(name.ptr, format, output_ptr).check_error_z();
 
         return try MpvFormatDataZ.from_c_data(allocator, format, output_ptr);
     }
@@ -379,19 +274,19 @@ pub fn isZigString(comptime T: type) bool {
     return comptime blk: {
         // Only pointer types can be strings, no optionals
         const info = @typeInfo(T);
-        if (info != .Pointer) break :blk false;
-        const ptr = &info.Pointer;
+        if (info != .pointer) break :blk false;
+        const ptr = &info.pointer;
         // Check for CV qualifiers that would prevent coerction to []const u8
         if (ptr.is_volatile or ptr.is_allowzero) break :blk false;
         // If it's already a slice, simple check.
-        if (ptr.size == .Slice) {
+        if (ptr.size == .slice) {
             break :blk ptr.child == u8;
         }
         // Otherwise check if it's an array type that coerces to slice.
-        if (ptr.size == .One) {
+        if (ptr.size == .one) {
             const child = @typeInfo(ptr.child);
-            if (child == .Array) {
-                const arr = &child.Array;
+            if (child == .array) {
+                const arr = &child.array;
                 break :blk arr.child == u8;
             }
         }
@@ -400,28 +295,53 @@ pub fn isZigString(comptime T: type) bool {
 }
 
 pub const MpvRenderContext = opaque {
-    pub fn create(res: *?*MpvRenderContext, mpv: *MpvHandle, params: [*c]MpvRenderParam) c_int {
-        const cFn = @extern(*const fn ([*c]?*MpvRenderContext, ?*MpvHandle, [*c]MpvRenderParam) callconv(.C) c_int, .{
-            .name = "mpv_render_context_create",
-        });
-        return cFn(res, mpv, params);
-    }
-    // TODO mpv_render_context_create(res: [*c]?*mpv_render_context, mpv: ?*mpv_handle, params: [*c]mpv_render_param) c_int;
-    // TODO mpv_render_context_set_parameter(ctx: ?*mpv_render_context, param: mpv_render_param) c_int;
-    // TODO mpv_render_context_get_info(ctx: ?*mpv_render_context, param: mpv_render_param) c_int;
-    // TODO mpv_render_context_set_update_callback(ctx: ?*mpv_render_context, callback: mpv_render_update_fn, callback_ctx: ?*anyopaque) void;
-    // TODO mpv_render_context_update(ctx: ?*mpv_render_context) u64;
-    // TODO mpv_render_context_render(ctx: ?*mpv_render_context, params: [*c]mpv_render_param) c_int;
-    // TODO mpv_render_context_report_swap(ctx: ?*mpv_render_context) void;
-    // TODO mpv_render_context_free(ctx: ?*mpv_render_context) void;
-    // TODO mpv_stream_cb_add_ro(ctx: ?*mpv_handle, protocol: [*c]const u8, user_data: ?*anyopaque, open_fn: mpv_stream_cb_open_ro_fn) c_int;
+    extern fn mpv_render_context_create(res: *?*MpvRenderContext, mpv: *MpvHandle, params: [*c]MpvRenderParam) MpvError;
+    pub const create = mpv_render_context_create;
 
-    pub fn create_z(alloc: Allocator, mpv: *MpvHandle, z_params: []MpvRenderParamZ) anyerror!*MpvRenderContext {}
+    extern fn mpv_render_context_set_parameter(ctx: *MpvRenderContext, param: MpvRenderParam) MpvError;
+    pub const set_parameter = mpv_render_context_set_parameter;
+
+    extern fn mpv_render_context_get_info(ctx: *MpvRenderContext, param: MpvRenderParam) MpvError;
+    pub const get_info = mpv_render_context_get_info;
+
+    extern fn mpv_render_context_set_update_callback(ctx: *MpvRenderContext, callback: ?*const fn (?*anyopaque) void, callback_ctx: ?*anyopaque) void;
+    pub const set_update_callback = mpv_render_context_set_update_callback;
+
+    extern fn mpv_render_context_update(ctx: *MpvRenderContext) u64;
+    pub const update = mpv_render_context_update;
+
+    extern fn mpv_render_context_render(ctx: *MpvRenderContext, params: [*c]MpvRenderParam) MpvError;
+    pub const render = mpv_render_context_render;
+
+    extern fn mpv_render_context_report_swap(ctx: *MpvRenderContext) void;
+    pub const report_swap = mpv_render_context_report_swap;
+
+    extern fn mpv_render_context_free(ctx: *MpvRenderContext) void;
+    pub const free = mpv_render_context_free;
+
+    // pub fn create_z(alloc: Allocator, mpv: *MpvHandle, z_params: []MpvRenderParamZ) anyerror!*MpvRenderContext {}
 };
 
 pub const MpvRenderParam = extern struct {
     type: MpvRenderParamType,
     data: ?*anyopaque,
+
+    pub fn new_z(data: MpvRenderParamData) MpvRenderParam {
+        var param: MpvRenderParam = undefined;
+        param.type = std.meta.activeTag(data);
+
+        switch (data) {
+            .invalid => param.data = null,
+            .api_type => |val| param.data = @constCast(@ptrCast(val)),
+            .sw_size => |val| param.data = @constCast(@ptrCast(val)),
+            .sw_format => |val| param.data = @constCast(@ptrCast(val)),
+            inline else => |val| param.data = @ptrCast(val),
+        }
+
+        return param;
+    }
+
+    pub const invalid = MpvRenderParam.new_z(.invalid);
 };
 
 pub const MpvRenderParamType = enum(c_uint) {
@@ -448,62 +368,95 @@ pub const MpvRenderParamType = enum(c_uint) {
     sw_pointer = 20,
 };
 
-pub const MpvRenderParamZ = union(MpvRenderParamType) {
-    invalid,
-    api_type: MpvRenderApiTypeZ,
-    opengl_init_params: MpvOpenGLInitParamsZ,
-    // opengl_fbo: MpvOpenGLFBO,
-    flip_y: bool,
-    Depth: i32,
-    icc_profile: []u8,
-    ambient_light: i32,
-    x11_display: ?*anyopaque, // *Display
-    wl_display: ?*anyopaque, // *wl_display
-    advanced_control: bool,
-    // next_frame_info: MpvRenderFrameInfo,
-    block_for_target_time: bool,
-    skip_rendering: bool,
-    // drm_display: MpvOpenGLDRMParams,
-    // drm_draw_surface_size: MpvOpenGLDRMDrawSurfaceSize,
-    // drm_display_v2: MpvOpenGLDRMParams,
-    // sw_size: MpvSwSize,
-    sw_format: []const u8,
-    sw_stride: usize,
-    sw_pointer: ?*anyopaque,
+const X11Display = anyopaque;
+const WaylandDisplay = anyopaque;
 
-    pub fn to_c(self: MpvRenderParamZ, alloc: Allocator) !MpvRenderParam {
-        var param: MpvRenderParam = undefined;
-        switch (self) {
-            .invalid => |val| {
-                param.type = .invalid;
-                param.data = null;
-            },
-            .api_type => |val| {
-                param.type = .api_type;
-                param.data = val
-            },
-            .opengl_init_params => |val| {},
-            .opengl_fbo => |val| {},
-            .flip_y => |val| {},
-            .Depth => |val| {},
-            .icc_profile => |val| {},
-            .ambient_light => |val| {},
-            .x11_display => |val| {},
-            .wl_display => |val| {},
-            .advanced_control => |val| {},
-            .next_frame_info => |val| {},
-            .block_for_target_time => |val| {},
-            .skip_rendering => |val| {},
-            .drm_display => |val| {},
-            .drm_draw_surface_size => |val| {},
-            .drm_display_v2 => |val| {},
-            .sw_size => |val| {},
-            .sw_format => |val| {},
-            .sw_stride => |val| {},
-            .sw_pointer => |val| {},
-        }
-    }
+pub const MpvRenderParamData = union(MpvRenderParamType) {
+    invalid: void,
+    api_type: [:0]const u8,
+    opengl_init_params: *MpvOpenGLInitParams,
+    opengl_fbo: *MpvOpenGLFBO,
+    flip_y: *c_int,
+    depth: *c_int,
+    icc_profile: *MpvByteArray,
+    ambient_light: *c_int,
+    x11_display: *X11Display,
+    wl_display: *WaylandDisplay,
+    advanced_control: *c_int,
+    next_frame_info: *MpvRenderFrameInfo,
+    block_for_target_time: *c_int,
+    skip_rendering: *c_int,
+    drm_display: *anyopaque,
+    drm_draw_surface_size: *anyopaque,
+    drm_display_v2: *anyopaque,
+    sw_size: *[2]c_int,
+    sw_format: [:0]const u8,
+    sw_stride: *isize,
+    sw_pointer: ?*anyopaque,
 };
+
+// pub const MpvRenderParamZ = union(MpvRenderParamType) {
+//     invalid,
+//     api_type: MpvRenderApiTypeZ,
+//     opengl_init_params: MpvOpenGLInitParams,
+//     opengl_fbo,
+//     flip_y: bool,
+//     depth: i32,
+//     icc_profile: []u8,
+//     ambient_light: i32,
+//     x11_display: ?*anyopaque, // *Display
+//     wl_display: ?*anyopaque, // *wl_display
+//     advanced_control: bool,
+//     next_frame_info,
+//     block_for_target_time: bool,
+//     skip_rendering: bool,
+//     drm_display,
+//     drm_draw_surface_size,
+//     drm_display_v2,
+//     sw_size,
+//     sw_format: []const u8,
+//     sw_stride: usize,
+//     sw_pointer: ?*anyopaque,
+
+//     pub fn to_c(self: MpvRenderParamZ, alloc: Allocator) !MpvRenderParam {
+//         var param: MpvRenderParam = undefined;
+//         param.type = std.meta.activeTag(self);
+//         switch (self) {
+//             .invalid => {
+//                 param.data = null;
+//             },
+//             .api_type => |val| {
+//                 param.data = val.to_c();
+//             },
+//             .opengl_init_params => |val| {
+//                 param.data = val;
+//             },
+//             // .opengl_fbo => |val| {},
+//             .flip_y => |val| {
+//                 const data = try alloc.create(c_int);
+//                 data.* = @intCast(@intFromBool(val));
+//                 param.data = data;
+//             },
+//             // .Depth => |val| {},
+//             // .icc_profile => |val| {},
+//             // .ambient_light => |val| {},
+//             // .x11_display => |val| {},
+//             // .wl_display => |val| {},
+//             // .advanced_control => |val| {},
+//             // .next_frame_info => |val| {},
+//             // .block_for_target_time => |val| {},
+//             // .skip_rendering => |val| {},
+//             // .drm_display => |val| {},
+//             // .drm_draw_surface_size => |val| {},
+//             // .drm_display_v2 => |val| {},
+//             // .sw_size => |val| {},
+//             // .sw_format => |val| {},
+//             // .sw_stride => |val| {},
+//             // .sw_pointer => |val| {},
+//             else => @panic("unhandled"),
+//         }
+//     }
+// };
 
 pub const MpvRenderApiType = struct {
     pub const opengl = "opengl";
@@ -514,7 +467,12 @@ pub const MpvRenderApiTypeZ = enum {
     opengl,
     sw,
 
-    pub fn to_c(self: MpvRenderApiTypeZ) *const
+    pub fn to_c(self: MpvRenderApiTypeZ) *const [:0]u8 {
+        return switch (self) {
+            .opengl => MpvRenderApiType.opengl,
+            .sw => MpvRenderApiType.sw,
+        };
+    }
 };
 
 pub const MpvOpenGLInitParams = extern struct {
@@ -522,10 +480,49 @@ pub const MpvOpenGLInitParams = extern struct {
     get_proc_address_ctx: ?*anyopaque,
 };
 
-pub const MpvOpenGLInitParamsZ = struct {
-    get_proc_address: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque = @import("std").mem.zeroes(?*const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque),
-    get_proc_address_ctx: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
+pub const MpvOpenGLFBO = extern struct {
+    fbo: c_int,
+    w: c_int,
+    h: c_int,
+    internal_format: c_int,
 };
+
+pub const MpvRenderFrameInfoFlags = enum(u64) {
+    present = 1 << 0,
+    redraw = 1 << 1,
+    repeat = 1 << 2,
+    block_async = 1 << 3,
+};
+
+pub const MpvRenderFrameInfo = extern struct {
+    flags: MpvRenderFrameInfoFlags,
+    target_time: i64,
+};
+
+// mpv_render_update_flag
+pub const MpvRenderUpdateFlag = enum(u64) {
+    frame = 1 << 0,
+
+    pub fn in_flags(self: MpvRenderUpdateFlag, flags: u64) bool {
+        return ((flags & @intFromEnum(self)) != 0);
+    }
+};
+
+pub fn MpvOpenGLInitParamsZ(user_data: anytype, comptime callback: fn (@TypeOf(user_data), [*c]const u8) ?*anyopaque) MpvOpenGLInitParams {
+    return MpvOpenGLInitParams{
+        .get_proc_address = struct {
+            fn cb(a: ?*anyopaque, b: [*c]const u8) ?*anyopaque {
+                return callback(@alignCast(@ptrCast(a)), b);
+            }
+        }.cb,
+        .get_proc_address_ctx = user_data,
+    };
+}
+
+// pub const MpvOpenGLInitParamsZ = struct {
+//     get_proc_address: ?*const fn (?*anyopaque, [*c]const u8) callconv(.C) ?*anyopaque = null,
+//     get_proc_address_ctx: ?*anyopaque = null,
+// };
 
 const EventWaitFlag = union(enum) {
     none,
@@ -563,21 +560,20 @@ pub const MpvError = enum(c_int) {
     unsupported = -18,
     not_implemented = -19,
     generic = -20,
+    _,
 
     pub fn from_ret_code_z(ret_code: c_int) MpvError {
         return @enumFromInt(ret_code);
     }
 
-    pub fn string(self: MpvError) [*c]const u8 {
-        const cFn = @extern(*const fn (MpvError) callconv(.C) [*c]const u8, .{ .name = "mpv_error_string" });
-        return cFn(self);
-    }
+    extern fn mpv_error_string(err: MpvError) [*c]const u8;
+    pub const string = mpv_error_string;
 
     pub fn string_z(self: MpvError) []const u8 {
         return sliceTo(self.string(), 0);
     }
 
-    pub fn raise_error_z(self: MpvError) MpvErrorZ!void {
+    pub fn check_error_z(self: MpvError) MpvErrorZ!void {
         return switch (self) {
             .success => {},
             .event_queue_full => MpvErrorZ.event_queue_full,
@@ -600,6 +596,7 @@ pub const MpvError = enum(c_int) {
             .unsupported => MpvErrorZ.unsupported,
             .not_implemented => MpvErrorZ.not_implemented,
             .generic => MpvErrorZ.generic,
+            else => @panic("unknown MpvError"),
         };
     }
 };
@@ -632,18 +629,15 @@ pub const MpvEvent = extern struct {
     reply_userdata: u64,
     data: ?*anyopaque,
 
-    pub fn to_node(self: *MpvEvent, dst: *MpvNode) c_int {
-        const cFn = @extern(*const fn ([*c]MpvNode, [*c]MpvEvent) callconv(.C) c_int, .{ .name = "mpv_event_to_node" });
-        return cFn(dst, self);
-    }
-    // TODO pub extern fn mpv_event_to_node(dst: [*c]mpv_node, src: [*c]mpv_event) c_int;
+    extern fn mpv_event_to_node(dst: [*c]MpvNode, src: [*c]MpvEvent) MpvError;
+    pub const to_node = mpv_event_to_node;
 
     pub fn get_data_z(self: MpvEvent) MpvEventDataZ {
         return MpvEventDataZ.from_c_data(self.data, self.id);
     }
 
     pub fn check_error_z(self: MpvEvent) MpvErrorZ!void {
-        try self.err.raise_error_z();
+        try self.err.check_error_z();
     }
 };
 
@@ -776,10 +770,8 @@ pub const MpvNode = extern struct {
     data: MpvNodeData,
     format: MpvFormat,
 
-    pub fn free_node_contents(node: [*c]MpvNode) void {
-        const cFn = @extern(*const fn ([*c]MpvNode) callconv(.C) void, .{ .name = "mpv_free_node_contents" });
-        return cFn(node);
-    }
+    extern fn mpv_free_node_contents(node: [*c]MpvNode) void;
+    pub const free_node_contents = mpv_free_node_contents;
 };
 
 pub const MpvEventCommand = extern struct {
@@ -1075,7 +1067,7 @@ pub fn cast_anyopaque_ptr(T: type, ptr: ?*anyopaque) *T {
     return @ptrCast(@alignCast(ptr));
 }
 
-pub fn create_cstring_array(z_array: []const []const u8, allocator: std.mem.Allocator) AllocatorError![:0][*c]const u8 {
+pub fn create_cstring_array(z_array: []const []const u8, allocator: Allocator) AllocatorError![:0][*c]const u8 {
     const array = try allocator.allocSentinel([*c]const u8, z_array.len, 0);
     for (0..z_array.len) |index| {
         array[index] = try allocator.dupeZ(u8, z_array[index]);
@@ -1083,7 +1075,7 @@ pub fn create_cstring_array(z_array: []const []const u8, allocator: std.mem.Allo
     return array;
 }
 
-pub fn free_cstring_array(c_array: [:0][*c]const u8, allocator: std.mem.Allocator) void {
+pub fn free_cstring_array(c_array: [:0][*c]const u8, allocator: Allocator) void {
     for (0..c_array.len) |index| {
         const slice: [:0]const u8 = std.mem.sliceTo(c_array[index], 0);
         allocator.free(slice);

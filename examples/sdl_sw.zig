@@ -1,7 +1,12 @@
 const zmpv = @import("zmpv");
-const Mpv = zmpv.Mpv;
+const MpvHandle = zmpv.MpvHandle;
+const MpvRenderParam = zmpv.MpvRenderParam;
+const MpvRenderApiType = zmpv.MpvRenderApiType;
+const MpvRenderParamData = zmpv.MpvRenderParamData;
+const MpvOpenGLInitParams = zmpv.MpvOpenGLInitParams;
 const MpvRenderContext = zmpv.MpvRenderContext;
-const MpvRenderParam = MpvRenderContext.MpvRenderParam;
+const MpvOpenGLFBO = zmpv.MpvOpenGLFBO;
+const MpvRenderUpdateFlag = zmpv.MpvRenderUpdateFlag;
 const std = @import("std");
 const sdl = @cImport({
     @cInclude("SDL2/SDL.h");
@@ -12,58 +17,59 @@ var wakeup_on_mpv_render_update: sdl.Uint32 = undefined;
 var wakeup_on_mpv_events: sdl.Uint32 = undefined;
 
 pub fn main() !void {
-    var mpv = try Mpv.init(std.heap.page_allocator, &.{
-        .{ .name = "vo", .value = .{ .String = "libmpv" } },
-        .{ .name = "hwdec", .value = .{ .String = "vaapi" } },
-    });
-    defer mpv.deinit(.{});
+    const alloc = std.heap.page_allocator;
+
+    var mpv = try MpvHandle.create_z();
+    try mpv.set_option_string("vo", "libmpv").check_error_z();
+    try mpv.set_option_string("hwdec", "vaapi").check_error_z();
+
+    try mpv.initialize_z();
+
+    defer mpv.terminate_destroy();
 
     _ = sdl.SDL_SetHint(sdl.SDL_HINT_NO_SIGNAL_HANDLERS, "no");
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) < 0) {
         return error.SDLInitFailure;
     }
 
-    var window: *sdl.SDL_Window = undefined;
-    var renderer: *sdl.SDL_Renderer = undefined;
-    // const window = sdl.SDL_CreateWindow(
-    //     "sdl - mpv rendering",
-    //     sdl.SDL_WINDOWPOS_CENTERED,
-    //     sdl.SDL_WINDOWPOS_CENTERED,
-    //     1080,
-    //     720,
-    //     sdl.SDL_WINDOW_OPENGL | sdl.SDL_WINDOW_SHOWN | sdl.SDL_WINDOW_RESIZABLE,
-    // ) orelse {
-    //     return error.Nullvalue;
-    // };
+    var window_op: ?*sdl.SDL_Window = null;
+    var renderer_op: ?*sdl.SDL_Renderer = null;
     if (sdl.SDL_CreateWindowAndRenderer(
         1080,
         720,
         sdl.SDL_WINDOW_OPENGL | sdl.SDL_WINDOW_SHOWN | sdl.SDL_WINDOW_RESIZABLE,
-        @ptrCast(&window),
-        @ptrCast(&renderer),
+        &window_op,
+        &renderer_op,
     ) != 0) {
-        return error.NullValue;
+        return error.null_value;
     }
 
+    const window = window_op orelse return error.null_value;
+    const renderer = renderer_op orelse return error.null_value;
+
+    var advanced_control: c_int = 1;
     var params = [_]MpvRenderParam{
-        .{ .ApiType = .SW },
-        .{ .AdvancedControl = true },
-        .{ .Invalid = {} },
+        .new_z(.{ .api_type = MpvRenderApiType.sw }),
+        .new_z(.{ .advanced_control = &advanced_control }),
+        .invalid,
     };
 
-    const mpv_render_ctx = try MpvRenderContext.create(mpv, &params);
+    var mpv_render_ctx_op: ?*MpvRenderContext = null;
+    try MpvRenderContext.create(&mpv_render_ctx_op, mpv, &params).check_error_z();
+
+    const mpv_render_ctx = mpv_render_ctx_op orelse return error.null_value;
     defer mpv_render_ctx.free();
 
     wakeup_on_mpv_render_update = sdl.SDL_RegisterEvents(1);
     wakeup_on_mpv_events = sdl.SDL_RegisterEvents(1);
 
-    mpv.set_wakeup_callback(wakeup_callback, null);
+    mpv.set_wakeup_callback(wakeup_callback);
     mpv_render_ctx.set_update_callback(&on_mpv_render_update, null);
 
-    try mpv.request_log_messages(.Error);
+    try mpv.request_log_messages("error").check_error_z();
 
     const filepath = config.filepath;
-    try mpv.command_async(0, &.{ "loadfile", filepath });
+    try mpv.command_async_z(alloc, 0, &.{ "loadfile", filepath });
 
     var tex: ?*sdl.SDL_Texture = null;
     defer sdl.SDL_DestroyTexture(tex);
@@ -87,21 +93,21 @@ pub fn main() !void {
                 if (event.key.keysym.sym == sdl.SDLK_q) {
                     break;
                 } else if (event.key.keysym.sym == sdl.SDLK_SPACE) {
-                    var pause_args = [_][]const u8{ "cycle", "pause" };
-                    try mpv.command_async(0, &pause_args);
+                    try mpv.command_async_z(alloc, 0, &.{ "cycle", "pause" });
                 }
             },
             else => {
                 if (event.type == wakeup_on_mpv_render_update) {
-                    redraw = mpv_render_ctx.update();
+                    const flags = mpv_render_ctx.update();
+                    redraw = MpvRenderUpdateFlag.frame.in_flags(flags);
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
                         const mpv_event = mpv.wait_event(0);
 
-                        if (mpv_event.event_id == .None) {
+                        if (mpv_event.id == .none) {
                             break;
-                        } else if (mpv_event.event_id == .LogMessage) {
-                            const log = mpv_event.data.LogMessage;
+                        } else if (mpv_event.id == .log_message) {
+                            const log = mpv_event.get_data_z().log_message;
                             std.log.info("\"{s}\"", .{log.text});
                         }
                     }
@@ -131,18 +137,18 @@ pub fn main() !void {
                 return error.SDLError;
             }
 
+            var stride: isize = @intCast(pitch);
+            var flip_y: c_int = 1;
+            var size: [2]c_int = .{ w, h };
             var zig_render_params = [_]MpvRenderParam{
-                .{ .SwSize = .{ .w = @intCast(w), .h = @intCast(h) } },
-                .{ .SwFormat = "0bgr" },
-                .{ .SwStride = @intCast(pitch) },
-                .{ .SwPointer = pixels },
-                .{ .SkipRendering = false },
-                .{ .FlipY = true },
-                .{ .Depth = 16 },
-                .{ .BlockForTargetTime = false },
-                .{ .Invalid = {} },
+                .new_z(.{ .sw_size = &size }),
+                .new_z(.{ .sw_format = "0bgr" }),
+                .new_z(.{ .sw_stride = &stride }),
+                .new_z(.{ .sw_pointer = pixels }),
+                .new_z(.{ .flip_y = &flip_y }),
+                .invalid,
             };
-            try mpv_render_ctx.render(&zig_render_params);
+            try mpv_render_ctx.render(&zig_render_params).check_error_z();
             sdl.SDL_UnlockTexture(tex);
             _ = sdl.SDL_RenderCopy(renderer, tex, null, null);
             sdl.SDL_RenderPresent(renderer);
@@ -160,9 +166,4 @@ fn on_mpv_render_update(data: ?*anyopaque) void {
     _ = data;
     var event = sdl.SDL_Event{ .type = wakeup_on_mpv_render_update };
     _ = sdl.SDL_PushEvent(@ptrCast(&event));
-}
-
-fn get_process_address(ctx: ?*anyopaque, name: [*c]const u8) ?*anyopaque {
-    _ = ctx;
-    return sdl.SDL_GL_GetProcAddress(name);
 }

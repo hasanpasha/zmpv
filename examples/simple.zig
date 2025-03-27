@@ -26,10 +26,10 @@ pub fn main() !void {
 
     try mpv.command_async_z(allocator, 0, &.{ "loadfile", filepath });
 
-    try zmpv.check_error_z(mpv.request_log_messages("error"));
+    try mpv.request_log_messages("error").check_error_z();
 
-    try zmpv.check_error_z(mpv.observe_property(1, "fullscreen", .flag));
-    try zmpv.check_error_z(mpv.observe_property(2, "time-pos", .int64));
+    try mpv.observe_property(1, "fullscreen", .flag).check_error_z();
+    try mpv.observe_property(2, "time-pos", .int64).check_error_z();
 
     // try mpv.cycle("fullscreen", .{ .direction = .Down });
     const fullscreen_status = try mpv.get_property_z(allocator, "fullscreen", .string);

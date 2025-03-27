@@ -1,7 +1,12 @@
 const std = @import("std");
 const zmpv = @import("zmpv");
-const MpvRenderContext = zmpv.MpvRenderContext;
 const MpvRenderParam = zmpv.MpvRenderParam;
+const MpvRenderApiType = zmpv.MpvRenderApiType;
+const MpvRenderParamData = zmpv.MpvRenderParamData;
+const MpvOpenGLInitParams = zmpv.MpvOpenGLInitParams;
+const MpvRenderContext = zmpv.MpvRenderContext;
+const MpvOpenGLFBO = zmpv.MpvOpenGLFBO;
+const MpvRenderUpdateFlag = zmpv.MpvRenderUpdateFlag;
 const sdl = @cImport({
     @cInclude("SDL2/SDL.h");
 });
@@ -17,7 +22,7 @@ pub fn main() !void {
     }
     const alloc = gpa.allocator();
 
-    const mpv = try zmpv.MpvHandle.init_z(alloc, .{
+    var mpv = try zmpv.MpvHandle.init_z(alloc, .{
         .vo = "libmpv",
         .hwdec = "auto",
     });
@@ -35,40 +40,48 @@ pub fn main() !void {
         720,
         sdl.SDL_WINDOW_OPENGL | sdl.SDL_WINDOW_SHOWN | sdl.SDL_WINDOW_RESIZABLE,
     ) orelse {
-        return error.Nullvalue;
+        return error.null_value;
     };
 
     _ = sdl.SDL_GL_CreateContext(window) orelse {
-        return error.NullValue;
+        return error.null_value;
+    };
+
+    var init_params = MpvOpenGLInitParams{
+        .get_proc_address = &get_process_address,
+        .get_proc_address_ctx = mpv,
     };
 
     var params = [_]MpvRenderParam{
-        .{ .api_type = .OpenGL },
-        .{ .opengl_init_params = .{
-            .get_process_address = &get_process_address,
-            .get_process_address_ctx = &mpv,
-        } },
-        .{ .advanced_control = true },
-        .{.invalid},
+        .new_z(.{ .api_type = MpvRenderApiType.opengl }),
+        .new_z(.{ .opengl_init_params = &init_params }),
+        .invalid,
     };
-    const mpv_render_ctx = try mpv.create_render_context(&params);
+
+    var mpv_render_ctx_ptr: ?*MpvRenderContext = undefined;
+    try MpvRenderContext.create(&mpv_render_ctx_ptr, mpv, &params).check_error_z();
+
+    var mpv_render_ctx = mpv_render_ctx_ptr orelse return error.null_value;
     defer mpv_render_ctx.free();
 
-    try mpv_render_ctx.set_parameter(.{ .AmbientLight = -100000000 });
+    var ambient_light: c_int = -1000;
+    try mpv_render_ctx.set_parameter(.new_z(.{ .ambient_light = &ambient_light })).check_error_z();
 
     wakeup_on_mpv_render_update = sdl.SDL_RegisterEvents(1);
     wakeup_on_mpv_events = sdl.SDL_RegisterEvents(1);
 
-    mpv.set_wakeup_callback(wakeup_callback, null);
+    mpv.set_wakeup_callback(wakeup_callback);
     mpv_render_ctx.set_update_callback(&on_mpv_render_update, null);
 
-    try mpv.request_log_messages(.Error);
+    try mpv.request_log_messages("trace").check_error_z();
 
     const filepath = config.filepath;
-    try mpv.command_async(0, &.{ "loadfile", filepath });
+    try mpv.command_async_z(alloc, 0, &.{ "loadfile", filepath });
 
-    const fullscreen_status = try mpv.get_property("fullscreen", .String);
-    mpv.free(fullscreen_status);
+    var fullscreen_status: bool = undefined;
+    try mpv.get_property("fullscreen", .flag, &fullscreen_status).check_error_z();
+    std.debug.print("is_fullscreen={}\n", .{fullscreen_status});
+    // mpv.free(fullscreen_status);
 
     var redraw: bool = false;
     done: while (true) {
@@ -87,26 +100,26 @@ pub fn main() !void {
                 if (event.key.keysym.sym == sdl.SDLK_q) {
                     break;
                 } else if (event.key.keysym.sym == sdl.SDLK_SPACE) {
-                    var pause_args = [_][]const u8{ "cycle", "pause" };
-                    try mpv.command_async(0, &pause_args);
+                    try mpv.command_async_z(alloc, 0, &.{ "cycle", "pause" });
                 } else if (event.key.keysym.sym == sdl.SDLK_RIGHT) {
-                    var seek_r_args = [_][]const u8{ "seek", "30" };
-                    try mpv.command_async(0, &seek_r_args);
+                    try mpv.command_async_z(alloc, 0, &.{ "seek", "30" });
                 }
             },
             else => {
                 if (event.type == wakeup_on_mpv_render_update) {
-                    redraw = mpv_render_ctx.update();
+                    // redraw = mpv_render_ctx.update();
+                    const flags = mpv_render_ctx.update();
+                    redraw = MpvRenderUpdateFlag.frame.in_flags(flags);
                 } else if (event.type == wakeup_on_mpv_events) {
                     while (true) {
-                        const mpv_event = mpv.wait_event(0);
+                        const mpv_event = mpv.wait_event_z(.none);
 
-                        if (mpv_event.event_id == .None) {
+                        if (mpv_event.id == .none) {
                             break;
-                        } else if (mpv_event.event_id == .Shutdown or mpv_event.event_id == .EndFile) {
+                        } else if (mpv_event.id == .shutdown or mpv_event.id == .end_file) {
                             break :done;
-                        } else if (mpv_event.event_id == .LogMessage) {
-                            const log = mpv_event.data.LogMessage;
+                        } else if (mpv_event.id == .log_message) {
+                            const log = mpv_event.get_data_z().log_message;
                             std.log.info("\"{s}\"", .{log.text});
                         }
                     }
@@ -119,20 +132,19 @@ pub fn main() !void {
             var h: c_int = undefined;
             sdl.SDL_GetWindowSize(window, &w, &h);
 
-            var zig_render_params = [_]MpvRenderParam{
-                .{ .SkipRendering = false },
-                .{ .OpenglFbo = .{
-                    .fbo = 0,
-                    .w = w,
-                    .h = h,
-                    .internal_format = 0,
-                } },
-                .{ .FlipY = true },
-                .{ .Depth = 16 },
-                .{ .BlockForTargetTime = true },
-                .{ .Invalid = {} },
+            var fbo = MpvOpenGLFBO{
+                .fbo = 0,
+                .w = w,
+                .h = h,
+                .internal_format = 0,
             };
-            try mpv_render_ctx.render(&zig_render_params);
+            var flip: c_int = 1;
+            var zig_render_params = [_]MpvRenderParam{
+                .new_z(.{ .opengl_fbo = &fbo }),
+                .new_z(.{ .flip_y = &flip }),
+                .invalid,
+            };
+            try mpv_render_ctx.render(&zig_render_params).check_error_z();
         }
         sdl.SDL_GL_SwapWindow(window);
         mpv_render_ctx.report_swap();
@@ -151,8 +163,8 @@ fn on_mpv_render_update(data: ?*anyopaque) void {
     _ = sdl.SDL_PushEvent(@ptrCast(&event));
 }
 
-fn get_process_address(ctx: ?*anyopaque, name: []const u8) ?*anyopaque {
+fn get_process_address(ctx: ?*anyopaque, name: [*c]const u8) callconv(.C) ?*anyopaque {
     var mpv: *zmpv.MpvHandle = @ptrCast(@alignCast(ctx));
     std.log.debug("mpv ID: {}, name: {s}", .{ mpv.client_id(), name });
-    return sdl.SDL_GL_GetProcAddress(name.ptr);
+    return sdl.SDL_GL_GetProcAddress(name);
 }
